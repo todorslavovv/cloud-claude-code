@@ -1,1 +1,1587 @@
+%======================================================================
+% Chapter 9: Probability
+%======================================================================
 \chapter{Probability}\label{ch:probability}
+
+\begin{motivation}
+Machine learning lives with uncertainty. Measurements are noisy, labels are
+sometimes wrong, and the future is never fully determined by the past. A good
+model does not just say ``cat''; it says ``cat with probability $0.97$'', and it
+knows when it is unsure. Probability is the mathematics of uncertainty, and it
+is woven through the whole field:
+\begin{itemize}
+  \item classifiers output probability distributions over classes, and a
+    language model outputs a probability distribution over the next word;
+  \item the standard loss functions are derived from probability (maximum
+    likelihood, \cref{ch:statistics}; cross-entropy, \cref{ch:dl});
+  \item generative models (which create images, text or music) are learned
+    probability distributions from which we can sample;
+  \item training itself is random: random initialisation, random mini-batches,
+    random dropout.
+\end{itemize}
+This chapter develops probability from scratch: events and their probabilities,
+conditional probability and Bayes' theorem, random variables, expectation and
+variance, the most important distributions, and how several random quantities
+relate to each other.
+\end{motivation}
+
+\begin{objectives}
+\begin{itemize}
+  \item describe random experiments with sample spaces and events;
+  \item apply the axioms and rules of probability, and count outcomes;
+  \item compute conditional probabilities and use the law of total probability;
+  \item recognise independent and conditionally independent events;
+  \item apply Bayes' theorem, and avoid the base-rate fallacy;
+  \item work with discrete and continuous random variables, PMFs, PDFs and CDFs;
+  \item compute expectations, variances and standard deviations;
+  \item use the Bernoulli, binomial, categorical, uniform and normal
+    distributions;
+  \item work with joint, marginal and conditional distributions;
+  \item compute covariance, correlation and covariance matrices.
+\end{itemize}
+\end{objectives}
+
+%----------------------------------------------------------------------
+\section{Random experiments, outcomes and events}\label{sec:events}
+%----------------------------------------------------------------------
+
+A \term{random experiment} is a process whose result we cannot predict with
+certainty: tossing a coin, rolling a die, measuring tomorrow's temperature,
+drawing a random mini-batch of training data.
+
+\begin{definition}[Sample space and events]\label{def:sample-space}
+The \term{sample space} $\Omega$ (capital omega) of a random experiment is the
+set of all its possible \term[outcome]{outcomes}. An \term{event} is a subset
+of the sample space: a collection of outcomes. We say the event $A$
+\emph{occurs} if the outcome of the experiment lies in $A$.
+\end{definition}
+
+\begin{example}[Sample spaces]
+Here are four random experiments and their sample spaces.
+\begin{itemize}
+  \item One coin toss: $\Omega = \{H, T\}$.
+  \item One die: $\Omega = \{1, 2, 3, 4, 5, 6\}$. The event ``an even number'' is
+    $A = \{2, 4, 6\}$.
+  \item Two dice: $\Omega$ consists of the $36$ ordered pairs
+    $(1,1), (1,2), \dots, (6,6)$.
+  \item A person's height in metres: $\Omega = (0, \infty)$, an infinite,
+    continuous set.
+\end{itemize}
+\end{example}
+
+\subsection{Combining events}
+
+Events are sets (\cref{sec:kinds-of-numbers}), and there are three basic ways
+to combine sets, which we now introduce (\cref{fig:venn}):
+\begin{itemize}
+  \item $A \cup B$ (``$A$ \emph{or} $B$'', the \term{union}): at least one of
+    $A$, $B$ occurs;
+  \item $A \cap B$ (``$A$ \emph{and} $B$'', the \term{intersection}): both occur;
+  \item $A^c$ (``\emph{not} $A$'', the \term{complement}): $A$ does not occur;
+  \item $A$ and $B$ are \term[disjoint events]{disjoint} (or \emph{mutually
+    exclusive}) if they cannot both occur: $A \cap B = \emptyset$, where
+    $\emptyset$ is the empty set.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.95]
+  \draw[thick] (-3,-1.8) rectangle (3.6,1.8);
+  \node[anchor=north west] at (-3,1.8) {$\Omega$};
+  \begin{scope}
+    \clip (-0.6,0) circle (1.3);
+    \fill[MLintuition!40] (0.9,0) circle (1.3);
+  \end{scope}
+  \draw[thick,PlotBlue] (-0.6,0) circle (1.3);
+  \draw[thick,PlotRed] (0.9,0) circle (1.3);
+  \node[PlotBlue] at (-1.3,0.3) {$A$};
+  \node[PlotRed] at (1.7,0.3) {$B$};
+  \node[font=\small] at (0.15,-0.1) {$A \cap B$};
+\end{tikzpicture}
+\caption{A Venn diagram. The rectangle is the sample space, the circles are
+  events $A$ and $B$, and the shaded overlap is $A \cap B$. Everything inside
+  either circle is $A \cup B$; everything outside $A$ is $A^c$.}
+\label{fig:venn}
+\end{figure}
+
+\subsection{What does a probability mean?}
+
+The \emph{probability} $P(A)$ of an event is a number between $0$ and $1$ that
+measures how likely it is. There are two complementary interpretations.
+\begin{itemize}
+  \item \textbf{Frequentist:} $P(A)$ is the long-run fraction of repetitions of
+    the experiment in which $A$ occurs. A fair coin lands heads in about half of
+    many tosses.
+  \item \textbf{Bayesian:} $P(A)$ is a degree of belief, which can apply to
+    one-off events: ``the probability that this email is spam'', ``the
+    probability that it rains tomorrow''.
+\end{itemize}
+Both interpretations obey exactly the same mathematical rules, which is all we
+need.
+
+\sectionexercises
+
+\begin{exercise}
+Write down the sample space for tossing a coin twice, and the event ``at least
+one head''.
+\end{exercise}
+\begin{solution}
+$\Omega = \{HH, HT, TH, TT\}$. ``At least one head'' is $\{HH, HT, TH\}$.
+\end{solution}
+
+\begin{exercise}
+For one roll of a die let $A = \{2, 4, 6\}$ (even) and $B = \{4, 5, 6\}$ (at
+least $4$). Find $A \cup B$, $A \cap B$ and $A^c$. Are $A$ and $B$ disjoint?
+\end{exercise}
+\begin{solution}
+$A \cup B = \{2, 4, 5, 6\}$, $A \cap B = \{4, 6\}$, $A^c = \{1, 3, 5\}$. They are
+not disjoint, since $A \cap B \neq \emptyset$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{The rules of probability}\label{sec:probability-rules}
+%----------------------------------------------------------------------
+
+All of probability theory rests on three simple rules.
+
+\begin{definition}[Axioms of probability]\label{def:axioms}
+A \term{probability} $P$ assigns to each event $A$ a number $P(A)$ such that:
+\begin{enumerate}
+  \item $P(A) \ge 0$ for every event $A$;
+  \item $P(\Omega) = 1$ (something certainly happens);
+  \item if $A$ and $B$ are disjoint, then $P(A \cup B) = P(A) + P(B)$ (and the
+    same for any sequence of pairwise disjoint events).
+\end{enumerate}
+\end{definition}
+\index{axioms of probability}
+
+\begin{theorem}[Basic rules]\label{thm:probability-rules}
+For all events $A$ and $B$:
+\begin{enumerate}
+  \item $P(A^c) = 1 - P(A)$ \quad (complement rule);
+  \item $P(\emptyset) = 0$ and $0 \le P(A) \le 1$;
+  \item $P(A \cup B) = P(A) + P(B) - P(A \cap B)$ \quad (inclusion--exclusion).
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+$A$ and $A^c$ are disjoint with union $\Omega$, so $P(A) + P(A^c) = 1$. This gives
+the complement rule, and with $A = \Omega$ it gives $P(\emptyset) = 0$. For
+inclusion--exclusion, adding $P(A)$ and $P(B)$ counts the overlap $A \cap B$
+twice (\cref{fig:venn}), so it must be subtracted once.
+\end{proof}
+
+\subsection{Equally likely outcomes}
+
+When the sample space is finite and all outcomes are equally likely (a fair coin,
+a fair die, a well-shuffled deck), probabilities are just proportions:
+\[
+  P(A) = \frac{\text{number of outcomes in } A}{\text{number of outcomes in } \Omega}
+  = \frac{\abs{A}}{\abs{\Omega}} .
+\]
+(For a finite set, $\abs{A}$ denotes the number of its elements.)
+
+\begin{example}[Two dice]\label{ex:two-dice}
+Roll two fair dice. Find the probability that (a) the sum is $7$; (b) at least
+one of the dice shows a six.
+
+\sol There are $36$ equally likely outcomes. (a) The sum is $7$ for the six
+outcomes $(1,6)$, $(2,5)$, $(3,4)$, $(4,3)$, $(5,2)$ and $(6,1)$, so
+$P = \frac{6}{36} = \frac16$.
+(b) It is easier to count the complement, ``no six'': $5 \times 5 = 25$ outcomes.
+So $P(\text{at least one six}) = 1 - \frac{25}{36} = \frac{11}{36} \approx
+0.306$.
+\end{example}
+
+\subsection{Counting}
+
+Computing proportions requires counting, and counting can be surprisingly
+tricky. Three tools suffice for most purposes.
+
+\begin{itemize}
+  \item \textbf{Multiplication principle.} If a choice is made in two stages,
+    with $m$ options at the first and $n$ at the second, there are $mn$
+    possibilities in total. (Two dice: $6 \times 6 = 36$.)
+  \item \textbf{Arrangements.} $n$ distinct objects can be put in order in
+    $n! = n\times(n-1)\times\dots\times1$ ways (\cref{sec:summation}): $n$
+    choices for the first position, $n - 1$ for the second, and so on.
+  \item \textbf{Combinations.} The number of ways to \emph{choose} $k$ objects
+    out of $n$, when the order does not matter, is the \term{binomial
+    coefficient}
+    \[
+      \binom{n}{k} = \frac{n!}{k!\,(n-k)!},
+    \]
+    read ``$n$ choose $k$''. For example, $\binom42 = \frac{24}{2\cdot2} = 6$: from
+    $\{a, b, c, d\}$ we can choose $ab, ac, ad, bc, bd, cd$.
+\end{itemize}
+
+\begin{example}[Counting with combinations]\label{ex:combinations}
+(a) How many different $5$-card hands can be dealt from a $52$-card deck?
+(b) What is the probability of exactly $2$ heads in $4$ fair coin tosses?
+
+\sol (a) $\binom{52}{5} = 2\,598\,960$. (b) There are $2^4 = 16$ equally likely
+sequences of heads and tails. A sequence with exactly $2$ heads is determined by
+\emph{which} $2$ of the $4$ tosses are heads: $\binom42 = 6$ sequences. So
+$P = \frac{6}{16} = 0.375$.
+\end{example}
+
+\sectionexercises
+
+\begin{exercise}
+$P(A) = 0.3$, $P(B) = 0.5$ and $P(A \cap B) = 0.1$. Find $P(A \cup B)$,
+$P(A^c)$, and the probability that neither $A$ nor $B$ occurs.
+\end{exercise}
+\begin{solution}
+$P(A \cup B) = 0.3 + 0.5 - 0.1 = 0.7$; $P(A^c) = 0.7$; neither:
+$1 - P(A \cup B) = 0.3$.
+\end{solution}
+
+\begin{exercise}
+Two fair dice are rolled. Find the probability that (a) the sum is $8$;
+(b) both show the same number; (c) the sum is at least $10$.
+\end{exercise}
+\begin{solution}
+(a) $(2,6), (3,5), (4,4), (5,3), (6,2)$: $\tfrac{5}{36}$. (b) $6$ doubles:
+$\tfrac{6}{36} = \tfrac16$. (c) Sums $10, 11, 12$ occur in $3 + 2 + 1 = 6$ ways:
+$\tfrac{6}{36} = \tfrac16$.
+\end{solution}
+
+\begin{exercise}
+What is the probability of at least one head in $5$ tosses of a fair coin?
+\end{exercise}
+\begin{solution}
+The complement, ``no heads'', has probability $\left(\tfrac12\right)^5 =
+\tfrac{1}{32}$, so the answer is $\tfrac{31}{32} \approx 0.969$.
+\end{solution}
+
+\begin{exercise}
+A committee of $3$ is chosen at random from $8$ people, one of whom is Alice.
+How many committees are possible, and what is the probability that Alice is on
+the committee?
+\end{exercise}
+\begin{solution}
+$\binom83 = 56$ committees. Those containing Alice are determined by choosing
+the other $2$ members from the remaining $7$: $\binom72 = 21$. So the probability
+is $\tfrac{21}{56} = \tfrac38$. (Sanity check: each of the $8$ people has the same
+chance, and $3$ of the $8$ seats are filled.)
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Conditional probability}\label{sec:conditional}
+%----------------------------------------------------------------------
+
+New information changes probabilities. If you learn that a die roll was even,
+the chance that it was a $6$ goes up from $\frac16$ to $\frac13$: there are now
+only three possibilities, $2, 4, 6$, and $6$ is one of them.
+
+\begin{definition}[Conditional probability]\label{def:conditional-probability}
+If $P(B) > 0$, the \term{conditional probability} of $A$ given $B$ is
+\[
+  \keyeq{P(A \mid B) = \frac{P(A \cap B)}{P(B)}}
+\]
+read ``the probability of $A$ given $B$''.
+\end{definition}
+
+\begin{intuition}[Shrinking the universe]
+Conditioning on $B$ means: we now know that $B$ happened, so throw away all
+outcomes outside $B$, and rescale the probabilities of what is left so that they
+add up to $1$ again. In the Venn diagram, $B$ becomes the new sample space and
+$P(A \mid B)$ is the fraction of $B$ occupied by $A \cap B$.
+\end{intuition}
+
+\begin{example}[Conditional probabilities from a table]\label{ex:spam-table}
+Of $100$ emails, $40$ are spam. The word ``free'' appears in $30$ of the spam
+emails and in $5$ of the $60$ others:
+\begin{center}
+\begin{tabular}{l|cc|c}
+ & contains ``free'' & no ``free'' & total\\
+\hline
+spam & $30$ & $10$ & $40$\\
+not spam & $5$ & $55$ & $60$\\
+\hline
+total & $35$ & $65$ & $100$
+\end{tabular}
+\end{center}
+Find $P(\text{spam})$, $P(\text{spam} \mid \text{free})$ and
+$P(\text{free} \mid \text{spam})$.
+
+\sol $P(\text{spam}) = \frac{40}{100} = 0.4$. Restricting attention to the $35$
+emails that contain ``free'', and then to the $40$ spam emails, we find
+\[
+  P(\text{spam} \mid \text{free}) = \frac{30}{35} \approx 0.857,
+  \qquad
+  P(\text{free} \mid \text{spam}) = \frac{30}{40} = 0.75 .
+\]
+\end{example}
+
+\begin{pitfall}[$P(A \mid B)$ is not $P(B \mid A)$]
+In the example, $P(\text{spam} \mid \text{free}) \approx 0.86$ but
+$P(\text{free} \mid \text{spam}) = 0.75$. Confusing the two is one of the most
+common and most consequential errors in reasoning about probability. The
+probability that a person who has a disease shows a symptom is not the
+probability that a person with the symptom has the disease. Bayes' theorem
+(\cref{sec:bayes}) is the correct way to turn one into the other.
+\end{pitfall}
+
+\subsection{The multiplication rule}
+
+Rearranging the definition gives the \term{multiplication rule}
+\[
+  P(A \cap B) = P(A \mid B)\,P(B) = P(B \mid A)\,P(A),
+\]
+and, for several events, the \emph{chain rule of probability}
+\[
+  P(A_1 \cap A_2 \cap \dots \cap A_n)
+  = P(A_1)\,P(A_2 \mid A_1)\,P(A_3 \mid A_1 \cap A_2)\cdots
+  P(A_n \mid A_1 \cap \dots \cap A_{n-1}).
+\]
+
+\begin{mlnote}[How language models assign probabilities to text]
+A language model assigns a probability to a whole sentence $w_1w_2\dots w_n$ by
+the chain rule:
+\[
+  P(w_1, \dots, w_n) = P(w_1)\,P(w_2 \mid w_1)\,P(w_3 \mid w_1, w_2)\cdots
+  P(w_n \mid w_1, \dots, w_{n-1}).
+\]
+Each factor is a prediction of the next word given everything before it, and
+this is exactly what models such as GPT are trained to produce. Generating text
+means repeatedly sampling the next word from these conditional probabilities.
+\end{mlnote}
+
+\subsection{The law of total probability}
+
+Often a probability is easiest to compute by splitting into cases. Events
+$B_1, \dots, B_k$ form a \emph{partition} of $\Omega$ if they are pairwise
+disjoint and together cover $\Omega$ (exactly one of them occurs).
+
+\begin{theorem}[Law of total probability]\label{thm:total-probability}
+If $B_1, \dots, B_k$ partition $\Omega$ and each $P(B_i) > 0$, then for any
+event $A$,
+\[
+  P(A) = \sum_{i=1}^k P(A \mid B_i)\,P(B_i).
+\]
+\end{theorem}
+
+\begin{example}[Defective items]\label{ex:total-probability}
+Machine 1 makes $60\%$ of a factory's items, of which $2\%$ are defective;
+machine 2 makes the other $40\%$, of which $5\%$ are defective. What fraction of
+all items is defective?
+
+\sol $P(D) = P(D \mid M_1)P(M_1) + P(D \mid M_2)P(M_2) = 0.02\cdot0.6 + 0.05\cdot0.4
+= 0.012 + 0.020 = 0.032$. The tree diagram in \cref{fig:probability-tree} shows
+the computation: multiply along the branches, add over the paths that end in
+``defective''.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\small,
+  branch/.style={draw,rounded corners,fill=MLdef!8,minimum width=9mm,minimum height=6mm},
+  leaf/.style={anchor=west,inner sep=2pt},
+  lab/.style={font=\scriptsize,midway}]
+  \node[circle,draw,fill=MLdef!10] (s) at (0,0) {start};
+  \node[branch] (m1) at (2.8,1.3) {$M_1$};
+  \node[branch] (m2) at (2.8,-1.3) {$M_2$};
+  \node[leaf,text=PlotRed] (d1) at (5.4,1.95) {defective: $0.6\times0.02 = 0.012$};
+  \node[leaf] (g1) at (5.4,0.65) {not defective: $0.6\times0.98 = 0.588$};
+  \node[leaf,text=PlotRed] (d2) at (5.4,-0.65) {defective: $0.4\times0.05 = 0.020$};
+  \node[leaf] (g2) at (5.4,-1.95) {not defective: $0.4\times0.95 = 0.380$};
+  \draw[thick] (s) -- node[lab,above left] {$0.6$} (m1);
+  \draw[thick] (s) -- node[lab,below left] {$0.4$} (m2);
+  \draw[thick] (m1) -- node[lab,above left] {$0.02$} (d1.west);
+  \draw[thick] (m1) -- node[lab,below left] {$0.98$} (g1.west);
+  \draw[thick] (m2) -- node[lab,above left] {$0.05$} (d2.west);
+  \draw[thick] (m2) -- node[lab,below left] {$0.95$} (g2.west);
+\end{tikzpicture}
+\caption{A probability tree for \cref{ex:total-probability}. Probabilities along
+  a path are multiplied; the two red paths together give
+  $P(\text{defective}) = 0.032$.}
+\label{fig:probability-tree}
+\end{figure}
+
+\sectionexercises
+
+\begin{exercise}
+Using the table of \cref{ex:spam-table}, find
+\[
+  P(\text{free} \mid \text{not spam})
+  \quad\text{and}\quad
+  P(\text{not spam} \mid \text{no ``free''}).
+\]
+\end{exercise}
+\begin{solution}
+$P(\text{free} \mid \text{not spam}) = \tfrac{5}{60} \approx 0.083$ and
+$P(\text{not spam} \mid \text{no free}) = \tfrac{55}{65} \approx 0.846$.
+\end{solution}
+
+\begin{exercise}
+Machine A makes $70\%$ of items with a $1\%$ defect rate, and machine B makes
+$30\%$ with a $4\%$ defect rate. What fraction of items is defective?
+\end{exercise}
+\begin{solution}
+$0.7\times0.01 + 0.3\times0.04 = 0.007 + 0.012 = 0.019$, i.e.\ $1.9\%$.
+\end{solution}
+
+\begin{exercise}
+Two cards are drawn from a deck without replacement. What is the probability
+that both are aces?
+\end{exercise}
+\begin{solution}
+By the multiplication rule, $P = \tfrac{4}{52}\cdot\tfrac{3}{51} = \tfrac{1}{221}
+\approx 0.0045$ (after one ace is drawn, $3$ aces remain among $51$ cards).
+\end{solution}
+
+\begin{exercise}
+A language model gives $P(\text{the}) = 0.05$, $P(\text{cat} \mid \text{the}) =
+0.001$ and $P(\text{sat} \mid \text{the cat}) = 0.1$. What probability does it
+assign to ``the cat sat'', and what is the natural logarithm of that probability?
+\end{exercise}
+\begin{solution}
+$0.05\times0.001\times0.1 = 5\times10^{-6}$, and $\ln(5\times10^{-6}) \approx
+-12.2$. (Language models work with such log-probabilities, which add up over the
+words instead of multiplying.)
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Independence}\label{sec:independence-events}
+%----------------------------------------------------------------------
+
+\begin{definition}[Independent events]\label{def:independence}
+Events $A$ and $B$ are \term[independent events]{independent} if
+\[
+  P(A \cap B) = P(A)\,P(B).
+\]
+Equivalently (when $P(B) > 0$), $P(A \mid B) = P(A)$: learning that $B$ occurred
+does not change the probability of $A$.
+\end{definition}
+
+Two tosses of a coin, two rolls of a die and, ideally, two randomly sampled
+training examples are independent. For independent events the probability that
+all occur is the product of their probabilities: ten heads in a row has
+probability $\left(\frac12\right)^{10} = \frac{1}{1024}$.
+
+\begin{pitfall}[Independent is not the same as disjoint]
+Disjoint events are as \emph{dependent} as events can be: if $A$ and $B$ cannot
+both happen, then knowing that $B$ happened tells you that $A$ did not. Formally,
+if $P(A), P(B) > 0$ and $A \cap B = \emptyset$, then $P(A \cap B) = 0 \neq
+P(A)P(B)$.
+\end{pitfall}
+
+\begin{definition}[Conditional independence]\label{def:conditional-independence}
+$A$ and $B$ are \term{conditionally independent} given $C$ if
+$P(A \cap B \mid C) = P(A \mid C)\,P(B \mid C)$.
+\end{definition}
+
+Conditional independence is common: the symptoms ``cough'' and ``fever'' are
+correlated in the population (both are caused by flu), but among people known to
+have flu they may be roughly independent.
+
+\begin{mlnote}[Independence assumptions in machine learning]
+Most of statistical learning assumes that the training examples are
+\term{i.i.d.}: \emph{independent and identically distributed}, i.e.\ drawn
+independently from the same distribution. This is what makes the probability of
+a whole data set a product of individual probabilities (\cref{ch:statistics}).
+The \emph{naive Bayes} classifier makes a much stronger assumption: that the
+words of an email are conditionally independent given the class (spam or not).
+This is certainly false, but it makes the model simple and it often works
+surprisingly well (\cref{sec:bayes}).
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Roll a die. Let $A = \{2, 4, 6\}$, $B = \{1, 2\}$ and $C = \{1, 3, 5\}$. Are $A$
+and $B$ independent? Are $A$ and $C$?
+\end{exercise}
+\begin{solution}
+$P(A \cap B) = P(\{2\}) = \tfrac16$ and $P(A)P(B) = \tfrac12\cdot\tfrac13 =
+\tfrac16$: independent. $A$ and $C$ are disjoint with positive probabilities, so
+$P(A \cap C) = 0 \neq \tfrac14$: dependent.
+\end{solution}
+
+\begin{exercise}
+A classifier is correct on each test example with probability $0.9$,
+independently. What is the probability that it gets all of $10$ examples right?
+\end{exercise}
+\begin{solution}
+$0.9^{10} \approx 0.349$. Even a fairly accurate model usually makes at least one
+mistake in ten tries.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Bayes' theorem}\label{sec:bayes}
+%----------------------------------------------------------------------
+
+The multiplication rule says $P(A \mid B)P(B) = P(B \mid A)P(A)$. Dividing by
+$P(B)$ gives one of the most important formulas in all of science.
+
+\begin{theorem}[Bayes' theorem]\label{thm:bayes}
+If $P(B) > 0$,
+\[
+  \keyeq{P(A \mid B) = \frac{P(B \mid A)\,P(A)}{P(B)}}
+\]
+where, by the law of total probability,
+$P(B) = P(B \mid A)P(A) + P(B \mid A^c)P(A^c)$.
+\end{theorem}
+
+\begin{notation}
+When $A$ is a hypothesis $H$ and $B$ is observed data $D$, the terms have names:
+\[
+  \underbrace{P(H \mid D)}_{\text{posterior}}
+  = \frac{\overbrace{P(D \mid H)}^{\text{likelihood}}\;
+    \overbrace{P(H)}^{\text{prior}}}{\underbrace{P(D)}_{\text{evidence}}} .
+\]
+The \term{prior} is our belief before seeing the data; the \term{likelihood}
+says how well the hypothesis predicts the data; the \term{posterior} is the
+updated belief. In words: \emph{posterior is proportional to likelihood times
+prior}.
+\end{notation}
+
+\begin{example}[A medical test]\label{ex:medical-test}
+A disease affects $1\%$ of the population. A test detects it in $99\%$ of sick
+people, but also gives a (false) positive result for $5\%$ of healthy people.
+You test positive. What is the probability that you have the disease?
+
+\sol With $D$ = ``has the disease'' and $+$ = ``tests positive'':
+$P(D) = 0.01$, $P(+ \mid D) = 0.99$ and $P(+ \mid D^c) = 0.05$. By Bayes,
+\[
+  P(D \mid +) = \frac{0.99\times0.01}{0.99\times0.01 + 0.05\times0.99}
+  = \frac{0.0099}{0.0099 + 0.0495} \approx 0.167 .
+\]
+Despite the positive result from a ``$99\%$ accurate'' test, the chance of
+having the disease is only about $17\%$.
+\end{example}
+
+\begin{intuition}[Think in natural frequencies]
+Imagine $10\,000$ people (\cref{fig:bayes-frequencies}). About $100$ are sick, and
+$99$ of them test positive. Of the $9900$ healthy people, $5\%$, i.e.\ $495$, also
+test positive. So among the $99 + 495 = 594$ positives, only $99$ are sick:
+$\frac{99}{594} \approx 17\%$. The rare disease is swamped by false alarms from
+the large healthy majority.
+\end{intuition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>={Stealth[length=2mm]},
+  box/.style={draw,rounded corners,thick,align=center,font=\small,minimum height=8mm},
+  every edge/.style={draw,->,thick}]
+  \node[box,fill=MLdef!10] (all) at (0,0) {$10\,000$ people};
+  \node[box,fill=MLpitfall!12] (sick) at (-3.2,-1.5) {$100$ sick};
+  \node[box,fill=MLexample!12] (healthy) at (3.2,-1.5) {$9900$ healthy};
+  \node[box,fill=MLpitfall!25] (tp) at (-4.6,-3.1) {$99$ test $+$};
+  \node[box] (fn) at (-1.8,-3.1) {$1$ test $-$};
+  \node[box,fill=MLpitfall!25] (fp) at (1.8,-3.1) {$495$ test $+$};
+  \node[box] (tn) at (4.6,-3.1) {$9405$ test $-$};
+  \draw (all) edge (sick) (all) edge (healthy) (sick) edge (tp) (sick) edge (fn)
+        (healthy) edge (fp) (healthy) edge (tn);
+\end{tikzpicture}
+\caption{The medical test in natural frequencies. Of the $594$ people who test
+  positive (shaded), only $99$ are actually sick.}
+\label{fig:bayes-frequencies}
+\end{figure}
+
+\begin{pitfall}[The base-rate fallacy]
+Ignoring the prior (the \emph{base rate} of $1\%$) and answering ``$99\%$'' is the
+\emph{base-rate fallacy}. It affects doctors, juries and machine learning
+practitioners alike: a fraud detector that is ``$99\%$ accurate'' may still raise
+mostly false alarms if fraud is rare. Always ask how common the thing you are
+looking for is to begin with.
+\end{pitfall}
+
+\begin{example}[A naive Bayes spam filter]\label{ex:naive-bayes}
+From the table of \cref{ex:spam-table} we know that $P(\text{spam}) = 0.4$ and
+\[
+  P(\text{free} \mid \text{spam}) = 0.75, \qquad
+  P(\text{free} \mid \text{ham}) = \tfrac{5}{60} \approx 0.083,
+\]
+where ``ham'' means ``not spam''. Suppose also that the word ``meeting'' appears
+in $5\%$ of spam and $30\%$ of ham. An email contains both ``free'' and
+``meeting''. Is it spam?
+
+\sol Assume, as naive Bayes does, that the words are conditionally independent
+given the class. Then
+\begin{align*}
+  P(\text{spam})\,P(\text{free} \mid \text{spam})\,P(\text{meeting} \mid \text{spam})
+    &= 0.4\times0.75\times0.05 = 0.015,\\
+  P(\text{ham})\,P(\text{free} \mid \text{ham})\,P(\text{meeting} \mid \text{ham})
+    &= 0.6\times0.0833\times0.30 = 0.015 .
+\end{align*}
+By Bayes' theorem the posterior probabilities are proportional to these numbers,
+so $P(\text{spam} \mid \text{both words}) = \frac{0.015}{0.015 + 0.015} = 0.5$.
+The word ``free'' pushes towards spam and ``meeting'' pushes back equally hard.
+\end{example}
+
+\begin{mlnote}[Bayesian thinking in machine learning]
+Bayes' theorem underlies classifiers such as naive Bayes, the interpretation of
+regularisation as a prior belief about the weights (\cref{ch:statistics}), and the
+whole field of Bayesian machine learning, which maintains probability
+distributions over model parameters instead of single best values. Note also
+that a posterior can serve as the prior for the next piece of evidence: Bayes'
+theorem describes learning from data step by step.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+A disease has prevalence $2\%$. A test detects it in $90\%$ of sick people and
+gives false positives for $10\%$ of healthy people. What is the probability of
+disease after a positive test?
+\end{exercise}
+\begin{solution}
+$P(D \mid +) = \tfrac{0.9\times0.02}{0.9\times0.02 + 0.1\times0.98} =
+\tfrac{0.018}{0.018 + 0.098} \approx 0.155$.
+\end{solution}
+
+\begin{exercise}
+In the previous exercise, the patient takes a second, independent test, which is
+also positive. Using $0.155$ as the new prior, what is the probability of disease
+now?
+\end{exercise}
+\begin{solution}
+$\tfrac{0.9\times0.155}{0.9\times0.155 + 0.1\times0.845} \approx
+\tfrac{0.1397}{0.1397 + 0.0845} \approx 0.62$. A second positive test raises the
+probability from about $16\%$ to about $62\%$.
+\end{solution}
+
+\begin{exercise}
+Urn 1 contains $3$ red and $1$ blue ball; urn 2 contains $1$ red and $3$ blue
+balls. An urn is chosen by a fair coin toss and a ball is drawn: it is red. What
+is the probability that it came from urn 1?
+\end{exercise}
+\begin{solution}
+$P(\text{red}) = \tfrac12\cdot\tfrac34 + \tfrac12\cdot\tfrac14 = \tfrac12$, so
+$P(\text{urn 1} \mid \text{red}) = \tfrac{(3/4)(1/2)}{1/2} = \tfrac34$.
+\end{solution}
+
+\begin{exercise}
+With the numbers of \cref{ex:naive-bayes}, find the probability that an email
+containing ``meeting'' (and we ignore all other words) is spam.
+\end{exercise}
+\begin{solution}
+Spam: $0.4\times0.05 = 0.02$; ham: $0.6\times0.3 = 0.18$. So
+$P(\text{spam} \mid \text{meeting}) = \tfrac{0.02}{0.02 + 0.18} = 0.1$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Random variables and their distributions}\label{sec:random-variables}
+%----------------------------------------------------------------------
+
+Often we care about a \emph{number} computed from the outcome: the sum of two
+dice, the number of heads, the height of a randomly chosen person, the loss on a
+randomly chosen training example.
+
+\begin{definition}[Random variable]\label{def:random-variable}
+A \term{random variable} is a function that assigns a number to each outcome of
+a random experiment.
+\end{definition}
+
+\begin{notation}
+Random variables are written with capital letters ($X$, $Y$, $S$) and the values
+they take with lower-case letters ($x$, $y$, $s$). So $P(X = 3)$ is ``the
+probability that $X$ takes the value $3$'' and $P(X \le x)$ ``the probability that
+$X$ is at most $x$''.
+\end{notation}
+
+\subsection{Discrete random variables}
+
+A random variable is \emph{discrete} if it takes a finite (or countable) list of
+values. Its distribution is described by its \term{probability mass function}
+(PMF)
+\[
+  p(x) = P(X = x), \qquad\text{with } p(x) \ge 0 \text{ and } \sum_x p(x) = 1 .
+\]
+
+\begin{example}[The sum of two dice]\label{ex:dice-pmf}
+Let $S$ be the sum of two fair dice. Counting outcomes as in \cref{ex:two-dice}:
+\begin{center}
+\begin{tabular}{c|ccccccccccc}
+$s$ & $2$ & $3$ & $4$ & $5$ & $6$ & $7$ & $8$ & $9$ & $10$ & $11$ & $12$\\
+\hline
+$36\,p(s)$ & $1$ & $2$ & $3$ & $4$ & $5$ & $6$ & $5$ & $4$ & $3$ & $2$ & $1$
+\end{tabular}
+\end{center}
+The PMF is drawn as a bar chart in \cref{fig:dice-pmf}. The probabilities add up
+to $\frac{36}{36} = 1$.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=9cm,height=5cm,ybar,bar width=12pt,
+  xmin=1.3,xmax=12.7,ymin=0,ymax=0.19,xtick={2,...,12},
+  ytick={0,0.05,0.1,0.15},yticklabel style={/pgf/number format/fixed},
+  xlabel={$s$},ylabel={$p(s)$},
+  xlabel style={at={(ticklabel cs:0.5)},anchor=near ticklabel},
+  ylabel style={at={(ticklabel cs:0.5)},anchor=near ticklabel,rotate=90}]
+  \addplot[fill=MLdef!45,draw=MLdef] coordinates
+    {(2,1/36) (3,2/36) (4,3/36) (5,4/36) (6,5/36) (7,6/36) (8,5/36) (9,4/36) (10,3/36) (11,2/36) (12,1/36)};
+\end{axis}
+\end{tikzpicture}
+\caption{The probability mass function of the sum of two fair dice.}
+\label{fig:dice-pmf}
+\end{figure}
+
+\subsection{Continuous random variables}
+
+A height, a temperature or a model weight can take any value in an interval. For
+such \emph{continuous} random variables, the probability of any single exact
+value is zero (what is the chance that a person is \emph{exactly}
+$1.7500000\ldots$ metres tall?), so instead we describe probabilities of
+intervals with a density.
+
+\begin{definition}[Probability density function]\label{def:pdf}
+A continuous random variable $X$ has \term{probability density function} (PDF)
+$p(x)$ if, for all $a \le b$,
+\[
+  P(a \le X \le b) = \int_a^b p(x)\,\dd x .
+\]
+A density satisfies $p(x) \ge 0$ and $\int_{-\infty}^{\infty}p(x)\,\dd x = 1$.
+\end{definition}
+
+So probabilities are \emph{areas under the density curve}
+(\cref{fig:normal-area} below shows an example).
+
+\begin{pitfall}[A density is not a probability]
+$p(x)$ itself is not the probability of anything: $P(X = x) = 0$. A density
+measures probability \emph{per unit length}, and it can be larger than $1$. For
+example, if $X$ is uniform on $[0, 0.5]$, then $p(x) = 2$ on that interval
+(so that the total area is $2 \times 0.5 = 1$).
+\end{pitfall}
+
+\begin{definition}[Cumulative distribution function]\label{def:cdf}
+The \term{cumulative distribution function} (CDF) of any random variable $X$ is
+$F(x) = P(X \le x)$. For a continuous random variable
+$F(x) = \int_{-\infty}^{x}p(t)\,\dd t$, and so, by the fundamental theorem of
+calculus, $p = F'$.
+\end{definition}
+
+\begin{example}[Two continuous distributions]\label{ex:continuous}
+(a) $X$ is \emph{uniform} on $[0, 2]$, with $p(x) = \frac12$ there (and $0$
+elsewhere). Then $P(0.5 \le X \le 1.2) = \int_{0.5}^{1.2}\frac12\,\dd x = 0.35$.
+
+(b) The waiting time $T$ until the next event in a random stream of events (the
+next customer, the next radioactive decay) is often modelled by the
+\emph{exponential distribution} $p(t) = \lambda e^{-\lambda t}$ for $t \ge 0$. With
+rate $\lambda = 2$ per minute, the probability of waiting more than a minute is
+\[
+  P(T > 1) = \int_1^\infty 2e^{-2t}\,\dd t = \Bigl[-e^{-2t}\Bigr]_1^\infty
+  = e^{-2} \approx 0.135 .
+\]
+\end{example}
+
+\sectionexercises
+
+\begin{exercise}
+Let $X$ be the number of heads in $3$ tosses of a fair coin. Write down its PMF
+and compute $F(1) = P(X \le 1)$.
+\end{exercise}
+\begin{solution}
+$p(0) = \tfrac18$, $p(1) = \tfrac38$, $p(2) = \tfrac38$, $p(3) = \tfrac18$ (there are
+$\binom3k$ sequences with $k$ heads among $8$). $F(1) = \tfrac18 + \tfrac38 =
+\tfrac12$.
+\end{solution}
+
+\begin{exercise}
+$X$ is uniform on $[0, 4]$. What is its density? Find $P(1 \le X \le 2.5)$ and
+$P(X = 2)$.
+\end{exercise}
+\begin{solution}
+$p(x) = \tfrac14$ on $[0, 4]$. $P(1 \le X \le 2.5) = 1.5\times\tfrac14 = 0.375$;
+$P(X = 2) = 0$.
+\end{solution}
+
+\begin{exercise}
+Show that $p(x) = 3x^2$ on $[0, 1]$ (and $0$ elsewhere) is a valid density, and
+compute $P(X \le 0.5)$. Is it a problem that $p(1) = 3 > 1$?
+\end{exercise}
+\begin{solution}
+$p \ge 0$ and $\int_0^1 3x^2\,\dd x = \bigl[x^3\bigr]_0^1 = 1$. $P(X \le 0.5) =
+0.5^3 = 0.125$. No problem: densities may exceed $1$; only areas must be at most
+$1$.
+\end{solution}
+
+\begin{exercise}
+For an exponential waiting time with rate $\lambda = 0.5$, find $P(T > 2)$.
+\end{exercise}
+\begin{solution}
+$P(T > 2) = e^{-0.5\times2} = e^{-1} \approx 0.368$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Expectation}\label{sec:expectation}
+%----------------------------------------------------------------------
+
+\begin{definition}[Expected value]\label{def:expectation}
+The \term{expected value} (or \term{mean}, or \emph{expectation}) of a random
+variable $X$ is
+\[
+  \keyeq{\E[X] = \sum_x x\,p(x)}
+  \qquad\text{or}\qquad
+  \E[X] = \int_{-\infty}^{\infty}x\,p(x)\,\dd x
+\]
+for discrete and continuous $X$ respectively. It is often written $\mu$.
+\end{definition}
+
+The expected value is a probability-weighted average of the possible values.
+For a fair die, $\E[X] = \frac16(1 + 2 + 3 + 4 + 5 + 6) = 3.5$. Note that the
+expected value need not be a possible value.
+
+\begin{intuition}[Two pictures of the mean]
+\textbf{Long-run average:} if you repeat the experiment many times, the average
+of the observed values approaches $\E[X]$ (the \emph{law of large numbers},
+\cref{ch:statistics}). Roll a die a thousand times and the average will be close
+to $3.5$. \textbf{Centre of mass:} if you place weights $p(x)$ at the positions
+$x$ on a ruler, the ruler balances at $\E[X]$.
+\end{intuition}
+
+\subsection{Expectations of functions}
+
+To compute the expected value of a function $g(X)$, weight the values of $g$ by
+the probabilities of $X$:
+\[
+  \E[g(X)] = \sum_x g(x)\,p(x)
+  \qquad\text{or}\qquad \int g(x)\,p(x)\,\dd x .
+\]
+For a die, $\E[X^2] = \frac16(1 + 4 + 9 + 16 + 25 + 36) = \frac{91}{6} \approx
+15.17$.
+
+\subsection{Linearity of expectation}
+
+\begin{theorem}[Linearity of expectation]\label{thm:linearity-expectation}
+For any random variables $X$, $Y$ and constants $a$, $b$:
+\[
+  \E[aX + b] = a\,\E[X] + b, \qquad \E[X + Y] = \E[X] + \E[Y] .
+\]
+The second rule holds even if $X$ and $Y$ are dependent.
+\end{theorem}
+
+Linearity is enormously useful. The expected sum of $100$ dice is
+$100\times3.5 = 350$, with no need to work out the distribution of the sum. The
+expected number of heads in $n$ tosses of a coin with $P(\text{heads}) = p$ is
+$np$, because it is a sum of $n$ terms, each $1$ (heads) or $0$ (tails) with
+expected value $p$.
+
+\begin{pitfall}[Expectation does not pass through non-linear functions]
+In general $\E[g(X)] \neq g(\E[X])$. For a die, $\E[X^2] \approx 15.17$, but
+$(\E[X])^2 = 12.25$. Likewise $\E[XY] = \E[X]\E[Y]$ holds for independent $X$ and
+$Y$, but not in general.
+\end{pitfall}
+
+\begin{mlnote}[Risk, and why stochastic gradients work]
+If the data $(\vX, Y)$ come from some distribution, the quality of a model is
+its \emph{expected} loss, the \term{risk}
+$R(\vtheta) = \E\bigl[\ell(f(\vX;\vtheta), Y)\bigr]$. We cannot compute it, because
+we do not know the distribution, so we minimise its estimate from the data, the
+empirical risk of \cref{def:erm}. Expectation also explains stochastic gradient
+descent (\cref{sec:sgd}): if $I$ is an index chosen uniformly at random from
+$1, \dots, n$, then
+$\E[\nabla\ell_I] = \sum_{i=1}^n\frac1n\nabla\ell_i = \nabla L$. The gradient of a
+random example is, on average, exactly the full gradient: an \emph{unbiased}
+estimate.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+$X$ takes the values $0$, $1$, $2$ with probabilities $0.2$, $0.5$, $0.3$. Find
+$\E[X]$ and $\E[X^2]$.
+\end{exercise}
+\begin{solution}
+$\E[X] = 0 + 0.5 + 0.6 = 1.1$ and $\E[X^2] = 0 + 0.5 + 1.2 = 1.7$.
+\end{solution}
+
+\begin{exercise}
+A game costs nothing to play: you win $10$ with probability $0.1$ and lose $2$
+otherwise. What is the expected gain? Would you play many times?
+\end{exercise}
+\begin{solution}
+$\E = 10\times0.1 - 2\times0.9 = 1 - 1.8 = -0.8$. On average you lose $0.8$ per
+game, so playing many times is a losing strategy.
+\end{solution}
+
+\begin{exercise}
+What is the expected number of sixes in $30$ rolls of a die? What is the expected
+number of correct predictions of a classifier that is right with probability
+$0.8$ on each of $200$ test examples?
+\end{exercise}
+\begin{solution}
+By linearity, $30\times\tfrac16 = 5$ sixes and $200\times0.8 = 160$ correct
+predictions.
+\end{solution}
+
+\begin{exercise}
+Compute $\E[X]$ for the density $p(x) = 3x^2$ on $[0, 1]$.
+\end{exercise}
+\begin{solution}
+$\E[X] = \int_0^1 x\cdot3x^2\,\dd x = \left[\tfrac{3x^4}{4}\right]_0^1 = 0.75$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Variance and standard deviation}\label{sec:variance}
+%----------------------------------------------------------------------
+
+Two random variables can have the same mean but very different spreads: a fair
+coin bet of $\pm1$ and a bet of $\pm1000$ both have mean $0$. Variance measures
+spread.
+
+\begin{definition}[Variance and standard deviation]\label{def:variance}
+The \term{variance} of $X$, with mean $\mu = \E[X]$, is the expected squared
+distance from the mean,
+\[
+  \keyeq{\Var(X) = \E\bigl[(X - \mu)^2\bigr]}
+\]
+and the \term{standard deviation} is its square root, $\sigma = \sqrt{\Var(X)}$.
+\end{definition}
+
+Squaring makes all deviations positive and emphasises large ones; the square root
+brings the units back to those of $X$ (if $X$ is in metres, $\Var(X)$ is in square
+metres and $\sigma$ in metres). For calculations, the following shortcut is
+usually easier.
+
+\begin{proposition}[Computational formula]\label{prop:variance-shortcut}
+$\Var(X) = \E[X^2] - (\E[X])^2$.
+\end{proposition}
+
+\begin{proof}
+Expand the square and use linearity: $\E[X^2 - 2\mu X + \mu^2] = \E[X^2] -
+2\mu\E[X] + \mu^2 = \E[X^2] - \mu^2$.
+\end{proof}
+
+For a die: $\Var(X) = \frac{91}{6} - 3.5^2 = \frac{35}{12} \approx 2.92$ and
+$\sigma \approx 1.71$.
+
+\begin{theorem}[Properties of variance]\label{thm:variance-properties}
+For constants $a, b$: $\Var(aX + b) = a^2\Var(X)$, so the standard deviation
+scales by $\abs a$ and is unaffected by shifts. If $X$ and $Y$ are independent,
+$\Var(X + Y) = \Var(X) + \Var(Y)$.
+\end{theorem}
+
+\subsection{Standardisation}
+
+Subtracting the mean and dividing by the standard deviation gives the
+\term{standardised} variable or \term{z-score}
+\[
+  Z = \frac{X - \mu}{\sigma},
+\]
+which has mean $0$ and variance $1$ (by \cref{thm:variance-properties}). Its value
+says how many standard deviations $X$ is above or below its mean.
+
+\begin{remark}[Chebyshev's inequality]
+For any random variable with mean $\mu$ and standard deviation $\sigma$, and any
+$k > 0$,
+\[
+  P\bigl(\abs{X - \mu} \ge k\sigma\bigr) \le \frac{1}{k^2}.
+\]
+So at most $\frac14$ of the probability lies $2$ or more standard deviations away
+from the mean, whatever the distribution. This makes precise the idea that the
+standard deviation is the typical size of the fluctuations.
+\end{remark}
+
+\begin{mlnote}[Variance in neural networks]
+Controlling variances is a recurring theme in deep learning.
+\begin{itemize}
+  \item \textbf{Feature standardisation.} Features are usually standardised
+    (z-scored) before training, so that all of them have mean $0$ and variance
+    $1$; this fixes the scale problem of \cref{sec:distance} and makes gradient
+    descent better conditioned.
+  \item \textbf{Weight initialisation.} A neuron computes
+    $z = \sum_{i=1}^n w_ix_i$. If the inputs and weights are independent with mean
+    $0$, then $\Var(z) = n\Var(w)\Var(x)$. To keep signals from growing or
+    shrinking from layer to layer, initialisation schemes choose
+    $\Var(w) \approx \frac1n$ (\emph{Xavier/Glorot} initialisation) or
+    $\frac2n$ for ReLU networks (\emph{He} initialisation).
+  \item \textbf{Normalisation layers} (batch norm, layer norm) standardise
+    activations inside the network during training.
+\end{itemize}
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+For the random variable of the first exercise of \cref{sec:expectation}
+(values $0, 1, 2$ with probabilities $0.2, 0.5, 0.3$), compute the variance and
+standard deviation.
+\end{exercise}
+\begin{solution}
+$\Var(X) = 1.7 - 1.1^2 = 0.49$ and $\sigma = 0.7$.
+\end{solution}
+
+\begin{exercise}
+A Bernoulli random variable is $1$ with probability $p$ and $0$ otherwise. Show
+that its variance is $p(1-p)$. For which $p$ is it largest?
+\end{exercise}
+\begin{solution}
+$\E[X] = p$ and $\E[X^2] = p$ (since $X^2 = X$), so $\Var(X) = p - p^2 = p(1-p)$.
+This parabola is largest at $p = \tfrac12$, where the variance is $\tfrac14$.
+\end{solution}
+
+\begin{exercise}
+If $\Var(X) = 4$, what are $\Var(3X - 5)$ and the standard deviation of
+$3X - 5$?
+\end{exercise}
+\begin{solution}
+$\Var(3X - 5) = 9\times4 = 36$, so the standard deviation is $6$.
+\end{solution}
+
+\begin{exercise}
+Test scores have mean $70$ and standard deviation $8$. What is the z-score of a
+score of $82$? What score has z-score $-0.5$?
+\end{exercise}
+\begin{solution}
+$z = \tfrac{82 - 70}{8} = 1.5$. A z-score of $-0.5$ corresponds to
+$70 - 0.5\times8 = 66$.
+\end{solution}
+
+\begin{exercise}
+A neuron sums $100$ independent inputs, each with mean $0$ and variance $1$,
+multiplied by independent weights with mean $0$ and variance $v$. What value of
+$v$ makes the variance of the sum equal to $1$?
+\end{exercise}
+\begin{solution}
+Each term $w_ix_i$ has variance $\E[w_i^2]\E[x_i^2] = v$, and the $100$ terms are
+independent, so the sum has variance $100v$. We need $v = 0.01 = \tfrac{1}{100}$,
+as in Xavier initialisation.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Common distributions}\label{sec:distributions}
+%----------------------------------------------------------------------
+
+A handful of distributions appear again and again. Learning their shapes,
+means and variances pays off.
+
+\subsection{Bernoulli and binomial}
+
+A \term{Bernoulli distribution} describes a single yes/no trial: $X = 1$
+(``success'') with probability $p$ and $X = 0$ with probability $1 - p$. Its mean
+is $p$ and its variance $p(1 - p)$.
+
+The \term{binomial distribution} $\operatorname{Bin}(n, p)$ counts the successes
+in $n$ independent Bernoulli trials with the same $p$. A particular sequence with
+$k$ successes and $n - k$ failures has probability $p^k(1 - p)^{n-k}$, and there
+are $\binom nk$ such sequences, so
+\[
+  P(X = k) = \binom{n}{k}p^k(1 - p)^{n-k}, \qquad k = 0, 1, \dots, n .
+\]
+Its mean is $np$ and its variance $np(1 - p)$ (it is a sum of $n$ independent
+Bernoulli variables).
+
+\begin{example}[A binomial probability]
+A free-throw shooter scores with probability $0.3$. In $10$ independent attempts,
+what is the probability of exactly $3$ successes?
+
+\sol $P(X = 3) = \binom{10}{3}(0.3)^3(0.7)^7 = 120\times0.027\times0.0824 \approx
+0.267$. The whole distribution is shown in \cref{fig:binomial}; its mean is
+$np = 3$ and its standard deviation $\sqrt{10\times0.3\times0.7} \approx 1.45$.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=9cm,height=5cm,ybar,bar width=12pt,
+  xmin=-0.7,xmax=10.7,ymin=0,ymax=0.3,xtick={0,...,10},
+  ytick={0,0.1,0.2,0.3},yticklabel style={/pgf/number format/fixed},
+  xlabel={$k$},ylabel={$P(X = k)$},
+  xlabel style={at={(ticklabel cs:0.5)},anchor=near ticklabel},
+  ylabel style={at={(ticklabel cs:0.5)},anchor=near ticklabel,rotate=90}]
+  \addplot[fill=MLexample!45,draw=MLexample] coordinates
+    {(0,0.0282) (1,0.1211) (2,0.2335) (3,0.2668) (4,0.2001) (5,0.1029) (6,0.0368) (7,0.0090) (8,0.0014) (9,0.0001) (10,0.0000)};
+\end{axis}
+\end{tikzpicture}
+\caption{The binomial distribution with $n = 10$ and $p = 0.3$.}
+\label{fig:binomial}
+\end{figure}
+
+\subsection{Categorical}
+
+The \term{categorical distribution} generalises the Bernoulli distribution to
+$K$ outcomes: $P(X = k) = p_k$ for $k = 1, \dots, K$, with $p_k \ge 0$ and
+$\sum_kp_k = 1$. A fair die is categorical with $p_k = \frac16$. The outcome is
+often encoded as a one-hot vector (\cref{sec:vectors}).
+
+\begin{mlnote}
+Classifiers with $K$ classes output the parameters $(p_1, \dots, p_K)$ of a
+categorical distribution, usually produced by the softmax function
+(\cref{ch:dl}). A language model's next-word prediction is a categorical
+distribution over a vocabulary of tens of thousands of tokens. Binary
+classifiers output a single Bernoulli parameter $p$, usually via a sigmoid.
+\end{mlnote}
+
+\subsection{Uniform}
+
+The continuous \term{uniform distribution} on $[a, b]$ has constant density
+$\frac{1}{b - a}$ on the interval: every value is equally likely. Its mean is the
+midpoint $\frac{a + b}{2}$ and its variance $\frac{(b - a)^2}{12}$. Random number
+generators produce uniform numbers on $[0, 1]$, from which all other
+distributions can be simulated.
+
+\subsection{The normal (Gaussian) distribution}
+
+The most important distribution of all is the bell-shaped
+\term[normal distribution]{normal} or \term{Gaussian distribution}
+$\mathcal{N}(\mu, \sigma^2)$, with density
+\[
+  \keyeq{p(x) = \frac{1}{\sigma\sqrt{2\pi}}\exp\!\left(-\frac{(x - \mu)^2}{2\sigma^2}\right)}
+\]
+It has mean $\mu$ (the centre of the bell) and variance $\sigma^2$ (its width).
+The constant in front makes the total area $1$; it comes from the integral
+$\int_{-\infty}^{\infty}e^{-x^2}\,\dd x = \sqrt\pi$ of \cref{sec:integration}. The case $\mu = 0$,
+$\sigma = 1$ is the \emph{standard normal distribution}, whose random variables are
+usually called $Z$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=11cm,height=6.2cm,xmin=-3.7,xmax=3.7,ymin=0,ymax=0.6,
+  grid=none,xtick={-3,-2,-1,0,1,2,3},
+  xticklabels={$\mu-3\sigma$,$\mu-2\sigma$,$\mu-\sigma$,$\mu$,$\mu+\sigma$,$\mu+2\sigma$,$\mu+3\sigma$},
+  ytick=\empty,xticklabel style={font=\scriptsize},clip=false]
+  \addplot[name path=f,draw=none,domain=-3.7:3.7,samples=150]{exp(-x^2/2)/sqrt(2*pi)};
+  \path[name path=axis] (axis cs:-3.7,0) -- (axis cs:3.7,0);
+  \addplot[MLdef!12] fill between[of=f and axis,soft clip={domain=-3:3}];
+  \addplot[MLdef!25] fill between[of=f and axis,soft clip={domain=-2:2}];
+  \addplot[MLdef!45] fill between[of=f and axis,soft clip={domain=-1:1}];
+  \addplot[MLdef,very thick,domain=-3.7:3.7,samples=150]{exp(-x^2/2)/sqrt(2*pi)};
+  \foreach \k/\h in {1/0.44,2/0.495,3/0.55}{
+    \edef\temp{\noexpand\draw[gray,densely dashed] (axis cs:-\k,0) -- (axis cs:-\k,\h);
+      \noexpand\draw[gray,densely dashed] (axis cs:\k,0) -- (axis cs:\k,\h);
+      \noexpand\draw[{Stealth[length=1.6mm]}-{Stealth[length=1.6mm]}]
+        (axis cs:-\k,\h) -- (axis cs:\k,\h);}
+    \temp}
+  \node[font=\small,fill=white,inner sep=1.5pt] at (axis cs:0,0.44) {$68\%$};
+  \node[font=\small,fill=white,inner sep=1.5pt] at (axis cs:0,0.495) {$95\%$};
+  \node[font=\small,fill=white,inner sep=1.5pt] at (axis cs:0,0.55) {$99.7\%$};
+\end{axis}
+\end{tikzpicture}
+\caption{The normal distribution. About $68\%$ of the probability lies within one
+  standard deviation of the mean, $95\%$ within two, and $99.7\%$ within three.}
+\label{fig:normal-area}
+\end{figure}
+
+\begin{theorem}[Properties of the normal distribution]\label{thm:normal-properties}
+Let $X \sim \mathcal{N}(\mu, \sigma^2)$, where the symbol $\sim$ means ``is
+distributed as''.
+\begin{enumerate}
+  \item \textbf{The 68--95--99.7 rule:} a normal random variable lies within
+    $1$, $2$ and $3$ standard deviations of its mean with probability about
+    $68.3\%$, $95.4\%$ and $99.7\%$ (\cref{fig:normal-area}).
+  \item \textbf{Linear transformations:} for constants $a \neq 0$ and $b$,
+    $aX + b \sim \mathcal{N}(a\mu + b, a^2\sigma^2)$. In particular
+    $Z = \frac{X - \mu}{\sigma} \sim \mathcal{N}(0, 1)$.
+  \item \textbf{Sums:} the sum of independent normal random variables is
+    normal, with the means and the variances adding up.
+\end{enumerate}
+\end{theorem}
+
+\begin{example}[Using the normal distribution]
+IQ scores are designed to follow $\mathcal{N}(100, 15^2)$. What fraction of
+people have an IQ above $130$?
+
+\sol Standardise: $130$ is $\frac{130 - 100}{15} = 2$ standard deviations above
+the mean. By the $95\%$ rule, $5\%$ lies outside $\pm2\sigma$, half of it above,
+so about $2.5\%$. (Tables or software give $P(Z > 2) \approx 0.0228$.)
+\end{example}
+
+\begin{intuition}[Why the normal distribution is everywhere]
+The \emph{central limit theorem} (\cref{ch:statistics}) says that a sum of many
+small independent random effects is approximately normal, whatever the
+distributions of the individual effects. Heights, measurement errors and the
+noise in many systems arise this way, so the bell curve appears throughout
+nature, and in machine learning it is the default model for noise. It is also
+the distribution with the most uncertainty (in the sense of entropy,
+\cref{ch:dl}) for a given mean and variance.
+\end{intuition}
+
+\subsection{Two more distributions}
+
+The \term{Poisson distribution} with rate $\lambda$ counts how many times a rare
+event happens in a fixed period (emails per hour, typos per page):
+$P(X = k) = \frac{\lambda^ke^{-\lambda}}{k!}$ for $k = 0, 1, 2, \dots$, with mean and
+variance both equal to $\lambda$. The \term{exponential distribution} of
+\cref{ex:continuous} describes the waiting time between such events.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{@{}lllll@{}}
+\toprule
+\textbf{Distribution} & \textbf{Values} & \textbf{PMF / PDF} & \textbf{Mean} &
+  \textbf{Variance}\\
+\midrule
+Bernoulli$(p)$ & $\{0, 1\}$ & $p^x(1-p)^{1-x}$ & $p$ & $p(1-p)$\\
+Binomial$(n, p)$ & $\{0, \dots, n\}$ & $\binom nk p^k(1-p)^{n-k}$ & $np$ & $np(1-p)$\\
+Categorical$(\vp)$ & $\{1, \dots, K\}$ & $p_k$ & --- & ---\\
+Poisson$(\lambda)$ & $\{0, 1, \dots\}$ & $\lambda^ke^{-\lambda}/k!$ & $\lambda$ & $\lambda$\\
+Uniform$(a, b)$ & $[a, b]$ & $\frac{1}{b-a}$ & $\frac{a+b}{2}$ & $\frac{(b-a)^2}{12}$\\
+Exponential$(\lambda)$ & $[0, \infty)$ & $\lambda e^{-\lambda x}$ & $\frac1\lambda$ & $\frac{1}{\lambda^2}$\\
+Normal$(\mu, \sigma^2)$ & $\R$ & $\frac{1}{\sigma\sqrt{2\pi}}e^{-(x-\mu)^2/(2\sigma^2)}$ & $\mu$ & $\sigma^2$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\sectionexercises
+
+\begin{exercise}
+$X \sim \operatorname{Bin}(5, 0.5)$. Find $P(X = 2)$, the mean and the variance.
+\end{exercise}
+\begin{solution}
+$P(X = 2) = \binom52 0.5^5 = \tfrac{10}{32} = 0.3125$. Mean $2.5$, variance
+$5\times0.5\times0.5 = 1.25$.
+\end{solution}
+
+\begin{exercise}
+$X \sim \mathcal{N}(50, 10^2)$. Use the 68--95--99.7 rule to estimate $P(X > 70)$
+and $P(40 < X < 60)$.
+\end{exercise}
+\begin{solution}
+$70$ is $2\sigma$ above the mean, so $P(X > 70) \approx \tfrac{5\%}{2} = 2.5\%$
+(more precisely $2.3\%$). $40$ to $60$ is $\mu \pm \sigma$: about $68\%$.
+\end{solution}
+
+\begin{exercise}
+If $Z \sim \mathcal{N}(0, 1)$, what is the distribution of $3Z + 2$? Find the mean
+and variance of the uniform distribution on $[2, 8]$.
+\end{exercise}
+\begin{solution}
+$3Z + 2 \sim \mathcal{N}(2, 9)$. Uniform on $[2, 8]$: mean $5$, variance
+$\tfrac{36}{12} = 3$.
+\end{solution}
+
+\begin{exercise}
+A model with true accuracy $0.9$ is evaluated on $1000$ independent test
+examples. What are the mean and standard deviation of the number of correct
+predictions, and of the measured accuracy?
+\end{exercise}
+\begin{solution}
+The number correct is $\operatorname{Bin}(1000, 0.9)$: mean $900$, standard
+deviation $\sqrt{1000\times0.9\times0.1} = \sqrt{90} \approx 9.5$. Dividing by
+$1000$, the measured accuracy has mean $0.9$ and standard deviation about
+$0.0095$, roughly one percentage point. Differences between models smaller than
+this may be due to chance.
+\end{solution}
+
+\begin{exercise}
+Emails arrive at an average rate of $3$ per hour, modelled by a Poisson
+distribution. What is the probability that no email arrives in a given hour?
+\end{exercise}
+\begin{solution}
+$P(X = 0) = \tfrac{3^0e^{-3}}{0!} = e^{-3} \approx 0.050$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Joint, marginal and conditional distributions}\label{sec:joint}
+%----------------------------------------------------------------------
+
+Machine learning is about relationships between quantities (features and labels,
+pixels and objects), so we need to describe several random variables at once.
+
+\begin{definition}[Joint distribution]\label{def:joint}
+The \term{joint distribution} of two discrete random variables $X$ and $Y$ is
+given by the joint PMF $p(x, y) = P(X = x \text{ and } Y = y)$. For continuous
+random variables, a joint density $p(x, y)$ gives probabilities of regions $R$ of
+the plane as double integrals $\iint_R p(x, y)\,\dd x\,\dd y$
+(\cref{sec:double-integrals}).
+\end{definition}
+
+\begin{example}[Weather and umbrellas]\label{ex:weather}
+Let $W$ be the weather (sun or rain) and $U$ whether a person carries an umbrella.
+Their joint distribution is
+\begin{center}
+\begin{tabular}{l|cc|c}
+ & $U = \text{no}$ & $U = \text{yes}$ & $P(W)$\\
+\hline
+$W = \text{sun}$ & $0.50$ & $0.10$ & $0.60$\\
+$W = \text{rain}$ & $0.05$ & $0.35$ & $0.40$\\
+\hline
+$P(U)$ & $0.55$ & $0.45$ & $1$
+\end{tabular}
+\end{center}
+The entries add up to $1$. The row and column totals in the margins are the
+\emph{marginal distributions} of $W$ and $U$.
+\end{example}
+
+\begin{definition}[Marginal and conditional distributions]\label{def:marginal}
+The \term{marginal distribution} of $X$ is obtained by summing (or integrating)
+out the other variable:
+\[
+  p(x) = \sum_y p(x, y) \qquad\text{or}\qquad p(x) = \int p(x, y)\,\dd y .
+\]
+The \term{conditional distribution} of $Y$ given $X = x$ is
+$p(y \mid x) = \frac{p(x, y)}{p(x)}$.
+\end{definition}
+
+In \cref{ex:weather}: $P(\text{rain}) = 0.05 + 0.35 = 0.40$, and
+$P(\text{rain} \mid \text{umbrella}) = \frac{0.35}{0.45} \approx 0.78$. Seeing an
+umbrella makes rain much more likely than its base rate of $40\%$.
+
+\begin{keytakeaways}[The two rules of probabilistic modelling]
+Almost every computation in probabilistic machine learning uses just two rules:
+\[
+  \textbf{sum rule:}\quad p(x) = \sum_y p(x, y),
+  \qquad\qquad
+  \textbf{product rule:}\quad p(x, y) = p(y \mid x)\,p(x).
+\]
+Bayes' theorem follows from applying the product rule both ways round.
+\end{keytakeaways}
+
+\begin{definition}[Independent random variables]\label{def:independent-rv}
+$X$ and $Y$ are \term[independent random variables]{independent} if
+$p(x, y) = p(x)\,p(y)$ for all $x$ and $y$: the joint distribution is the product
+of the marginals.
+\end{definition}
+
+In \cref{ex:weather}, $P(\text{rain})P(\text{yes}) = 0.4\times0.45 = 0.18 \neq 0.35$,
+so weather and umbrellas are dependent, as one would hope.
+
+\sectionexercises
+
+\begin{exercise}
+Using \cref{ex:weather}, find $P(\text{sun} \mid U = \text{no})$ and
+$P(U = \text{yes} \mid \text{rain})$.
+\end{exercise}
+\begin{solution}
+$P(\text{sun} \mid \text{no}) = \tfrac{0.50}{0.55} \approx 0.91$ and
+$P(\text{yes} \mid \text{rain}) = \tfrac{0.35}{0.40} = 0.875$.
+\end{solution}
+
+\begin{exercise}
+Write down the joint distribution table of two independent tosses of a fair coin,
+$X_1$ and $X_2$ (each $H$ or $T$), and check that it factorises into the marginals.
+\end{exercise}
+\begin{solution}
+Each of the four combinations $HH, HT, TH, TT$ has probability $\tfrac14$, and each
+marginal is $\left(\tfrac12, \tfrac12\right)$; indeed $\tfrac14 =
+\tfrac12\times\tfrac12$ in every cell.
+\end{solution}
+
+\begin{exercise}
+The joint density $p(x, y) = x + y$ on the unit square $[0, 1]^2$ (and $0$
+elsewhere). Check that it integrates to $1$, and find the marginal density of $X$.
+\end{exercise}
+\begin{solution}
+$\int_0^1\!\int_0^1(x + y)\,\dd y\,\dd x = \int_0^1\left(x + \tfrac12\right)\dd x
+= \tfrac12 + \tfrac12 = 1$. The marginal is
+$p(x) = \int_0^1(x + y)\,\dd y = x + \tfrac12$ for $0 \le x \le 1$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Covariance and correlation}\label{sec:covariance}
+%----------------------------------------------------------------------
+
+\begin{definition}[Covariance]\label{def:covariance}
+The \term{covariance} of $X$ and $Y$, with means $\mu_X$ and $\mu_Y$, is
+\[
+  \Cov(X, Y) = \E\bigl[(X - \mu_X)(Y - \mu_Y)\bigr] = \E[XY] - \E[X]\,\E[Y].
+\]
+\end{definition}
+
+If $X$ and $Y$ tend to be above their means at the same time (and below them at
+the same time), the products $(X - \mu_X)(Y - \mu_Y)$ are mostly positive and the
+covariance is positive. If one tends to be high when the other is low, it is
+negative. Note that $\Cov(X, X) = \Var(X)$.
+
+The size of the covariance depends on the units, so it is hard to interpret. Its
+normalised version is easier.
+
+\begin{definition}[Correlation]\label{def:correlation}
+The \term{correlation} of $X$ and $Y$ is
+\[
+  \rho_{XY} = \Corr(X, Y) = \frac{\Cov(X, Y)}{\sigma_X\,\sigma_Y},
+\]
+a number between $-1$ and $1$.
+\end{definition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 1,horizontal sep=0.5cm},
+  width=5cm,height=5cm,xmin=-3,xmax=3,ymin=-3,ymax=3,xtick=\empty,ytick=\empty,
+  title style={font=\small},axis lines=box]
+  \nextgroupplot[title={$\rho \approx 0.87$}]
+    \addplot[only marks,mark=*,mark size=1.3pt,PlotBlue] coordinates {(0.00,0.16) (-0.27,-0.70) (-0.45,-0.91) (0.06,0.76) (-0.49,-0.75) (0.49,0.60) (0.11,-0.40) (-0.03,0.34) (-1.34,-1.38) (-1.90,-2.30) (-1.84,-1.69) (-1.27,-0.93) (0.16,0.03) (-2.52,-2.42) (-0.05,0.02) (-1.53,-1.55) (-0.98,-1.26) (1.06,0.48) (-0.03,0.44) (-0.58,-0.55) (0.11,0.13) (-1.23,-1.00) (1.36,0.34) (0.86,0.79) (-0.64,0.51) (0.76,0.02) (0.07,0.37) (-0.19,0.20) (-0.07,0.29) (1.44,0.87) (0.20,-0.07) (0.13,-0.52) (-0.58,-0.60) (0.90,1.37) (-1.32,-1.54) (0.65,-0.50) (-0.46,-0.44) (1.26,1.43) (-0.33,-0.47) (-0.25,0.59)};
+  \nextgroupplot[title={$\rho \approx 0$}]
+    \addplot[only marks,mark=*,mark size=1.3pt,PlotGray] coordinates {(-0.43,-0.30) (0.35,-0.12) (-0.20,-1.11) (-0.01,-0.44) (1.17,0.65) (-0.02,0.67) (-0.34,1.05) (-0.01,0.58) (-1.29,0.35) (-1.69,-2.04) (-0.30,-0.90) (0.16,2.24) (-0.83,-0.62) (0.21,0.49) (-0.18,-0.21) (0.70,0.52) (-1.03,-0.08) (0.04,-1.05) (0.26,-0.86) (0.97,0.19) (0.09,-0.59) (-0.12,-2.00) (-1.13,0.36) (-2.13,0.85) (-1.75,0.76) (-0.85,0.78) (0.13,-1.54) (1.25,1.44) (-0.07,-0.27) (-0.16,-0.98) (1.10,-0.54) (-0.05,-0.79) (-0.63,-1.28) (1.26,-0.15) (0.97,0.01) (-0.69,-0.33) (-0.56,0.01) (-0.38,-0.30) (-1.38,-0.81) (1.65,-0.67)};
+  \nextgroupplot[title={$\rho \approx -0.86$}]
+    \addplot[only marks,mark=*,mark size=1.3pt,PlotRed] coordinates {(-1.05,1.07) (1.41,-1.96) (-0.21,-0.16) (-1.76,1.88) (-0.02,0.06) (-0.75,0.88) (-0.54,0.38) (-1.11,0.30) (1.34,-1.40) (0.29,-0.27) (-0.44,0.11) (0.63,-0.69) (-0.15,0.14) (1.18,-0.64) (0.38,-0.62) (-1.38,1.67) (0.97,-0.90) (0.54,-0.05) (0.83,-0.22) (-0.46,1.19) (-1.25,1.51) (0.49,0.04) (1.88,-0.82) (-1.15,0.08) (0.82,-1.23) (-0.01,0.45) (-1.64,0.29) (0.26,-0.20) (-0.25,0.23) (-0.86,-0.07) (-0.17,-0.37) (-1.64,1.66) (-0.06,0.27) (-0.99,0.49) (-1.00,0.38) (0.20,-0.58) (0.36,-0.12) (2.03,-2.46) (0.89,-0.80) (-0.01,-0.75)};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Samples of pairs $(X, Y)$ with strong positive correlation (left), no
+  correlation (middle) and strong negative correlation (right).}
+\label{fig:correlation}
+\end{figure}
+
+\begin{intuition}[Correlation is a cosine]
+For data, centre each variable by subtracting its mean, and collect the centred
+values into vectors $\vx$ and $\vy$. Then the sample covariance is
+$\frac1n\vx\cdot\vy$ and the sample correlation is
+\[
+  \frac{\vx\cdot\vy}{\norm{\vx}\,\norm{\vy}} = \cos\theta,
+\]
+the cosine of the angle between the two centred vectors
+(\cref{thm:dot-geometric}). This is why correlation always lies in $[-1, 1]$
+(Cauchy--Schwarz), why $\rho = \pm1$ means a perfect linear relationship (the
+vectors are parallel), and why $\rho = 0$ means the centred vectors are
+orthogonal.
+\end{intuition}
+
+\begin{example}[Covariance from a table]
+Encode \cref{ex:weather} with numbers: $X = 1$ for rain ($0$ for sun) and $Y = 1$
+for an umbrella ($0$ otherwise). Then $\E[X] = 0.4$, $\E[Y] = 0.45$ and $\E[XY] =
+P(X = 1, Y = 1) = 0.35$, so $\Cov(X, Y) = 0.35 - 0.4\times0.45 = 0.17$. The
+variances are $0.4\times0.6 = 0.24$ and $0.45\times0.55 = 0.2475$ (Bernoulli), so
+$\rho = \frac{0.17}{\sqrt{0.24\times0.2475}} \approx 0.70$: a strong positive
+correlation.
+\end{example}
+
+\begin{pitfall}[Two warnings about correlation]
+Correlation is easy to compute and easy to over-interpret.
+\begin{itemize}
+  \item \textbf{Correlation is not causation.} Ice-cream sales and drownings are
+    positively correlated, because both rise in summer, not because one causes the
+    other. A model that predicts well using correlated features has not
+    necessarily discovered cause and effect.
+  \item \textbf{Zero correlation does not imply independence.} Correlation
+    measures only \emph{linear} relationships. If $X$ is $-1$, $0$ or $1$ with equal
+    probabilities and $Y = X^2$, then $Y$ is completely determined by $X$, yet
+    $\Cov(X, Y) = \E[X^3] - \E[X]\E[X^2] = 0 - 0 = 0$. (Independent variables do,
+    however, always have zero covariance.)
+\end{itemize}
+\end{pitfall}
+
+\begin{theorem}[Variance of a sum]\label{thm:variance-sum}
+For any random variables, $\Var(X + Y) = \Var(X) + \Var(Y) + 2\Cov(X, Y)$.
+\end{theorem}
+
+\subsection{Covariance matrices}
+
+For a random vector $\vX = (X_1, \dots, X_d)$, all the variances and covariances
+are collected in the $d\times d$ \term{covariance matrix}
+\[
+  \mSigma = \E\bigl[(\vX - \vmu)(\vX - \vmu)^\top\bigr],
+  \qquad \Sigma_{ij} = \Cov(X_i, X_j),
+\]
+where $\vmu = \E[\vX]$. Its diagonal holds the variances. It is symmetric, and it
+is positive semidefinite: for any fixed vector $\vv$,
+$\vv^\top\mSigma\vv = \Var(\vv^\top\vX) \ge 0$. This is the matrix whose eigenvectors
+gave the principal components in \cref{sec:pca}: there we computed its estimate
+from data, $\frac1n\mX_c^\top\mX_c$.
+
+\subsection{The multivariate normal distribution}
+
+The \term{multivariate normal distribution} $\mathcal{N}(\vmu, \mSigma)$ in $\R^d$,
+with mean vector $\vmu$ and positive definite covariance matrix $\mSigma$, has
+density
+\[
+  p(\vx) = \frac{1}{\sqrt{(2\pi)^d\det\mSigma}}
+  \exp\!\left(-\tfrac12(\vx - \vmu)^\top\mSigma^{-1}(\vx - \vmu)\right).
+\]
+The exponent is a positive definite quadratic form (\cref{sec:positive-definite}),
+so the contours of the density are ellipses (ellipsoids in higher dimensions)
+centred at $\vmu$, with axes along the eigenvectors of $\mSigma$ and widths
+proportional to the square roots of its eigenvalues (\cref{fig:gaussian-2d}). The
+determinant measures the volume of the cloud (\cref{sec:inverses}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=8cm,height=8cm,xmin=-3.3,xmax=3.3,ymin=-3.3,ymax=3.3,
+  xlabel=$x_1$,ylabel=$x_2$,xtick={-2,0,2},ytick={-2,0,2},axis equal image]
+  \addplot[only marks,mark=*,mark size=1.1pt,PlotBlue!70] coordinates {(0.03,0.84) (1.22,0.67) (-0.30,-0.55) (0.57,0.42) (0.75,-0.51) (1.57,1.20) (0.68,0.46) (-0.38,-0.03) (0.82,0.54) (-0.15,0.29) (-0.87,-1.60) (0.39,-0.09) (-1.92,-2.02) (-0.47,-1.09) (-1.49,-1.17) (0.90,0.58) (-0.74,-0.36) (0.72,0.39) (0.54,1.06) (-0.21,-0.65) (0.35,0.43) (1.10,0.11) (-0.66,-1.03) (-1.73,-1.31) (0.53,-0.02) (1.39,1.60) (0.63,0.74) (0.96,-0.03) (0.61,0.85) (-1.77,-1.21) (-0.25,0.27) (-0.44,-0.36) (0.34,-0.25) (0.60,0.42) (0.49,0.08) (1.09,1.23) (-0.18,0.24) (1.26,2.08) (-1.57,-0.73) (0.47,0.32) (-1.01,-0.05) (-1.26,-0.67) (1.30,0.08) (-0.30,-1.03) (0.24,1.10) (2.02,0.55) (-0.57,-0.04) (1.58,1.52) (-0.75,-0.42) (-0.02,-0.14) (-0.73,-0.36) (0.31,0.19) (-0.22,-0.95) (-0.49,0.33) (-0.19,-1.02) (1.33,1.39) (2.11,1.72) (-0.46,-1.24) (1.32,2.60) (-0.82,-1.05) (0.60,-0.02) (-0.27,-0.43) (0.19,0.81) (0.02,0.57) (-0.42,-0.14) (-2.14,-2.58) (0.80,0.28) (0.58,0.79) (1.32,1.54) (1.02,0.75) (-0.70,-1.00) (-0.49,-1.07) (-0.55,-0.49) (0.25,-0.00) (-1.92,-1.58) (0.23,0.83) (0.58,0.08) (-0.72,0.63) (0.76,1.70) (2.13,1.21) (0.39,0.58) (0.56,0.77) (0.20,0.27) (-1.50,-1.30) (-0.75,-0.52) (-0.47,-0.00) (0.82,0.84) (0.32,0.31) (-0.45,-0.46) (-0.50,-0.16) (0.01,0.36) (-1.33,-0.53) (-0.76,-1.05) (-0.20,-0.50) (0.29,-0.11) (-1.07,-1.36) (1.31,1.08) (-1.17,-0.93) (-1.56,-0.17) (-1.52,-0.93) (0.54,-0.44) (0.30,0.84) (0.47,0.53) (0.95,0.86) (0.34,0.19) (0.63,-0.06) (0.79,0.33) (-1.09,-0.65) (1.69,1.93) (-0.52,0.01) (-0.45,-0.44) (0.09,-1.32) (0.19,-0.46) (-0.70,-1.44) (-1.52,-1.78) (0.83,1.66) (-0.03,0.63) (-0.26,-1.36) (0.15,0.39) (-0.43,-0.16) (0.57,-0.06) (-1.48,-1.31) (-0.21,-0.38) (0.99,1.83) (-0.42,0.09) (0.94,1.18) (1.05,0.60) (0.74,1.81) (0.80,0.27) (0.61,1.24) (0.37,-0.04) (1.54,0.48) (0.50,0.39) (-1.19,-0.22) (0.35,-0.42) (0.60,0.22) (-1.90,-1.94) (0.26,0.59) (0.17,0.16) (0.47,0.25) (1.18,1.03) (0.29,0.56) (-1.06,-1.27) (1.53,1.42) (-0.28,-0.02) (-0.48,-0.22) (-0.67,-0.37) (-1.58,-0.46) (-0.51,-1.36) (-0.22,-0.40)};
+  % Contours at 1, 2 and 3 standard deviations along the principal axes
+  % (1,1)/sqrt(2) and (1,-1)/sqrt(2), whose standard deviations are
+  % sqrt(1.8) = 1.342 and sqrt(0.2) = 0.447.
+  \foreach \k in {1,2,3}{
+    \addplot[MLdef,thick,domain=0:360,samples=121,variable=\t]
+      ({\k*(1.342*cos(\t) + 0.447*sin(\t))/sqrt(2)},
+       {\k*(1.342*cos(\t) - 0.447*sin(\t))/sqrt(2)});}
+\end{axis}
+\end{tikzpicture}
+\caption{$150$ samples from a two-dimensional normal distribution with
+  $\vmu = \vzero$ and $\mSigma = \left(\begin{smallmatrix} 1 & 0.8\\ 0.8 &
+  1\end{smallmatrix}\right)$, with contour ellipses of the density. The ellipses
+  point along the eigenvectors $(1, 1)$ and $(1, -1)$ of $\mSigma$, whose eigenvalues
+  are $1.8$ and $0.2$.}
+\label{fig:gaussian-2d}
+\end{figure}
+
+\begin{mlnote}
+The multivariate normal is the workhorse model for continuous data in machine
+learning: Gaussian noise in regression, Gaussian mixture models for clustering,
+the latent space of variational autoencoders, and the noise that diffusion
+models (which generate images) gradually add and then learn to remove.
+Covariance matrices describe how features vary together and are the input to
+PCA.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+For the data $x = (1, 2, 3, 4)$ and $y = (2, 4, 5, 9)$, compute the covariance
+(dividing by $n$) and the correlation.
+\end{exercise}
+\begin{solution}
+Means $2.5$ and $5$. Deviations: $(-1.5, -0.5, 0.5, 1.5)$ and $(-3, -1, 0, 4)$.
+Products: $4.5, 0.5, 0, 6$, with mean $\tfrac{11}{4} = 2.75$. Variances:
+$\tfrac{2.25 + 0.25 + 0.25 + 2.25}{4} = 1.25$ and $\tfrac{9 + 1 + 0 + 16}{4} = 6.5$.
+Correlation: $\tfrac{2.75}{\sqrt{1.25\times6.5}} \approx 0.965$.
+\end{solution}
+
+\begin{exercise}
+$\Var(X) = 4$, $\Var(Y) = 9$ and $\Cov(X, Y) = -2$. Find $\Var(X + Y)$ and the
+correlation of $X$ and $Y$.
+\end{exercise}
+\begin{solution}
+$\Var(X + Y) = 4 + 9 - 4 = 9$ and $\rho = \tfrac{-2}{2\times3} = -\tfrac13$.
+\end{solution}
+
+\begin{exercise}
+Let $X$ take the values $-1$, $0$, $1$ with probability $\tfrac13$ each, and let
+$Y = X^2$. Show that $\Cov(X, Y) = 0$, and that $X$ and $Y$ are not independent.
+\end{exercise}
+\begin{solution}
+$\E[X] = 0$ and $\E[XY] = \E[X^3] = \tfrac13(-1 + 0 + 1) = 0$, so
+$\Cov(X, Y) = 0 - 0\cdot\E[Y] = 0$. But $P(X = 0, Y = 0) = \tfrac13$ while
+$P(X = 0)P(Y = 0) = \tfrac13\cdot\tfrac13 = \tfrac19$, so they are dependent.
+\end{solution}
+
+\begin{exercise}
+Can $\left(\begin{smallmatrix} 4 & 3\\ 3 & 2\end{smallmatrix}\right)$ be a
+covariance matrix? What about $\left(\begin{smallmatrix} 4 & 2\\ 2 &
+2\end{smallmatrix}\right)$? For the valid one, find the correlation.
+\end{exercise}
+\begin{solution}
+The first has determinant $8 - 9 = -1 < 0$, so it has a negative eigenvalue and
+is not positive semidefinite: it cannot be a covariance matrix (equivalently, the
+implied correlation $\tfrac{3}{\sqrt8} \approx 1.06$ would exceed $1$). The second
+has positive diagonal and determinant $4 > 0$, so it is valid, with correlation
+$\tfrac{2}{\sqrt{4\times2}} \approx 0.71$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Chapter summary}\label{sec:ch9-summary}
+%----------------------------------------------------------------------
+
+\begin{keytakeaways}
+\begin{itemize}
+  \item Events are subsets of the sample space; probabilities obey
+    $P \ge 0$, $P(\Omega) = 1$ and additivity. $P(A^c) = 1 - P(A)$ and
+    $P(A\cup B) = P(A) + P(B) - P(A\cap B)$.
+  \item $P(A \mid B) = P(A \cap B)/P(B)$; $P(A \mid B) \neq P(B \mid A)$. Law of total
+    probability: $P(A) = \sum_iP(A \mid B_i)P(B_i)$.
+  \item Independence: $P(A \cap B) = P(A)P(B)$. Disjoint is not independent.
+  \item Bayes: posterior $\propto$ likelihood $\times$ prior. Mind the base rate.
+  \item Random variables have PMFs (discrete) or PDFs (continuous, probability =
+    area); CDF $F(x) = P(X \le x)$.
+  \item $\E[X] = \sum xp(x)$ is linear; $\Var(X) = \E[X^2] - \E[X]^2$;
+    $\Var(aX + b) = a^2\Var(X)$; z-scores standardise.
+  \item Key distributions: Bernoulli, binomial, categorical, uniform, Poisson,
+    exponential and the normal $\mathcal{N}(\mu, \sigma^2)$ (68--95--99.7).
+  \item Joint distributions; marginals by summing out; sum and product rules.
+  \item Covariance and correlation ($\rho \in [-1, 1]$, a cosine) measure linear
+    association; correlation is not causation. Covariance matrices are symmetric
+    and PSD; the multivariate normal has elliptical contours.
+\end{itemize}
+\end{keytakeaways}
+
+Probability goes from a known distribution to predictions about data. Statistics
+goes the other way, from data to conclusions about the unknown distribution. That
+is what learning from data means, and it is the subject of the next chapter.
