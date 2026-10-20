@@ -1,1 +1,219 @@
+%======================================================================
+% Appendix B: Formula sheet
+%======================================================================
 \chapter{Formula Sheet}\label{app:formulas}
+
+The most important formulas of each chapter, collected for quick reference. Each
+heading names the chapter where the formulas are explained, with examples and
+conditions of validity. Notation is listed in \cref{app:notation}.
+
+\providecommand{\fsheading}[2]{%
+  \par\needspace{4\baselineskip}\medskip
+  \noindent{\bfseries\color{MLchapter}#1}\hfill{\footnotesize\cref{#2}}\par
+  \nopagebreak\smallskip}
+
+\begin{multicols}{2}
+\raggedcolumns
+\small
+\setlength{\abovedisplayskip}{4pt plus 1pt}
+\setlength{\belowdisplayskip}{4pt plus 1pt}
+\setlength{\abovedisplayshortskip}{2pt plus 1pt}
+\setlength{\belowdisplayshortskip}{2pt plus 1pt}
+
+%---------------------------------------------------------------------
+\fsheading{Numbers and algebra}{ch:numbers}
+Powers, products and sums:
+\begin{align*}
+  a^ma^n &= a^{m+n}, \qquad (a^m)^n = a^{mn},\\
+  a^{-n} &= \frac{1}{a^n}, \qquad a^{1/n} = \sqrt[n]{a},\\
+  (a + b)^2 &= a^2 + 2ab + b^2,\\
+  (a + b)(a - b) &= a^2 - b^2,\\
+  \sum_{i=1}^n(ax_i + b) &= a\sum_{i=1}^nx_i + nb .
+\end{align*}
+$\abs{x - a} < r$ means $a - r < x < a + r$. Multiplying an inequality by a
+negative number reverses it.
+
+%---------------------------------------------------------------------
+\fsheading{Functions}{ch:functions}
+Slope of the line through $(x_1, y_1)$ and $(x_2, y_2)$:
+$m = \frac{y_2 - y_1}{x_2 - x_1}$.
+Roots of $ax^2 + bx + c$ and the vertex:
+\[
+  x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}, \qquad x_{\text{vertex}} = -\frac{b}{2a} .
+\]
+Exponentials and logarithms:
+\begin{align*}
+  e^ae^b &= e^{a+b}, \qquad \ln(ab) = \ln a + \ln b,\\
+  \ln(a^r) &= r\ln a, \qquad \log_bx = \frac{\ln x}{\ln b} .
+\end{align*}
+Sigmoid and its inverse, the logit:
+\begin{align*}
+  \sigma(x) &= \frac{1}{1 + e^{-x}}, \qquad 1 - \sigma(x) = \sigma(-x),\\
+  \sigma^{-1}(p) &= \ln\frac{p}{1 - p} .
+\end{align*}
+
+%---------------------------------------------------------------------
+\fsheading{Geometry and trigonometry}{ch:geometry}
+Distance: $d(\vx, \vy) = \sqrt{\sum_i(x_i - y_i)^2}$. Angles: $\pi$ radians $= 180^\circ$.
+\begin{align*}
+  &\sin^2\theta + \cos^2\theta = 1, \qquad \tan\theta = \frac{\sin\theta}{\cos\theta},\\
+  &c^2 = a^2 + b^2 - 2ab\cos C \quad\text{(law of cosines)},\\
+  &\sin(\alpha + \beta) = \sin\alpha\cos\beta + \cos\alpha\sin\beta,\\
+  &\cos(\alpha + \beta) = \cos\alpha\cos\beta - \sin\alpha\sin\beta .
+\end{align*}
+Rotation of $(x, y)$ by the angle $\alpha$:
+\[
+  x' = x\cos\alpha - y\sin\alpha, \qquad y' = x\sin\alpha + y\cos\alpha .
+\]
+
+%---------------------------------------------------------------------
+\fsheading{Vectors and matrices}{ch:linalg1}
+Dot products, norms and matrix algebra:
+\begin{align*}
+  \vx\cdot\vy &= \textstyle\sum_ix_iy_i = \norm{\vx}\norm{\vy}\cos\theta,\\
+  \norm{\vx} &= \sqrt{\vx\cdot\vx}, \qquad \abs{\vx\cdot\vy} \le \norm{\vx}\norm{\vy},\\
+  \norm{\vx + \vy} &\le \norm{\vx} + \norm{\vy},\\
+  (\mA\mB)_{ij} &= \textstyle\sum_kA_{ik}B_{kj},\\
+  (\mA\mB)^\top &= \mB^\top\mA^\top, \qquad (\mA\mB)^{-1} = \mB^{-1}\mA^{-1},\\
+  \det(\mA\mB) &= \det\mA\,\det\mB,\\
+  \begin{pmatrix} a & b\\ c & d\end{pmatrix}^{-1}
+    &= \frac{1}{ad - bc}\begin{pmatrix} d & -b\\ -c & a\end{pmatrix}.
+\end{align*}
+
+%---------------------------------------------------------------------
+\fsheading{Core linear algebra}{ch:linalg2}
+Norms, projections and decompositions:
+\begin{align*}
+  \norm{\vx}_p &= \Bigl(\sum_i\abs{x_i}^p\Bigr)^{1/p}, \qquad
+    \norm{\vx}_\infty = \max_i\abs{x_i},\\
+  \proj_{\va}(\vb) &= \frac{\va\cdot\vb}{\va\cdot\va}\,\va,\\
+  \mA^\top\mA\hat\vx &= \mA^\top\vb \quad\text{(least squares)},\\
+  \mA\vv &= \lambda\vv, \qquad \det(\mA - \lambda\mI) = 0,\\
+  \textstyle\sum_i\lambda_i &= \tr\mA, \qquad \textstyle\prod_i\lambda_i = \det\mA,\\
+  \mA &= \mQ\mLambda\mQ^\top \quad\text{(symmetric } \mA\text{)},\\
+  \mA &= \mU\mSigma\mV^\top \quad\text{(SVD, any } \mA\text{)}.
+\end{align*}
+$\mA$ is positive definite if $\vx^\top\mA\vx > 0$ for all $\vx \neq \vzero$; for
+symmetric $\mA$ this means all eigenvalues are positive.
+
+%---------------------------------------------------------------------
+\fsheading{Calculus of one variable}{ch:calculus}
+The derivative and its numerical estimate:
+\begin{align*}
+  f'(x) &= \lim_{h \to 0}\frac{f(x + h) - f(x)}{h}\\
+  &\approx \frac{f(x + h) - f(x - h)}{2h} \quad\text{(small } h\text{)}.
+\end{align*}
+Rules, Taylor approximation and integrals:
+\begin{align*}
+  (x^n)' &= nx^{n-1}, \qquad (e^x)' = e^x,\\
+  (\ln x)' &= \frac1x, \qquad (\sin x)' = \cos x,\\
+  (\cos x)' &= -\sin x,\\
+  (fg)' &= f'g + fg',\\
+  \Bigl(\frac fg\Bigr)' &= \frac{f'g - fg'}{g^2},\\
+  \bigl(f(g(x))\bigr)' &= f'(g(x))\,g'(x),\\
+  \sigma' &= \sigma(1 - \sigma),\\
+  f(a + h) &\approx f(a) + f'(a)\,h + \tfrac12f''(a)\,h^2,\\
+  \int_a^bf'(x)\,\dd x &= f(b) - f(a),\\
+  \int_{-\infty}^{\infty}e^{-x^2}\,\dd x &= \sqrt\pi .
+\end{align*}
+
+%---------------------------------------------------------------------
+\fsheading{Multivariable calculus}{ch:multivariable}
+Gradients, chain rule and approximation:
+\begin{align*}
+  \nabla f &= \Bigl(\pderiv{f}{x_1}, \dots, \pderiv{f}{x_n}\Bigr),\\
+  D_{\vu}f &= \nabla f\cdot\vu,\\
+  \deriv{}{t}f(\vx(t)) &= \textstyle\sum_i\pderiv{f}{x_i}\deriv{x_i}{t},\\
+  \mat J_{\vf\circ\vg} &= \mat J_{\vf}\,\mat J_{\vg},\\
+  f(\vx + \vh) &\approx f(\vx) + \nabla f(\vx)^\top\vh + \tfrac12\vh^\top\mH\vh,\\
+  \nabla(\va^\top\vx) &= \va,\\
+  \nabla(\vx^\top\mA\vx) &= (\mA + \mA^\top)\vx,\\
+  \nabla\norm{\mA\vx - \vb}^2 &= 2\mA^\top(\mA\vx - \vb).
+\end{align*}
+At a critical point ($\nabla f = \vzero$): positive definite Hessian means a
+minimum, negative definite a maximum, mixed signs a saddle.
+
+%---------------------------------------------------------------------
+\fsheading{Optimisation}{ch:optimization}
+Gradient descent: $\vtheta \leftarrow \vtheta - \eta\nabla L(\vtheta)$.\\
+SGD: $\vtheta \leftarrow \vtheta - \eta\frac1b\sum_{i\in B}\nabla\ell_i(\vtheta)$.\\
+Momentum: $\vv \leftarrow \beta\vv + \vg$, then $\vtheta \leftarrow \vtheta - \eta\vv$.\\
+Newton: $\vtheta \leftarrow \vtheta - \mH^{-1}\nabla L(\vtheta)$.\par
+Adam, with gradient $\vg_t$ at step $t$ (componentwise):
+\begin{align*}
+  \vm_t &= \beta_1\vm_{t-1} + (1 - \beta_1)\vg_t,\\
+  \vs_t &= \beta_2\vs_{t-1} + (1 - \beta_2)\vg_t^2,\\
+  \hat\vm_t &= \frac{\vm_t}{1 - \beta_1^t}, \qquad \hat\vs_t = \frac{\vs_t}{1 - \beta_2^t},\\
+  \vtheta_t &= \vtheta_{t-1} - \eta\,\frac{\hat\vm_t}{\sqrt{\hat\vs_t} + \epsilon} .
+\end{align*}
+Ridge regression: $(\mX^\top\mX + \lambda\mI)\vw = \mX^\top\vy$.\\
+Lagrange multipliers: $\nabla f = \lambda\nabla g$ and $g = 0$.\\
+Convexity: for all $\lambda \in [0, 1]$,
+\[
+  f(\lambda\vx + (1 - \lambda)\vy) \le \lambda f(\vx) + (1 - \lambda)f(\vy).
+\]
+
+%---------------------------------------------------------------------
+\fsheading{Probability}{ch:probability}
+Rules of probability, expectation and variance:
+\begin{align*}
+  P(A^c) &= 1 - P(A),\\
+  P(A \cup B) &= P(A) + P(B) - P(A \cap B),\\
+  P(A \mid B) &= \frac{P(A \cap B)}{P(B)},\\
+  P(A \mid B) &= \frac{P(B \mid A)\,P(A)}{P(B)} \quad\text{(Bayes)},\\
+  P(A) &= \textstyle\sum_iP(A \mid B_i)\,P(B_i),\\
+  \E[X] &= \textstyle\sum_xx\,p(x),\\
+  \E[aX + b] &= a\E[X] + b,\\
+  \Var(X) &= \E[X^2] - (\E[X])^2,\\
+  \Var(aX + b) &= a^2\Var(X),\\
+  \Cov(X, Y) &= \E[XY] - \E[X]\E[Y],\\
+  \rho &= \frac{\Cov(X, Y)}{\sigma_X\sigma_Y},\\
+  \Var(X + Y) &= \Var X + \Var Y + 2\Cov(X, Y).
+\end{align*}
+Binomial: $P(X = k) = \binom nk p^k(1 - p)^{n-k}$, mean $np$, variance $np(1 - p)$.
+Normal: $p(x) = \frac{1}{\sigma\sqrt{2\pi}}e^{-(x - \mu)^2/(2\sigma^2)}$; $68\%$, $95\%$
+and $99.7\%$ lie within $1$, $2$ and $3$ standard deviations of the mean.
+Multivariate normal:
+\[
+  p(\vx) = \frac{\exp\bigl(-\frac12(\vx - \vmu)^\top\mSigma^{-1}(\vx - \vmu)\bigr)}
+  {\sqrt{(2\pi)^d\det\mSigma}} .
+\]
+
+%---------------------------------------------------------------------
+\fsheading{Statistics}{ch:statistics}
+Estimation and inference:
+\begin{align*}
+  \bar x &= \tfrac1n\textstyle\sum_ix_i, \qquad
+    s^2 = \tfrac{1}{n-1}\textstyle\sum_i(x_i - \bar x)^2,\\
+  \operatorname{SE}(\bar X) &= \sigma/\sqrt n, \qquad
+    \text{95\% CI: } \bar x \pm 1.96\,s/\sqrt n,\\
+  \MSE(\hat\theta) &= \Bias(\hat\theta)^2 + \Var(\hat\theta),\\
+  \hat\theta_{\mathrm{MLE}} &= \argmax_\theta\textstyle\sum_i\ln p(x_i \mid \theta),\\
+  \hat\theta_{\mathrm{MAP}} &= \argmin_\theta\bigl(-\ln p(\mathcal{D} \mid \theta) - \ln p(\theta)\bigr).
+\end{align*}
+Coin: $\hat\theta = h/n$. Normal: $\hat\mu = \bar x$, $\hat\sigma^2 = \frac1n\sum_i(x_i - \bar x)^2$.
+Gaussian noise gives squared error; Bernoulli labels give binary cross-entropy
+$-\sum_i[y_i\ln q_i + (1 - y_i)\ln(1 - q_i)]$.
+Expected test error $=$ bias$^2$ $+$ variance $+$ noise.
+
+%---------------------------------------------------------------------
+\fsheading{Deep learning}{ch:dl}
+Layers, softmax and information theory:
+\begin{align*}
+  \vz^{(l)} &= \mW^{(l)}\va^{(l-1)} + \vb^{(l)},\\
+  \va^{(l)} &= \varphi(\vz^{(l)}),\\
+  \softmax(\vz)_k &= \frac{e^{z_k}}{\sum_je^{z_j}},\\
+  L = -\ln q_c &\;\Longrightarrow\; \pderiv{L}{\vz} = \vq - \vy,\\
+  H(\vp) &= -\textstyle\sum_kp_k\log p_k,\\
+  H(\vp, \vq) &= -\textstyle\sum_kp_k\log q_k,\\
+  D_{\KL}(\vp\,\Vert\,\vq) &= \textstyle\sum_kp_k\log\frac{p_k}{q_k}\\
+  &= H(\vp, \vq) - H(\vp) \ge 0 .
+\end{align*}
+For $\vz = \mW\vx + \vb$ with $\vdelta = \pderiv{L}{\vz}$:
+$\pderiv{L}{\mW} = \vdelta\vx^\top$, $\pderiv{L}{\vx} = \mW^\top\vdelta$,
+$\pderiv{L}{\vb} = \vdelta$. Backpropagation:
+\[
+  \vdelta^{(l)} = \bigl(\mW^{(l+1)\top}\vdelta^{(l+1)}\bigr) \odot \varphi'(\vz^{(l)}).
+\]
+Attention: $\softmax\bigl(\mQ\mK^\top/\sqrt d\bigr)\mV$.
+\end{multicols}

@@ -1,1 +1,278 @@
+%======================================================================
+% Chapter 12: Where to Go Next
+%======================================================================
 \chapter{Where to Go Next}\label{ch:next}
+
+\begin{motivation}
+You began this book with counting, fractions and the order of operations. You
+have finished it with the mathematics of backpropagation, cross-entropy and
+attention. That is a long road, and you now have the prerequisites that
+textbooks and courses on machine learning take for granted. This short chapter
+looks back at the big ideas, suggests projects that turn knowledge into skill,
+sketches the mathematics that lies beyond these notes, and recommends books,
+courses and videos for the next stage of the journey.
+\end{motivation}
+
+%----------------------------------------------------------------------
+\section{The big ideas}\label{sec:big-ideas}
+%----------------------------------------------------------------------
+
+Beneath the many definitions and formulas, a handful of ideas carry most of the
+weight. If you remember nothing else, remember these.
+
+\begin{keytakeaways}[Seven big ideas]
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{Data are vectors, models are functions, layers are matrices.}
+    Anything a computer learns from (an image, a sentence, a customer) becomes a
+    list of numbers, and a model is a function of those numbers with adjustable
+    parameters (\cref{ch:functions,ch:linalg1}).
+  \item \textbf{Geometry reveals structure.} Lengths, angles and projections
+    measure similarity and error; eigenvectors and the SVD find the most important
+    directions in data (\cref{ch:geometry,ch:linalg2}).
+  \item \textbf{Learning is optimisation.} Training means choosing the parameters
+    that minimise a loss, usually by following the negative gradient downhill
+    (\cref{ch:optimization}).
+  \item \textbf{Derivatives measure sensitivity, and the chain rule composes them.}
+    Backpropagation is the chain rule, organised so that all the derivatives of a
+    huge network cost little more than evaluating it
+    (\cref{ch:calculus,ch:multivariable,ch:dl}).
+  \item \textbf{Uncertainty is described by probability.} Models output
+    distributions, and the standard losses are negative log-likelihoods
+    (\cref{ch:probability,ch:statistics}).
+  \item \textbf{What matters is new data.} Fitting the training set is easy; the
+    goal is generalisation, governed by the trade-off between bias and variance and
+    measured honestly on held-out data (\cref{ch:statistics}).
+  \item \textbf{Numbers on a computer need care.} Work with log-probabilities,
+    subtract the maximum before exponentiating, scale initial weights to keep
+    variances stable, and check gradients numerically
+    (\cref{ch:functions,ch:calculus,ch:dl}).
+\end{enumerate}
+\end{keytakeaways}
+
+%----------------------------------------------------------------------
+\section{Consolidate by building}\label{sec:projects}
+%----------------------------------------------------------------------
+
+Mathematics becomes yours when you use it. The best next step is to implement
+the methods of this book yourself, in Python with NumPy, checking every result
+against the theory. The following projects are arranged roughly in order of
+difficulty; each lists the chapters it relies on.
+
+\begin{enumerate}[label=\textbf{Project \arabic*.},leftmargin=*,itemsep=5pt]
+  \item \textbf{Linear regression three ways.} Fit a line to a real data set (for
+    example, house prices against size) with the normal equations, with gradient
+    descent and with stochastic gradient descent. Check that all three agree, and
+    plot the loss against the number of steps for several learning rates.
+    (\Cref{ch:linalg2,ch:optimization}.)
+  \item \textbf{PCA on images.} Load a small data set of images of handwritten
+    digits (one is included in the scikit-learn library), compute the principal
+    components with the SVD, plot the first few as images, and reconstruct digits
+    from $5$, $20$ and $50$ components. (\Cref{ch:linalg2}.)
+  \item \textbf{Logistic regression with gradient checking.} Implement binary
+    logistic regression with the gradient $(q - y)\vx$, verify the gradient with
+    central differences, add $L^2$ regularisation, and report the test accuracy
+    with a $95\%$ confidence interval. (\Cref{ch:calculus,ch:statistics,ch:dl}.)
+  \item \textbf{Simulate the limit theorems.} Check the law of large numbers and
+    the central limit theorem by simulation, for dice, for a skewed distribution
+    such as the exponential, and for a distribution whose mean and variance are
+    infinite (try $1/U$ for $U$ uniform on $[0, 1]$, and see what goes wrong). (\Cref{ch:probability,ch:statistics}.)
+  \item \textbf{Grow the autodiff engine.} Extend the \texttt{Value} class of
+    \cref{sec:autodiff} with subtraction, division, powers, $\exp$, $\ln$ and
+    $\tanh$; build a small network from it and train it on the circle data of
+    \cref{sec:training-loop}. (\Cref{ch:dl}.)
+  \item \textbf{A digit classifier from scratch.} Train a network with one or two
+    hidden layers on the MNIST digits, with softmax and cross-entropy, mini-batches
+    and Adam, all in NumPy. Plot training and validation curves, experiment with
+    initialisation and learning rates, and look at the digits it gets wrong.
+    (\Cref{ch:optimization,ch:statistics,ch:dl}.)
+  \item \textbf{Attention by hand.} Implement scaled dot-product attention for a
+    short sequence of random vectors, verify that each row of weights sums to $1$,
+    and observe what happens to the weights without the factor $1/\sqrt d$ as $d$
+    grows. (\Cref{ch:probability,ch:dl}.)
+\end{enumerate}
+
+\begin{remark}[How to read mathematics in papers and textbooks]
+When you meet an unfamiliar formula, do what this book has done throughout:
+write down the shape of every vector and matrix; try the formula on a tiny
+example with numbers ($2\times2$ matrices, three data points); draw a picture; and
+ask what happens in extreme cases (a parameter equal to $0$, or very large).
+\Cref{app:notation} lists the notation used here, which is standard in the
+machine learning literature.
+\end{remark}
+
+%----------------------------------------------------------------------
+\section{Mathematics beyond these notes}\label{sec:beyond}
+%----------------------------------------------------------------------
+
+These notes cover the prerequisites. The following topics build directly on
+them and appear in more advanced work.
+
+\begin{description}[style=nextline,leftmargin=1.5em,itemsep=4pt]
+  \item[More linear algebra] Further matrix factorisations (LU, QR, Cholesky),
+    numerical stability and the condition number, sparse matrices, and tensors
+    (arrays with more than two indices), which are the basic objects of deep
+    learning libraries. Builds on \cref{ch:linalg1,ch:linalg2}.
+  \item[Fourier analysis and convolution] Representing signals as sums of sines
+    and cosines; convolution, the operation behind convolutional neural networks
+    for images and audio. Builds on \cref{ch:geometry,ch:calculus}.
+  \item[Real analysis] Rigorous treatment of limits, sequences, series and
+    continuity, needed to read proofs that algorithms converge. Builds on
+    \cref{ch:calculus}.
+  \item[Convex optimisation and duality] The Karush--Kuhn--Tucker conditions,
+    which extend Lagrange multipliers to inequality constraints, duality, and
+    convergence rates; support vector machines are the classic application.
+    Builds on \cref{ch:optimization}.
+  \item[Probability theory and stochastic processes] Measure-theoretic
+    foundations; Markov chains and Markov chain Monte Carlo sampling; stochastic
+    differential equations, which describe the noising process of diffusion
+    models. Builds on \cref{ch:probability}.
+  \item[Bayesian machine learning] Conjugate priors, Gaussian processes,
+    variational inference and probabilistic graphical models. Builds on
+    \cref{ch:probability,ch:statistics}.
+  \item[Statistical learning theory] Why and when learning from a finite sample
+    works: VC dimension, PAC learning and generalisation bounds. Builds on
+    \cref{ch:statistics}.
+  \item[Information theory] Mutual information, coding theorems and
+    rate--distortion theory, which appear in representation learning and
+    compression. Builds on \cref{sec:information-theory}.
+  \item[Reinforcement learning] Markov decision processes, Bellman equations and
+    policy gradients, for agents that learn from rewards. Builds on
+    \cref{ch:probability,ch:optimization}.
+  \item[Graphs] Graph theory and the spectral analysis of graphs, the basis of
+    graph neural networks. Builds on \cref{ch:linalg2}.
+\end{description}
+
+%----------------------------------------------------------------------
+\section{Recommended resources}\label{sec:reading}
+%----------------------------------------------------------------------
+
+There are excellent books and courses at every level, many of them free. The
+following selection is organised by purpose; \cref{fig:roadmap} suggests one path
+through it.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>={Stealth[length=2.5mm]},
+  stage/.style={draw,thick,rounded corners,align=left,font=\small,
+    text width=11.2cm,inner sep=6pt},
+  branch/.style={draw,thick,rounded corners,align=center,font=\small,
+    text width=2.75cm,inner sep=4pt,minimum height=1.55cm}]
+  \node[stage,fill=MLdef!10] (s1) at (0,0)
+    {\textbf{1. Consolidate.} Redo the exercises; build the projects of
+     \cref{sec:projects}; watch 3Blue1Brown's visual series on linear algebra
+     and calculus.};
+  \node[stage,fill=MLexample!10,below=0.6cm of s1] (s2)
+    {\textbf{2. Machine learning foundations.} \emph{An Introduction to Statistical
+     Learning}; \emph{Mathematics for Machine Learning}; an introductory machine
+     learning course.};
+  \node[stage,fill=MLintuition!14,below=0.6cm of s2] (s3)
+    {\textbf{3. Deep learning.} \emph{Understanding Deep Learning};
+     \emph{Dive into Deep Learning}; Karpathy's \emph{Zero to Hero}; fast.ai.};
+  \draw[->,thick] (s1) -- (s2);
+  \draw[->,thick] (s2) -- (s3);
+  \node[branch,fill=MLml!10,below=1.0cm of s3.south west,anchor=north west] (b1)
+    {\textbf{Probabilistic ML}\\Murphy; Bishop};
+  \node[branch,fill=MLml!10,right=0.12cm of b1] (b2)
+    {\textbf{Reinforcement learning}\\Sutton \& Barto};
+  \node[branch,fill=MLml!10,right=0.12cm of b2] (b3)
+    {\textbf{Theory}\\Shalev-Shwartz \& Ben-David};
+  \node[branch,fill=MLml!10,right=0.12cm of b3] (b4)
+    {\textbf{Research}\\reading and reproducing papers};
+  \node[font=\small\bfseries,anchor=south west] at ([yshift=2pt]b1.north west) {4. Specialise};
+  \foreach \b in {b1,b2,b3,b4}{\draw[->,thick] (s3.south) -- (\b.north);}
+\end{tikzpicture}
+\caption{A suggested path for further study.}
+\label{fig:roadmap}
+\end{figure}
+
+\subsection{Mathematics}
+
+\begin{itemize}[itemsep=3pt]
+  \item Marc Peter Deisenroth, A.~Aldo Faisal and Cheng Soon Ong,
+    \emph{Mathematics for Machine Learning} (Cambridge University Press, 2020;
+    free PDF online). The natural next book: the same topics as
+    \cref{ch:linalg1,ch:linalg2,ch:multivariable,ch:optimization,ch:probability}
+    at a faster pace and greater depth, followed by applications to regression,
+    PCA, Gaussian mixture models and support vector machines.
+  \item Gilbert Strang, \emph{Introduction to Linear Algebra} (Wellesley-Cambridge
+    Press), with his celebrated MIT 18.06 video lectures (free on MIT
+    OpenCourseWare). Intuitive and applied. His \emph{Linear Algebra and Learning
+    from Data} connects linear algebra to machine learning directly.
+  \item Stephen Boyd and Lieven Vandenberghe, \emph{Introduction to Applied
+    Linear Algebra: Vectors, Matrices, and Least Squares} (Cambridge University
+    Press, 2018; free online). Gentle and full of applications.
+  \item Sheldon Axler, \emph{Linear Algebra Done Right} (Springer; the fourth
+    edition is open access). For readers who want a proof-based treatment.
+  \item 3Blue1Brown (Grant Sanderson), \emph{Essence of Linear Algebra} and
+    \emph{Essence of Calculus} (free video series). Unrivalled geometric
+    intuition; ideal alongside \cref{ch:linalg1,ch:calculus}.
+  \item Joseph K. Blitzstein and Jessica Hwang, \emph{Introduction to Probability}
+    (CRC Press, 2nd edition 2019), with the free Harvard Stat 110 lectures. A
+    superb, example-driven course in probability.
+  \item Stephen Boyd and Lieven Vandenberghe, \emph{Convex Optimization}
+    (Cambridge University Press, 2004; free PDF). The standard reference on
+    convexity, duality and optimisation algorithms.
+  \item David J.\,C. MacKay, \emph{Information Theory, Inference, and Learning
+    Algorithms} (Cambridge University Press, 2003; free PDF). A delightful book
+    linking information theory, Bayesian inference and neural networks.
+\end{itemize}
+
+\subsection{Machine learning}
+
+\begin{itemize}[itemsep=3pt]
+  \item Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani,
+    \emph{An Introduction to Statistical Learning} (Springer; editions with labs in
+    R and in Python; free PDF). The friendliest introduction to the classical
+    methods. Its big sibling, \emph{The Elements of Statistical Learning} by
+    Hastie, Tibshirani and Friedman, is more mathematical.
+  \item Christopher M. Bishop, \emph{Pattern Recognition and Machine Learning}
+    (Springer, 2006). A classic, with a consistently probabilistic viewpoint.
+  \item Kevin P. Murphy, \emph{Probabilistic Machine Learning: An Introduction}
+    (MIT Press, 2022) and \emph{Advanced Topics} (2023); free drafts online.
+    Comprehensive and up to date.
+  \item Shai Shalev-Shwartz and Shai Ben-David, \emph{Understanding Machine
+    Learning: From Theory to Algorithms} (Cambridge University Press, 2014; free
+    online). The theory of generalisation.
+  \item Richard S. Sutton and Andrew G. Barto, \emph{Reinforcement Learning: An
+    Introduction} (MIT Press, 2nd edition 2018; free online).
+\end{itemize}
+
+\subsection{Deep learning}
+
+\begin{itemize}[itemsep=3pt]
+  \item Simon J.\,D. Prince, \emph{Understanding Deep Learning} (MIT Press, 2023;
+    free PDF). Clear explanations and outstanding figures; the best next step
+    after \cref{ch:dl}.
+  \item Christopher M. Bishop and Hugh Bishop, \emph{Deep Learning: Foundations
+    and Concepts} (Springer, 2024). A thorough modern textbook.
+  \item Ian Goodfellow, Yoshua Bengio and Aaron Courville, \emph{Deep Learning}
+    (MIT Press, 2016; free online). Its first part reviews linear algebra,
+    probability, information theory and numerical computation.
+  \item Aston Zhang, Zachary C. Lipton, Mu Li and Alexander J. Smola, \emph{Dive
+    into Deep Learning} (free online at \texttt{d2l.ai}). Every idea is accompanied
+    by runnable code.
+  \item Andrej Karpathy, \emph{Neural Networks: Zero to Hero} (free video series).
+    Starts by building an autodiff engine much like the one in \cref{sec:autodiff}
+    and ends with a small GPT-style language model.
+  \item fast.ai, \emph{Practical Deep Learning for Coders} (free course). A
+    top-down, hands-on complement to the bottom-up approach of these notes.
+\end{itemize}
+
+%----------------------------------------------------------------------
+\section{A final word}\label{sec:final-word}
+%----------------------------------------------------------------------
+
+Nobody reads mathematics once and understands it fully. Expect to return to
+these chapters: when a paper writes $\nabla_{\vtheta}\E_{\vx\sim p}[\ell(\vx;
+\vtheta)]$ and you need to recall why the expectation and the gradient can be
+swapped for a mini-batch estimate; when a training run diverges and you suspect the
+learning rate or the conditioning; when a model is confidently wrong and you want
+to reason about its probabilities. Each time, the ideas will feel more familiar
+and the formulas more like a language you speak.
+
+Mistakes and confusion are part of the process, not signs of failure. Work small
+examples, draw pictures, check shapes, and write code. Machine learning rewards
+exactly the habits this book has tried to build: careful definitions, concrete
+numbers before abstraction, and the patience to ask \emph{why}.
+
+Good luck, and enjoy the journey.

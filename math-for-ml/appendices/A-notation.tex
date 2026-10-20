@@ -1,1 +1,196 @@
+%======================================================================
+% Appendix A: Notation and the Greek alphabet
+%======================================================================
 \chapter{Notation and the Greek Alphabet}\label{app:notation}
+
+This appendix collects the notation used in these notes, which follows the
+conventions of most machine learning textbooks and research papers. The last
+column says where each symbol is introduced.
+
+\section*{Conventions}
+\phantomsection
+\addcontentsline{toc}{section}{Conventions}
+
+\begin{itemize}
+  \item Ordinary numbers (\emph{scalars}) are written in italic: $x$, $a$, $\lambda$.
+  \item Vectors are bold lower-case letters, $\vx$, $\vw$, $\vtheta$, and are
+    column vectors; their components are $x_1, \dots, x_n$.
+  \item Matrices are bold capital letters, $\mA$, $\mW$, $\mSigma$, with entries
+    $A_{ij}$ (row $i$, column $j$).
+  \item Random variables are italic capitals, $X$, $Y$; their values are lower-case,
+    $x$, $y$. Random vectors are bold capitals, $\vX$.
+  \item A hat marks an estimate or a prediction: $\hat\theta$, $\hat y$.
+  \item $\ln$ is the natural logarithm. In information theory, $\log$ means
+    $\log_2$ when measuring in bits and $\ln$ when measuring in nats.
+  \item Superscripts in parentheses number the layers of a network:
+    $\mW^{(l)}$ is the weight matrix of layer $l$, not a power.
+\end{itemize}
+
+\section*{Symbols}
+\phantomsection
+\addcontentsline{toc}{section}{Symbols}
+
+\renewcommand{\arraystretch}{1.25}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.6cm}
+                   >{\raggedright\arraybackslash}p{7.3cm}
+                   >{\raggedright\arraybackslash}p{3.0cm}@{}}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} & \textbf{Introduced in}\\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Symbol} & \textbf{Meaning} & \textbf{Introduced in}\\
+\midrule
+\endhead
+\midrule
+\multicolumn{3}{r}{\small\itshape continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
+%
+\multicolumn{3}{@{}l}{\textbf{\color{MLchapter}Numbers and sets}}\\
+$\N$, $\Z$, $\Q$, $\R$ & natural numbers, integers, rational and real numbers & \cref{sec:kinds-of-numbers}\\
+$x \in A$ & $x$ is an element of the set $A$ & \cref{sec:kinds-of-numbers}\\
+$A \subset B$ & $A$ is a subset of $B$ & \cref{sec:kinds-of-numbers}\\
+$\{x \in \R : x > 0\}$ & the set of all $x$ with the stated property & \cref{sec:kinds-of-numbers}\\
+$[a, b]$, $(a, b)$ & closed and open intervals & \cref{sec:kinds-of-numbers}\\
+$A \cup B$, $A \cap B$, $A^c$ & union, intersection, complement & \cref{sec:events}\\
+$\emptyset$ & the empty set & \cref{sec:events}\\
+$\abs{A}$ & number of elements of a finite set $A$ & \cref{sec:probability-rules}\\
+$\R^n$ & the set of vectors with $n$ real components & \cref{sec:vectors}\\
+\addlinespace
+\multicolumn{3}{@{}l}{\textbf{\color{MLchapter}Arithmetic and algebra}}\\
+$a^n$, $\sqrt a$, $a^{1/n}$ & powers and roots & \cref{sec:exponents}\\
+$\sum_{i=1}^n x_i$ & the sum $x_1 + x_2 + \dots + x_n$ & \cref{sec:summation}\\
+$\prod_{i=1}^n x_i$ & the product $x_1x_2\cdots x_n$ & \cref{sec:summation}\\
+$n!$ & factorial, $1\times2\times\dots\times n$ & \cref{sec:summation}\\
+$\binom nk$ & binomial coefficient, ``$n$ choose $k$'' & \cref{sec:probability-rules}\\
+$\abs x$ & absolute value & \cref{sec:absolute-value}\\
+$\approx$ & is approximately equal to & throughout\\
+$\propto$ & is proportional to & \cref{sec:map}\\
+\addlinespace
+\multicolumn{3}{@{}l}{\textbf{\color{MLchapter}Functions}}\\
+$f\colon A \to B$ & a function from $A$ to $B$ & \cref{sec:what-is-function}\\
+$f \circ g$ & composition, $(f \circ g)(x) = f(g(x))$ & \cref{sec:composition}\\
+$f^{-1}$ & inverse function & \cref{sec:inverse-functions}\\
+$e$, $e^x = \exp(x)$ & Euler's number $2.718\ldots$, the exponential function & \cref{sec:exponential}\\
+$\ln x$, $\log_bx$ & natural logarithm, logarithm to base $b$ & \cref{sec:logarithms}\\
+$\sin$, $\cos$, $\tan$ & trigonometric functions & \cref{sec:trigonometry}\\
+$\sigma(x)$ & sigmoid function $\frac{1}{1 + e^{-x}}$ (but see also $\sigma$ below) & \cref{sec:inverse-functions}\\
+$\ReLU(x)$, $\tanh(x)$ & activation functions & \cref{sec:activation-gallery}\\
+$\softmax(\vz)$ & softmax function & \cref{sec:softmax}\\
+\addlinespace
+\multicolumn{3}{@{}l}{\textbf{\color{MLchapter}Linear algebra}}\\
+$\vx$, $x_i$ & a vector and its $i$-th component & \cref{sec:vectors}\\
+$\mA$, $A_{ij}$ & a matrix and its entry in row $i$, column $j$ & \cref{sec:matrices}\\
+$\vzero$, $\vone$ & the vector of zeros, the vector of ones & \cref{sec:vectors}\\
+$\mI$ & identity matrix & \cref{sec:matrices}\\
+$\vx\cdot\vy = \vx^\top\vy$ & dot product & \cref{sec:dot-product}\\
+$\norm{\vx}$ & length (Euclidean or $L^2$ norm) & \cref{sec:vector-length}\\
+$\norm{\vx}_1$, $\norm{\vx}_p$, $\norm{\vx}_\infty$ & $L^1$, $L^p$ and $L^\infty$ norms & \cref{sec:norms}\\
+$\mA^\top$ & transpose & \cref{sec:transpose}\\
+$\vx\vy^\top$ & outer product & \cref{sec:transpose}\\
+$\mA^{-1}$ & inverse matrix & \cref{sec:inverses}\\
+$\det\mA$ & determinant & \cref{sec:inverses}\\
+$\spn(\vv_1, \dots, \vv_k)$ & span: all linear combinations & \cref{sec:span}\\
+$\rank\mA$ & rank & \cref{sec:basis}\\
+$\proj_{\va}(\vb)$ & projection of $\vb$ onto the line through $\va$ & \cref{sec:projections}\\
+$\mA\vv = \lambda\vv$ & eigenvalue $\lambda$ and eigenvector $\vv$ & \cref{sec:eigen}\\
+$\tr\mA$ & trace, the sum of the diagonal entries & \cref{sec:eigen}\\
+$\mA = \mU\mSigma\mV^\top$ & singular value decomposition & \cref{sec:svd}\\
+$\diag(d_1, \dots, d_n)$ & diagonal matrix with the given diagonal & \cref{sec:jacobian}\\
+$\vu \odot \vv$ & componentwise (Hadamard) product & \cref{sec:matrix-calculus}\\
+\addlinespace
+\multicolumn{3}{@{}l}{\textbf{\color{MLchapter}Calculus}}\\
+$\lim_{x \to a}f(x)$ & limit & \cref{sec:limits}\\
+$f'(x)$, $\deriv fx$ & derivative & \cref{sec:derivative}\\
+$f''(x)$ & second derivative & \cref{sec:extrema}\\
+$\int_a^bf(x)\,\dd x$ & definite integral & \cref{sec:integration}\\
+$\pderiv fx$ & partial derivative & \cref{sec:partial-derivatives}\\
+$\nabla f$, $\nabla_{\vx}f$ & gradient (vector of partial derivatives) & \cref{sec:gradient}\\
+$D_{\vu}f$ & directional derivative & \cref{sec:directional-derivatives}\\
+$\mat J$ & Jacobian matrix & \cref{sec:jacobian}\\
+$\mH$ & Hessian matrix & \cref{sec:hessian}\\
+$\pderiv{L}{\mW}$ & matrix of the derivatives $\pderiv{L}{W_{ij}}$ & \cref{sec:matrix-calculus}\\
+\addlinespace
+\multicolumn{3}{@{}l}{\textbf{\color{MLchapter}Optimisation}}\\
+$\vtheta$ & the parameters of a model & \cref{sec:optimisation-problems}\\
+$L(\vtheta)$, $\ell$ & loss function, loss of one example & \cref{sec:optimisation-problems}\\
+$\argmin_xf(x)$, $\argmax_xf(x)$ & the point where $f$ is smallest, largest & \cref{sec:optimisation-problems}\\
+$\eta$ & learning rate & \cref{sec:gradient-descent}\\
+$\lambda$ & regularisation strength; Lagrange multiplier & \cref{sec:norms,sec:lagrange}\\
+\addlinespace
+\multicolumn{3}{@{}l}{\textbf{\color{MLchapter}Probability}}\\
+$\Omega$ & sample space & \cref{sec:events}\\
+$P(A)$, $P(A \mid B)$ & probability, conditional probability & \cref{sec:probability-rules,sec:conditional}\\
+$X$, $p(x)$, $F(x)$ & random variable, its PMF or PDF, its CDF & \cref{sec:random-variables}\\
+$\E[X]$, $\mu$ & expected value (mean) & \cref{sec:expectation}\\
+$\Var(X)$, $\sigma^2$, $\sigma$ & variance, standard deviation & \cref{sec:variance}\\
+$\Cov(X, Y)$, $\Corr(X, Y)$, $\rho$ & covariance, correlation & \cref{sec:covariance}\\
+$\mSigma$ & covariance matrix & \cref{sec:covariance}\\
+$X \sim \mathcal{N}(\mu, \sigma^2)$ & $X$ has the normal distribution with mean $\mu$, variance $\sigma^2$ & \cref{sec:distributions}\\
+$\operatorname{Bin}(n, p)$ & binomial distribution & \cref{sec:distributions}\\
+i.i.d. & independent and identically distributed & \cref{sec:independence-events}\\
+\addlinespace
+\multicolumn{3}{@{}l}{\textbf{\color{MLchapter}Statistics}}\\
+$\bar x$, $s^2$ & sample mean, sample variance & \cref{sec:descriptive}\\
+$\hat\theta$ & estimate of the parameter $\theta$ & \cref{sec:estimators}\\
+$\Bias$, $\MSE$, $\operatorname{SE}$ & bias, mean squared error, standard error & \cref{sec:estimators}\\
+$\mathcal{L}(\theta)$ & likelihood & \cref{sec:mle}\\
+$\mathcal{D}$ & a data set & \cref{sec:map}\\
+$H_0$, $H_1$ & null and alternative hypotheses & \cref{sec:hypothesis-testing}\\
+\addlinespace
+\multicolumn{3}{@{}l}{\textbf{\color{MLchapter}Information theory and deep learning}}\\
+$H(\vp)$ & entropy & \cref{sec:information-theory}\\
+$H(\vp, \vq)$ & cross-entropy & \cref{sec:information-theory}\\
+$D_{\KL}(\vp\,\Vert\,\vq)$ & Kullback--Leibler divergence & \cref{sec:information-theory}\\
+$\mW^{(l)}$, $\vb^{(l)}$ & weights and biases of layer $l$ & \cref{sec:neural-networks}\\
+$\vz^{(l)}$, $\va^{(l)}$ & pre-activations and activations of layer $l$ & \cref{sec:neural-networks}\\
+$\varphi$ & activation function & \cref{sec:neural-networks}\\
+$\vq$, $\vy$ & predicted probabilities, one-hot label & \cref{sec:softmax-gradient}\\
+$\vdelta^{(l)}$ & error signal $\pderiv{L}{\vz^{(l)}}$ & \cref{sec:backpropagation}\\
+$\mQ$, $\mK$, $\mV$ & queries, keys and values in attention & \cref{sec:attention}\\
+\end{longtable}
+
+\clearpage
+\section*{The Greek alphabet}
+\phantomsection
+\addcontentsline{toc}{section}{The Greek alphabet}
+
+Mathematics uses Greek letters as additional symbols. The table lists all of them,
+with their typical meanings in machine learning. Letters that look exactly like
+Latin ones (such as capital alpha, A) are not used as separate symbols.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}cclp{8.4cm}@{}}
+\toprule
+\textbf{Lower} & \textbf{Upper} & \textbf{Name} & \textbf{Typical uses}\\
+\midrule
+$\alpha$ & A & alpha & significance level; attention weights; step sizes\\
+$\beta$ & B & beta & momentum coefficients $\beta_1$, $\beta_2$; regression coefficients\\
+$\gamma$ & $\Gamma$ & gamma & discount factor in reinforcement learning; the gamma function\\
+$\delta$ & $\Delta$ & delta & a small change ($\Delta x$); error signals $\vdelta$\\
+$\epsilon$, $\varepsilon$ & E & epsilon & a small positive number; noise\\
+$\zeta$ & Z & zeta & occasionally a variable\\
+$\eta$ & H & eta & learning rate\\
+$\theta$ & $\Theta$ & theta & parameters of a model; angles\\
+$\iota$ & I & iota & rarely used\\
+$\kappa$ & K & kappa & condition number\\
+$\lambda$ & $\Lambda$ & lambda & eigenvalues ($\mLambda$: diagonal matrix of them); regularisation strength; rates\\
+$\mu$ & M & mu & mean\\
+$\nu$ & N & nu & degrees of freedom\\
+$\xi$ & $\Xi$ & xi & random variables; slack variables\\
+$o$ & O & omicron & not used (looks like the letter o)\\
+$\pi$ & $\Pi$ & pi & the number $3.14159\ldots$; a policy; $\Pi$: product\\
+$\rho$ & P & rho & correlation\\
+$\sigma$ & $\Sigma$ & sigma & standard deviation; sigmoid; $\Sigma$: sum, covariance matrix\\
+$\tau$ & T & tau & temperature; thresholds; time\\
+$\upsilon$ & $\Upsilon$ & upsilon & rarely used\\
+$\phi$, $\varphi$ & $\Phi$ & phi & activation functions; feature maps; $\Phi$: normal CDF\\
+$\chi$ & X & chi & the $\chi^2$ (chi-squared) distribution\\
+$\psi$ & $\Psi$ & psi & feature maps; parameters\\
+$\omega$ & $\Omega$ & omega & frequencies; $\Omega$: sample space\\
+\bottomrule
+\end{tabular}
+\end{center}
