@@ -1,1 +1,1835 @@
-\chapter{Core Linear Algebra for Machine Learning (Linear Algebra II)}\label{ch:linalg2}
+%======================================================================
+% Chapter 5: Linear Algebra II: Core Ideas for Machine Learning
+%======================================================================
+\chapter{Linear Algebra II: Core Ideas for Machine Learning}\label{ch:linalg2}
+
+\begin{motivation}
+\Cref{ch:linalg1} gave us the vocabulary of linear algebra: vectors, matrices
+and the ways to combine them. This chapter is about the ideas that machine
+learning actually runs on. Which outputs can a linear model produce, and what
+happens when features are redundant (\emph{span}, \emph{independence},
+\emph{rank})? How do we measure the size of a weight vector in order to
+penalise it (\emph{norms})? Why is fitting a line by least squares the same as
+dropping a perpendicular (\emph{orthogonality} and \emph{projections})? Along
+which directions does a matrix simply stretch, and what does that say about
+data, training dynamics and curvature (\emph{eigenvalues})? How can a huge
+matrix be approximated by a small one (\emph{singular value decomposition})?
+And when does a quadratic function have a bowl shape with a unique minimum
+(\emph{positive definite matrices})? We finish by combining everything into
+\emph{principal component analysis}, one of the most widely used tools in
+data science.
+\end{motivation}
+
+\begin{objectives}
+\begin{itemize}
+  \item describe the span of a set of vectors and the column space of a matrix;
+  \item decide whether vectors are linearly independent, and recognise
+    redundant features;
+  \item find coordinates in a basis, and compute the rank of a matrix;
+  \item use the $L^1$, $L^2$ and $L^\infty$ norms and connect them to
+    regularisation;
+  \item work with orthonormal bases and orthogonal matrices, and apply
+    Gram--Schmidt;
+  \item project vectors onto lines and subspaces, and solve least-squares
+    problems;
+  \item compute eigenvalues and eigenvectors of $2\times2$ matrices and explain
+    what they mean;
+  \item describe the singular value decomposition and low-rank approximation;
+  \item recognise positive definite matrices and the shapes of quadratic forms;
+  \item carry out principal component analysis on a small data set.
+\end{itemize}
+\end{objectives}
+
+%----------------------------------------------------------------------
+\section{Span and column space}\label{sec:span}
+%----------------------------------------------------------------------
+
+\begin{definition}[Span]\label{def:span}
+The \term{span} of vectors $\vv_1, \dots, \vv_k$ is the set of all their linear
+combinations:
+\[
+  \spn\{\vv_1, \dots, \vv_k\} = \{c_1\vv_1 + \dots + c_k\vv_k :
+  c_1, \dots, c_k \in \R\}.
+\]
+\end{definition}
+
+The span is everything you can reach using only the given directions, going
+forwards or backwards along each by any amount.
+
+\begin{itemize}
+  \item The span of a single non-zero vector is the line through the origin
+    in its direction: all multiples $c\vv$.
+  \item The span of two vectors in $\R^2$ that do not lie on a common line is
+    the whole plane $\R^2$. (We saw in \cref{sec:vector-operations} that
+    $\ve_1$ and $\ve_2$ reach every vector.)
+  \item The span of two such vectors in $\R^3$ is a plane through the origin
+    (\cref{fig:span-plane}); a third vector outside that plane would extend the
+    span to all of $\R^3$.
+  \item The span of any vectors always contains the zero vector (take all
+    coefficients equal to $0$).
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x={(-0.55cm,-0.45cm)},y={(1cm,0cm)},z={(0cm,1cm)},scale=1.25]
+  \coordinate (O) at (0,0,0);
+  \fill[MLdef!12] (-1.6,-1.6,-1.6) -- (2.6,-1.6,0.5) -- (2.6,2.6,2.6) -- (-1.6,2.6,0.5) -- cycle;
+  \draw[MLdef!50] (-1.6,-1.6,-1.6) -- (2.6,-1.6,0.5) -- (2.6,2.6,2.6) -- (-1.6,2.6,0.5) -- cycle;
+  \draw[-{Stealth[length=2mm]},gray] (O) -- (3.2,0,0) node[below left] {$x_1$};
+  \draw[-{Stealth[length=2mm]},gray] (O) -- (0,3.4,0) node[right] {$x_2$};
+  \draw[-{Stealth[length=2mm]},gray] (O) -- (0,0,2.8) node[above] {$x_3$};
+  \draw[vec,PlotRed] (O) -- (2,0,1) node[below] {$\vu$};
+  \draw[vec,PlotBlue] (O) -- (0,2,1) node[above right] {$\vv$};
+  \draw[vec,PlotGreen] (O) -- (2,1,1.5) node[right] {$\vu + \tfrac12\vv$};
+  \draw[vec,PlotOrange] (O) -- (0,-0.6,2.4) node[above] {$\vw$};
+  \node[MLdef,font=\small] at (2.3,2.4,2.0) {$\spn\{\vu,\vv\}$};
+\end{tikzpicture}
+\caption{Two vectors $\vu$ and $\vv$ in $\R^3$ span a plane through the
+  origin; every linear combination such as $\vu + \frac12\vv$ lies in it. The
+  vector $\vw$ sticks out of the plane, so it is not in the span.}
+\label{fig:span-plane}
+\end{figure}
+
+\begin{example}[Is a vector in the span?]\label{ex:in-span}
+Is $\vb = (5, 1, 4)$ in the span of $\vv_1 = (1, 0, 1)$ and $\vv_2 = (2, 1, 1)$?
+What about $\vb' = (5, 1, 3)$?
+
+\sol We need $a$ and $b$ with $a(1,0,1) + b(2,1,1) = (5,1,4)$, i.e.
+$a + 2b = 5$, $b = 1$, $a + b = 4$. The second equation gives $b = 1$, the first
+then gives $a = 3$, and the third is satisfied: $3 + 1 = 4$. So
+$\vb = 3\vv_1 + \vv_2$ is in the span. For $\vb'$ the same reasoning gives
+$a = 3$, $b = 1$, but the third equation would need $a + b = 3$, which fails.
+So $\vb'$ is not in the span.
+\end{example}
+
+\begin{definition}[Column space]\label{def:column-space}
+The \term{column space} $C(\mA)$ of a matrix $\mA$ is the span of its columns.
+By the column view of matrix--vector multiplication, it is exactly the set of
+all possible outputs $\mA\vx$. Consequently,
+\[
+  \mA\vx = \vb \text{ has a solution} \iff \vb \in C(\mA).
+\]
+\end{definition}
+
+A set of vectors that contains $\vzero$ and is closed under addition and
+scalar multiplication (adding or scaling vectors in the set never leads
+outside it) is called a \term{subspace}. Every span is a subspace: lines and
+planes through the origin are the typical examples.
+
+\begin{mlnote}[What a linear model can produce]
+A linear model without bias predicts $\hat\vy = \mX\vw$ for the whole training
+set. Whatever weights we choose, the vector of predictions lies in the column
+space of the data matrix $\mX$. With $n$ data points and $d$ features, this is
+(at most) a $d$-dimensional subspace of $\R^n$. When $n > d$, the vector of true
+targets $\vy$ almost never lies in it, so the model cannot fit the data
+exactly. The best it can do is to find the point of $C(\mX)$ closest to $\vy$:
+that is least squares (\cref{sec:projections}).
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Describe geometrically: (a) $\spn\{(1, 2)\}$; (b) $\spn\{(1, 2), (2, 4)\}$;
+(c) $\spn\{(1, 2), (0, 1)\}$.
+\end{exercise}
+\begin{solution}
+(a) The line through the origin with slope $2$ (the line $x_2 = 2x_1$).
+(b) The same line: $(2,4) = 2(1,2)$ adds no new direction. (c) The whole plane
+$\R^2$, since the two vectors point in different directions.
+\end{solution}
+
+\begin{exercise}
+Is $(3, 5, 1)$ in $\spn\{(1, 1, 0), (1, 2, 1)\}$? Is $(3, 4, 1)$?
+\end{exercise}
+\begin{solution}
+We need $a + b$, $a + 2b$, $b$ to equal the three components. For
+$(3, 5, 1)$: $b = 1$, then $a = 2$ from the first component, but the second
+gives $2 + 2 = 4 \neq 5$: not in the span. For $(3, 4, 1)$: $b = 1$, $a = 2$,
+and $a + 2b = 4$ \checkmark: it is in the span, equal to $2(1,1,0) + (1,2,1)$.
+\end{solution}
+
+\begin{exercise}
+A linear model without bias, $\hat y = w_1x_1 + w_2x_2$, is fitted to three
+data points. In which set must the vector of the three predictions lie? Can
+the model fit every possible vector of three targets exactly?
+\end{exercise}
+\begin{solution}
+The predictions $\mX\vw$ lie in the column space of the $3\times2$ data matrix
+$\mX$, which is at most a plane through the origin in $\R^3$. A target vector
+$\vy$ off that plane cannot be fitted exactly, so in general the answer is no.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Linear independence}\label{sec:independence}
+%----------------------------------------------------------------------
+
+In \cref{fig:span-plane}, adding $\vu + \frac12\vv$ to the set $\{\vu, \vv\}$
+would not enlarge the span: the new vector is redundant. Linear independence
+formalises ``no redundancy''.
+
+\begin{definition}[Linear independence]\label{def:linear-independence}
+Vectors $\vv_1, \dots, \vv_k$ are \term[linear independence]{linearly
+independent} if the only way to make
+\[
+  c_1\vv_1 + c_2\vv_2 + \dots + c_k\vv_k = \vzero
+\]
+is with $c_1 = c_2 = \dots = c_k = 0$. Otherwise they are \term[linear
+dependence]{linearly dependent}.
+\end{definition}
+
+If the vectors are dependent, some combination with a non-zero coefficient,
+say $c_1 \neq 0$, gives $\vzero$; then
+$\vv_1 = -\frac{1}{c_1}(c_2\vv_2 + \dots + c_k\vv_k)$ is a combination of the
+others. So: \emph{vectors are dependent exactly when at least one of them is a
+linear combination of the rest}, i.e.\ redundant.
+
+\begin{example}[Testing independence]\label{ex:independence}
+(a) $(1, 2)$ and $(2, 4)$ are dependent, because $2(1, 2) - (2, 4) = \vzero$.
+
+(b) $(1, 0)$ and $(1, 1)$ are independent: $c_1(1, 0) + c_2(1, 1) = (c_1 + c_2,
+c_2) = (0, 0)$ forces $c_2 = 0$ and then $c_1 = 0$.
+
+(c) $(1, 0, 0)$, $(0, 1, 0)$ and $(1, 1, 0)$ are dependent, because the third is
+the sum of the first two. All three lie in the plane $x_3 = 0$.
+\end{example}
+
+\begin{theorem}[Practical tests for independence]\label{thm:independence-tests}
+\begin{enumerate}
+  \item The columns of a matrix $\mA$ are independent exactly when
+    $\mA\vx = \vzero$ has only the solution $\vx = \vzero$.
+  \item $n$ vectors in $\R^n$ are independent exactly when the $n\times n$
+    matrix having them as columns has non-zero determinant.
+  \item More than $n$ vectors in $\R^n$ are always dependent. A set containing
+    the zero vector is always dependent.
+\end{enumerate}
+\end{theorem}
+
+The first test is just the definition written with matrices; it can be
+checked by Gaussian elimination. The second combines it with
+\cref{thm:square-systems}. The third says that $\R^n$ has room for at most $n$
+independent directions.
+
+\begin{mlnote}[Redundant features]
+When some feature columns of a data matrix are linear combinations of others,
+the columns are dependent and the features are called \emph{collinear}.
+Examples: the price in euros and the same price in dollars; or the total floor
+area together with the areas of each room, which add up to it. Then
+$\mX\vw = \mX\vw'$ for different weight vectors (move weight from one redundant
+feature to another), so the ``best'' weights are not unique, the matrix
+$\mX^\top\mX$ in the normal equations is singular, and numerical solvers become
+unstable. A classic trap is \emph{one-hot encoding} combined with a constant
+column of ones for the bias: the one-hot columns always add up to the column
+of ones. This is known as the \emph{dummy-variable trap}, and the usual fix is
+to drop one of the one-hot columns.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Decide whether each set is linearly independent: (a) $(1, 3), (2, 6)$;
+(b) $(1, 0, 1), (0, 1, 1), (1, 1, 0)$; (c) $(1, 2), (3, 4), (5, 6)$.
+\end{exercise}
+\begin{solution}
+(a) Dependent: $(2,6) = 2(1,3)$. (b) The matrix with these columns has
+determinant $1(0 - 1) - 0 + 1(0 - 1) = -2 \neq 0$, so they are independent.
+(c) Dependent: three vectors in $\R^2$ are always dependent.
+\end{solution}
+
+\begin{exercise}
+For which values of $k$ are $(1, k)$ and $(k, 4)$ linearly dependent?
+\end{exercise}
+\begin{solution}
+They are dependent when $\det\left(\begin{smallmatrix} 1 & k\\ k &
+4\end{smallmatrix}\right) = 4 - k^2 = 0$, i.e.\ $k = 2$ or $k = -2$. (For
+$k = 2$: $(2, 4) = 2(1, 2)$.)
+\end{solution}
+
+\begin{exercise}
+A data set has a column of ones (for the bias) and three one-hot columns for
+the categories red, green, blue. Show that the four columns are linearly
+dependent.
+\end{exercise}
+\begin{solution}
+In every row exactly one of the three one-hot entries is $1$, so the three
+one-hot columns add up to the column of ones:
+$\vone - \vc_{\text{red}} - \vc_{\text{green}} - \vc_{\text{blue}} = \vzero$, a
+non-trivial combination giving zero.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Basis, dimension and rank}\label{sec:basis}
+%----------------------------------------------------------------------
+
+\subsection{Bases and coordinates}
+
+\begin{definition}[Basis]\label{def:basis}
+A \term{basis} of a subspace $S$ is a set of linearly independent vectors that
+spans $S$.
+\end{definition}
+
+A basis is a minimal set of directions that reaches everything: spanning
+means ``enough vectors'', independence means ``no redundant vectors''. The
+standard basis $\ve_1, \dots, \ve_n$ is a basis of $\R^n$, but there are
+infinitely many others.
+
+\begin{theorem}[Unique coordinates]\label{thm:unique-coordinates}
+If $\vb_1, \dots, \vb_k$ is a basis of $S$, then every vector $\vv \in S$ can be
+written as $\vv = c_1\vb_1 + \dots + c_k\vb_k$ in \emph{exactly one} way. The
+numbers $c_1, \dots, c_k$ are the \term[coordinates in a basis]{coordinates}
+of $\vv$ in this basis.
+\end{theorem}
+
+\begin{proof}
+Spanning guarantees at least one way. If there were two,
+$\sum c_i\vb_i = \sum c_i'\vb_i$, then $\sum (c_i - c_i')\vb_i = \vzero$, and
+independence forces $c_i = c_i'$ for every $i$.
+\end{proof}
+
+\begin{example}[Coordinates in a non-standard basis]\label{ex:coordinates}
+Find the coordinates of $\vv = (4, 5)$ in the basis $\vb_1 = (2, 1)$,
+$\vb_2 = (1, 2)$.
+
+\sol Solve $a(2, 1) + b(1, 2) = (4, 5)$: $2a + b = 4$ and $a + 2b = 5$. Then
+$a = 1$ and $b = 2$, so $\vv = \vb_1 + 2\vb_2$ and its coordinates in this basis
+are $(1, 2)$ (\cref{fig:basis-grid}).
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.62]
+  \clip (-1.6,-1.6) rectangle (6.6,6.6);
+  \foreach \a in {-4,...,6}{
+    \draw[MLdef!30] ($\a*(2,1) + -5*(1,2)$) -- ($\a*(2,1) + 6*(1,2)$);
+    \draw[MLdef!30] ($\a*(1,2) + -5*(2,1)$) -- ($\a*(1,2) + 6*(2,1)$);}
+  \draw[-{Stealth[length=2mm]},gray] (-1.6,0) -- (6.5,0) node[above left] {$x_1$};
+  \draw[-{Stealth[length=2mm]},gray] (0,-1.6) -- (0,6.5) node[below right] {$x_2$};
+  \draw[vec,PlotRed] (0,0) -- (2,1) node[below right] {$\vb_1$};
+  \draw[vec,PlotBlue] (0,0) -- (1,2) node[above left] {$\vb_2$};
+  \draw[vec,PlotBlue!60,dashed] (2,1) -- (3,3);
+  \draw[vec,PlotBlue!60,dashed] (3,3) -- (4,5);
+  \fill[PlotGreen!70!black] (4,5) circle (4pt)
+    node[above left,fill=white,inner sep=1.5pt] {$\vv = (4,5)$};
+\end{tikzpicture}
+\caption{The grid of the basis $\vb_1 = (2,1)$, $\vb_2 = (1,2)$. To reach
+  $\vv = (4,5)$, take one step of $\vb_1$ and two steps of $\vb_2$: in this
+  basis $\vv$ has coordinates $(1, 2)$.}
+\label{fig:basis-grid}
+\end{figure}
+
+\begin{intuition}[A basis is a coordinate system]
+A vector is a geometric object; its coordinates are a \emph{description} of it,
+and the description depends on the basis, just as the same distance is
+described by different numbers in metres and in feet. Changing the basis does
+not move the vector; it changes the grid we measure it against. Much of linear
+algebra, and much of machine learning, is about finding a basis in which data
+or a matrix looks simple. Eigenvectors (\cref{sec:eigen}) and principal
+components (\cref{sec:pca}) are such bases.
+\end{intuition}
+
+\subsection{Dimension}
+
+Every basis of a given subspace has the same number of vectors; this number is
+the \term{dimension} of the subspace. So $\R^n$ has dimension $n$, a line
+through the origin has dimension $1$, and a plane through the origin has
+dimension $2$, whatever space they sit in.
+
+\subsection{Rank}
+
+\begin{definition}[Rank]\label{def:rank}
+The \term{rank} of a matrix $\mA$, written $\rank\mA$, is the dimension of its
+column space, i.e.\ the maximum number of linearly independent columns.
+\end{definition}
+
+A remarkable fact is that the maximum number of independent \emph{rows} is
+always the same as the maximum number of independent columns. So the rank of
+an $m\times n$ matrix is at most $\min(m, n)$; a matrix reaching this bound is
+said to have \emph{full rank}. Gaussian elimination computes the rank: it is
+the number of non-zero rows left in the triangular form.
+
+\begin{example}[Computing a rank]
+Find the rank of $\mA = \left(\begin{smallmatrix} 1 & 2 & 3\\ 2 & 4 & 6\\ 1 & 0 &
+1\end{smallmatrix}\right)$.
+
+\sol The second row is twice the first, so elimination ($R_2 - 2R_1$) turns it
+into a row of zeros, while the first and third rows are not multiples of each
+other. Two independent rows remain, so $\rank\mA = 2$. Correspondingly, the
+three columns span only a plane in $\R^3$: indeed the third column is the sum
+of the first two.
+\end{example}
+
+\subsection{The null space and the rank--nullity theorem}
+
+The \term{null space} of $\mA$ is the set of all $\vx$ with $\mA\vx = \vzero$:
+the inputs that the transformation squashes to zero. For
+$\mA = \left(\begin{smallmatrix} 1 & 2\\ 2 & 4\end{smallmatrix}\right)$, the
+null space is the line spanned by $(-2, 1)$.
+
+\begin{theorem}[Rank--nullity theorem]\label{thm:rank-nullity}
+For any $m\times n$ matrix $\mA$,
+\[
+  \rank\mA + \dim(\text{null space of } \mA) = n .
+\]
+\end{theorem}
+
+In words: of the $n$ input dimensions, some survive (they make up the column
+space) and the rest are squashed to zero (the null space). For the example
+just given, $1 + 1 = 2$.
+
+\subsection{Low-rank matrices}
+
+A matrix of rank $1$ has all its columns on one line, so it is an outer
+product $\vu\vv^\top$ (\cref{sec:transpose}). More generally, a matrix of rank $r$
+can be written as a sum of $r$ outer products. Storing an $m\times n$ matrix
+needs $mn$ numbers, but storing $r$ outer products needs only $r(m + n)$, which
+is much less when $r$ is small. This is the idea behind the low-rank
+approximations of \cref{sec:svd}.
+
+\begin{mlnote}[Low rank in modern deep learning]
+Fine-tuning a large language model updates enormous weight matrices. The
+popular method \emph{LoRA} (low-rank adaptation) keeps the original weights
+$\mW$ frozen and learns a correction of low rank,
+$\mW + \mB\mA$, where $\mB$ is $m\times r$ and $\mA$ is $r\times n$ with a
+small $r$ such as $8$. For a $4096\times4096$ matrix this means training
+$2 \times 4096 \times 8 = 65\,536$ numbers instead of about $16.8$ million.
+More broadly, real data often has much lower ``intrinsic dimension'' than the
+number of features suggests: the set of natural images is a tiny, highly
+structured part of $\R^{784}$.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Find the coordinates of $(1, 5)$ in the basis $(1, 1)$, $(-1, 1)$.
+\end{exercise}
+\begin{solution}
+Solve $a(1,1) + b(-1,1) = (1, 5)$: $a - b = 1$ and $a + b = 5$, so $a = 3$ and
+$b = 2$. The coordinates are $(3, 2)$.
+\end{solution}
+
+\begin{exercise}
+Find the rank of (a) $\left(\begin{smallmatrix} 1 & 2\\ 3 & 6\end{smallmatrix}\right)$;
+(b) $\left(\begin{smallmatrix} 1 & 0 & 2\\ 0 & 1 & 3\end{smallmatrix}\right)$;
+(c) $\left(\begin{smallmatrix} 1 & 2 & 3\\ 4 & 5 & 6\\ 7 & 8 &
+9\end{smallmatrix}\right)$.
+\end{exercise}
+\begin{solution}
+(a) $1$: the second row is three times the first. (b) $2$: the two rows are
+independent (and the rank cannot exceed $2$). (c) $2$: elimination gives
+$R_2 - 4R_1 = (0, -3, -6)$ and $R_3 - 7R_1 = (0, -6, -12)$, which is twice the
+new second row, so one row becomes zero. (Equivalently, the third column minus
+twice the second plus the first is zero.)
+\end{solution}
+
+\begin{exercise}
+Find a vector spanning the null space of
+$\left(\begin{smallmatrix} 1 & 2\\ 2 & 4\end{smallmatrix}\right)$ and check
+the rank--nullity theorem.
+\end{exercise}
+\begin{solution}
+$\mA\vx = \vzero$ means $x_1 + 2x_2 = 0$ (the second equation is a multiple of
+the first), so $\vx = t(-2, 1)$. The null space has dimension $1$, the rank is
+$1$, and $1 + 1 = 2$ = number of columns.
+\end{solution}
+
+\begin{exercise}
+A $1000 \times 1000$ matrix has rank $10$. How many numbers are needed to store
+it as a sum of outer products, compared with storing all its entries?
+\end{exercise}
+\begin{solution}
+$10$ outer products of two vectors with $1000$ entries each need
+$10 \times 2000 = 20\,000$ numbers, versus $10^6$ entries: $2\%$ of the
+storage.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Norms: measuring size}\label{sec:norms}
+%----------------------------------------------------------------------
+
+The length $\norm{\vv}$ of \cref{def:norm} is not the only sensible way to
+measure the size of a vector. Any function that behaves like a length is
+called a norm.
+
+\begin{definition}[Norm]\label{def:general-norm}
+A \term{norm} on $\R^n$ is a function $\vv \mapsto \norm{\vv}$ such that for all
+vectors $\vu, \vv$ and scalars $c$:
+\begin{enumerate}
+  \item $\norm{\vv} \ge 0$, and $\norm{\vv} = 0$ only for $\vv = \vzero$;
+  \item $\norm{c\vv} = \abs{c}\,\norm{\vv}$;
+  \item $\norm{\vu + \vv} \le \norm{\vu} + \norm{\vv}$ (triangle inequality).
+\end{enumerate}
+\end{definition}
+
+\begin{definition}[The $L^p$ norms]\label{def:lp-norms}
+For $\vv \in \R^n$:
+\begin{align*}
+  \norm{\vv}_1 &= \abs{v_1} + \dots + \abs{v_n}
+    && \text{($L^1$ or Manhattan norm)},\\
+  \norm{\vv}_2 &= \sqrt{v_1^2 + \dots + v_n^2}
+    && \text{($L^2$ or Euclidean norm)},\\
+  \norm{\vv}_\infty &= \max\left(\abs{v_1}, \dots, \abs{v_n}\right)
+    && \text{($L^\infty$ or maximum norm)},
+\end{align*}
+and in general $\norm{\vv}_p = \left(\sum_i \abs{v_i}^p\right)^{1/p}$ for
+$p \ge 1$.
+\end{definition}
+\index{norm!L1@$L^1$}\index{norm!L2@$L^2$}\index{norm!Linfinity@$L^\infty$}
+
+For $\vv = (3, -4, 0)$: $\norm{\vv}_1 = 7$, $\norm{\vv}_2 = 5$ and
+$\norm{\vv}_\infty = 4$. When no subscript is written, $\norm{\vv}$ means the
+Euclidean norm $\norm{\vv}_2$.
+
+The shape of the \emph{unit ball} $\{\vv : \norm{\vv} \le 1\}$ shows the
+character of each norm (\cref{fig:unit-balls}): a diamond for $L^1$, a disc for
+$L^2$ and a square for $L^\infty$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.7]
+  \draw[-{Stealth[length=2mm]},gray] (-1.45,0) -- (1.5,0) node[right] {$v_1$};
+  \draw[-{Stealth[length=2mm]},gray] (0,-1.45) -- (0,1.5) node[above] {$v_2$};
+  \draw[very thick,PlotGreen] (-1,-1) rectangle (1,1);
+  \draw[very thick,PlotBlue] (0,0) circle (1);
+  \draw[very thick,PlotRed] (1,0) -- (0,1) -- (-1,0) -- (0,-1) -- cycle;
+  \node[PlotRed,font=\small] at (0.28,0.28) {$L^1$};
+  \node[PlotBlue,font=\small] at (0.6,0.6) {$L^2$};
+  \node[PlotGreen!70!black,font=\small,anchor=south west] at (1,1) {$L^\infty$};
+  \node[font=\scriptsize,below right] at (1,0) {$1$};
+  \node[font=\scriptsize,above left] at (0,1) {$1$};
+\end{tikzpicture}
+\caption{Unit balls in $\R^2$: the points with $\norm{\vv}_1 \le 1$ (red
+  diamond), $\norm{\vv}_2 \le 1$ (blue disc) and $\norm{\vv}_\infty \le 1$ (green
+  square).}
+\label{fig:unit-balls}
+\end{figure}
+
+\begin{remark}[Counting non-zeros]
+The number of non-zero entries of $\vv$ is sometimes called the ``$L^0$ norm''
+$\norm{\vv}_0$, although it is not a norm (it fails rule 2). It measures
+\emph{sparsity}: a vector with few non-zero entries is called \term{sparse}.
+\end{remark}
+
+\subsection{Matrix norms}
+
+The simplest way to measure the size of a matrix is to treat its entries as
+one long vector. This gives the \term{Frobenius norm}
+\[
+  \norm{\mA}_F = \sqrt{\sum_{i,j} a_{ij}^2} .
+\]
+Another important measure is the largest factor by which $\mA$ can stretch a
+vector,
+\[
+  \max_{\vx\neq\vzero}\frac{\norm{\mA\vx}}{\norm{\vx}},
+\]
+called the \emph{spectral norm}; we will see in \cref{sec:svd} that it equals
+the largest singular value.
+
+\subsection{Norms in machine learning: regularisation}
+
+\begin{mlnote}[Regularisation and other uses of norms]
+Models with very large weights tend to fit noise in the training data
+(\emph{overfitting}, \cref{ch:statistics}). A standard remedy is
+\term{regularisation}: add a penalty on the size of the weights to the loss,
+\[
+  \text{loss}(\vw) + \lambda\norm{\vw}_2^2
+  \quad\text{(\emph{ridge} or \emph{weight decay})},
+  \qquad
+  \text{loss}(\vw) + \lambda\norm{\vw}_1
+  \quad\text{(\emph{lasso})},
+\]
+where $\lambda > 0$ controls the strength of the penalty. The two penalties
+behave very differently: the $L^1$ penalty tends to make many weights
+\emph{exactly zero} (a sparse model that ignores irrelevant features), while
+the $L^2$ penalty shrinks all weights a little but rarely to zero.
+\Cref{fig:l1-l2} explains why: the corners of the $L^1$ diamond stick out, and
+they lie on the axes.
+
+Norms appear in many other places: \emph{gradient clipping} rescales the
+gradient $\vg$ to $c\,\vg/\norm{\vg}$ whenever $\norm{\vg} > c$, and
+\emph{normalisation layers} rescale activation vectors to a standard size.
+\end{mlnote}
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}{0.48\textwidth}
+\centering
+\begin{tikzpicture}[scale=1.12]
+  \draw[-{Stealth[length=2mm]},gray] (-1.3,0) -- (3.6,0) node[right] {$w_1$};
+  \draw[-{Stealth[length=2mm]},gray] (0,-1.3) -- (0,1.9) node[above] {$w_2$};
+  \fill[PlotRed!15] (1,0) -- (0,1) -- (-1,0) -- (0,-1) -- cycle;
+  \draw[thick,PlotRed] (1,0) -- (0,1) -- (-1,0) -- (0,-1) -- cycle;
+  \foreach \s in {0.5,1,1.5}
+    \draw[MLdef!70] (2,0.4) ellipse ({1.149*\s} and {0.812*\s});
+  \fill (2,0.4) circle (1.3pt) node[above,font=\scriptsize] {loss minimum};
+  \fill[PlotRed] (1,0) circle (2pt);
+  \node[PlotRed,font=\scriptsize,below] at (1,-0.05) {$(1,0)$};
+\end{tikzpicture}
+\caption{$L^1$ constraint: the best point is a corner, $w_2 = 0$.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+\centering
+\begin{tikzpicture}[scale=1.12]
+  \draw[-{Stealth[length=2mm]},gray] (-1.3,0) -- (3.6,0) node[right] {$w_1$};
+  \draw[-{Stealth[length=2mm]},gray] (0,-1.3) -- (0,1.9) node[above] {$w_2$};
+  \fill[PlotBlue!15] (0,0) circle (1);
+  \draw[thick,PlotBlue] (0,0) circle (1);
+  \foreach \s in {0.5,1,1.5}
+    \draw[MLdef!70] (2,0.4) ellipse ({1.053*\s} and {0.745*\s});
+  \fill (2,0.4) circle (1.3pt);
+  \fill[PlotBlue] (0.965,0.260) circle (2pt);
+  \node[PlotBlue,font=\scriptsize,below left] at (0.95,0.22) {$(0.97, 0.26)$};
+\end{tikzpicture}
+\caption{$L^2$ constraint: the best point has both $w_1, w_2 \neq 0$.}
+\end{subfigure}
+\caption{Why $L^1$ regularisation produces sparse weights. The ellipses are
+  contour lines of a loss with its minimum at $(2, 0.4)$. Restricting the
+  weights to the unit ball of a norm, the best allowed point is where the
+  smallest contour touches the ball. The diamond is usually touched first at a
+  corner, where one weight is exactly zero; the disc is touched at a generic
+  point.}
+\label{fig:l1-l2}
+\end{figure}
+
+\sectionexercises
+
+\begin{exercise}
+Compute the $L^1$, $L^2$ and $L^\infty$ norms of $(1, -2, 2)$ and of
+$(-3, 0, 4, 0)$.
+\end{exercise}
+\begin{solution}
+$(1,-2,2)$: $5$, $3$, $2$. $(-3, 0, 4, 0)$: $7$, $5$, $4$.
+\end{solution}
+
+\begin{exercise}
+Which of the points $(0.6, 0.6)$, $(0.9, 0.2)$ and $(0.5, -0.5)$ lie in the
+unit ball of each of the three norms?
+\end{exercise}
+\begin{solution}
+$(0.6, 0.6)$: $L^1$ norm $1.2$ (outside), $L^2$ norm $\approx0.85$ (inside),
+$L^\infty$ norm $0.6$ (inside). $(0.9, 0.2)$: $1.1$ (outside), $\approx 0.92$
+(inside), $0.9$ (inside). $(0.5, -0.5)$: $1$ (on the boundary of the
+diamond), $\approx0.71$ (inside), $0.5$ (inside).
+\end{solution}
+
+\begin{exercise}
+Compute the Frobenius norm of $\left(\begin{smallmatrix} 1 & 2\\ -2 &
+4\end{smallmatrix}\right)$.
+\end{exercise}
+\begin{solution}
+$\sqrt{1 + 4 + 4 + 16} = \sqrt{25} = 5$.
+\end{solution}
+
+\begin{exercise}
+Gradient clipping with threshold $c = 1$ replaces $\vg$ by $\vg/\norm{\vg}$
+whenever $\norm{\vg} > 1$. What happens to $\vg = (3, 4)$ and to
+$\vg = (0.3, 0.4)$?
+\end{exercise}
+\begin{solution}
+$\norm{(3,4)} = 5 > 1$, so it becomes $(0.6, 0.8)$: same direction, length
+$1$. $\norm{(0.3, 0.4)} = 0.5 \le 1$, so it is left unchanged.
+\end{solution}
+
+\begin{exercise}
+For $\vw = (2, -1, 0.5)$ and $\lambda = 0.1$, compute the ridge penalty
+$\lambda\norm{\vw}_2^2$ and the lasso penalty $\lambda\norm{\vw}_1$.
+\end{exercise}
+\begin{solution}
+Ridge: $0.1 \times (4 + 1 + 0.25) = 0.525$. Lasso:
+$0.1 \times (2 + 1 + 0.5) = 0.35$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Orthogonality}\label{sec:orthogonality}
+%----------------------------------------------------------------------
+
+\begin{definition}[Orthonormal vectors]\label{def:orthonormal}
+Vectors $\vq_1, \dots, \vq_k$ are \term{orthonormal} if they are pairwise
+orthogonal and all have length $1$:
+\[
+  \vq_i\cdot\vq_j = \begin{cases} 1 & \text{if } i = j,\\
+  0 & \text{if } i \neq j. \end{cases}
+\]
+\end{definition}
+
+The standard basis is orthonormal, and so are, for example,
+$\vq_1 = \frac{1}{\sqrt2}(1, 1)$ and $\vq_2 = \frac{1}{\sqrt2}(1, -1)$, which
+are the standard basis rotated by $45^\circ$.
+
+\begin{proposition}[Orthogonal vectors are independent]\label{prop:orth-indep}
+Non-zero, pairwise orthogonal vectors are linearly independent.
+\end{proposition}
+
+\begin{proof}
+Suppose $c_1\vq_1 + \dots + c_k\vq_k = \vzero$. Take the dot product of both
+sides with $\vq_j$: all terms with $i\neq j$ vanish, leaving
+$c_j\,\vq_j\cdot\vq_j = 0$. Since $\vq_j\cdot\vq_j = \norm{\vq_j}^2 > 0$, we get
+$c_j = 0$, for every $j$.
+\end{proof}
+
+\subsection{Coordinates in an orthonormal basis are easy}
+
+In a general basis, finding coordinates means solving a linear system
+(\cref{ex:coordinates}). In an orthonormal basis $\vq_1, \dots, \vq_n$ it is
+just a dot product: if $\vv = c_1\vq_1 + \dots + c_n\vq_n$, taking the dot
+product with $\vq_j$ gives $c_j = \vv\cdot\vq_j$. So
+\[
+  \keyeq{\vv = (\vv\cdot\vq_1)\,\vq_1 + (\vv\cdot\vq_2)\,\vq_2 + \dots
+  + (\vv\cdot\vq_n)\,\vq_n}
+\]
+Each coordinate is the scalar projection of $\vv$ onto one of the basis
+directions (\cref{fig:projection-shadow}). For $\vv = (5, 1)$ and the rotated
+basis above: $\vv\cdot\vq_1 = \frac{6}{\sqrt2} = 3\sqrt2$ and
+$\vv\cdot\vq_2 = \frac{4}{\sqrt2} = 2\sqrt2$, and indeed
+$3\sqrt2\,\vq_1 + 2\sqrt2\,\vq_2 = (3, 3) + (2, -2) = (5, 1)$.
+
+\subsection{Orthogonal matrices}
+
+\begin{definition}[Orthogonal matrix]\label{def:orthogonal-matrix}
+A square matrix $\mQ$ whose columns are orthonormal is called an
+\term{orthogonal matrix}. Equivalently, $\mQ^\top\mQ = \mI$, which means
+\[
+  \mQ^{-1} = \mQ^\top .
+\]
+\end{definition}
+
+The equivalence is just the definition of matrix multiplication: the $(i,j)$
+entry of $\mQ^\top\mQ$ is $\vq_i\cdot\vq_j$. Orthogonal matrices are wonderful to
+work with, because inverting them costs nothing.
+
+\begin{theorem}[Orthogonal matrices preserve lengths and angles]
+\label{thm:orthogonal-preserve}
+If $\mQ$ is orthogonal, then $\norm{\mQ\vx} = \norm{\vx}$ and
+$(\mQ\vx)\cdot(\mQ\vy) = \vx\cdot\vy$ for all $\vx, \vy$. Also
+$\det\mQ = \pm1$.
+\end{theorem}
+
+\begin{proof}
+$(\mQ\vx)\cdot(\mQ\vy) = (\mQ\vx)^\top(\mQ\vy) = \vx^\top\mQ^\top\mQ\vy =
+\vx^\top\vy$; taking $\vy = \vx$ gives the statement about lengths. Finally,
+$1 = \det(\mQ^\top\mQ) = \det(\mQ)^2$.
+\end{proof}
+
+Geometrically, orthogonal matrices are the \emph{rigid motions} that keep the
+origin fixed: rotations ($\det = 1$) and reflections ($\det = -1$). The
+rotation matrices $\mR_\alpha$ of \cref{ch:linalg1} are the main example.
+
+\subsection{The Gram--Schmidt process}
+
+Any set of independent vectors can be turned into an orthonormal set with the
+same span. The idea: take the vectors one at a time, subtract from each its
+components along the directions already chosen, and normalise what is left.
+
+\begin{algorithm}[Gram--Schmidt]\label{alg:gram-schmidt}
+Given independent vectors $\vv_1, \dots, \vv_k$:
+\begin{steps}
+  \item Set $\vq_1 = \vv_1/\norm{\vv_1}$.
+  \item For $j = 2, \dots, k$: remove the components along the previous
+    directions, $\vw_j = \vv_j - \sum_{i<j} (\vv_j\cdot\vq_i)\,\vq_i$, and
+    normalise, $\vq_j = \vw_j/\norm{\vw_j}$.
+\end{steps}
+\end{algorithm}
+
+\begin{example}[Gram--Schmidt in the plane]
+Orthonormalise $\vv_1 = (3, 4)$, $\vv_2 = (1, 0)$.
+
+\sol $\vq_1 = \frac15(3, 4) = (0.6, 0.8)$. Next,
+$\vv_2\cdot\vq_1 = 0.6$, so $\vw_2 = (1, 0) - 0.6\,(0.6, 0.8) = (0.64, -0.48)$,
+whose length is $0.8$; hence $\vq_2 = (0.8, -0.6)$.
+\emph{Check:} $\vq_1\cdot\vq_2 = 0.48 - 0.48 = 0$. \checkmark
+\end{example}
+
+Applied to the columns of a matrix $\mA$, Gram--Schmidt produces the
+factorisation $\mA = \mQ\mR$, with $\mQ$ having orthonormal columns and $\mR$
+upper triangular. Numerical software uses this \emph{QR decomposition} to
+solve least-squares problems accurately.
+
+\begin{mlnote}
+Orthogonal matrices neither stretch nor shrink vectors, so a signal multiplied
+by many of them neither explodes nor vanishes. This motivates \emph{orthogonal
+initialisation} of the weights of deep and recurrent networks. Orthonormal
+bases are also what make principal component analysis (\cref{sec:pca})
+convenient: the new coordinates of a data point are just dot products.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Show that $\vq_1 = \frac13(1, 2, 2)$, $\vq_2 = \frac13(2, 1, -2)$ and
+$\vq_3 = \frac13(2, -2, 1)$ form an orthonormal basis of $\R^3$, and find the
+coordinates of $\vv = (3, 0, 3)$ in this basis.
+\end{exercise}
+\begin{solution}
+Dot products: $\vq_1\cdot\vq_2 = \tfrac19(2 + 2 - 4) = 0$,
+$\vq_1\cdot\vq_3 = \tfrac19(2 - 4 + 2) = 0$, $\vq_2\cdot\vq_3 = \tfrac19(4 - 2 - 2)
+= 0$; each has squared length $\tfrac19(1 + 4 + 4) = 1$. Three orthonormal
+vectors in $\R^3$ are independent and hence a basis. Coordinates:
+$\vv\cdot\vq_1 = \tfrac13(3 + 0 + 6) = 3$, $\vv\cdot\vq_2 = \tfrac13(6 + 0 - 6) =
+0$, $\vv\cdot\vq_3 = \tfrac13(6 + 0 + 3) = 3$. Check: $3\vq_1 + 3\vq_3 = (1, 2,
+2) + (2, -2, 1) = (3, 0, 3)$.
+\end{solution}
+
+\begin{exercise}
+Apply Gram--Schmidt to $\vv_1 = (1, 1, 0)$ and $\vv_2 = (1, 0, 1)$.
+\end{exercise}
+\begin{solution}
+$\vq_1 = \tfrac{1}{\sqrt2}(1, 1, 0)$. $\vv_2\cdot\vq_1 = \tfrac{1}{\sqrt2}$, so
+$\vw_2 = (1, 0, 1) - \tfrac{1}{\sqrt2}\cdot\tfrac{1}{\sqrt2}(1, 1, 0) = (0.5,
+-0.5, 1)$, with length $\sqrt{1.5}$. So $\vq_2 = \tfrac{1}{\sqrt{6}}(1, -1, 2)$.
+Check: $\vq_1\cdot\vq_2 = \tfrac{1}{\sqrt{12}}(1 - 1 + 0) = 0$.
+\end{solution}
+
+\begin{exercise}
+Verify that the rotation matrix $\mR_\alpha$ satisfies
+$\mR_\alpha^\top\mR_\alpha = \mI$. What is $\mR_\alpha^{-1}$?
+\end{exercise}
+\begin{solution}
+$\mR_\alpha^\top\mR_\alpha = \left(\begin{smallmatrix} \cos\alpha & \sin\alpha\\
+-\sin\alpha & \cos\alpha\end{smallmatrix}\right)\left(\begin{smallmatrix}
+\cos\alpha & -\sin\alpha\\ \sin\alpha & \cos\alpha\end{smallmatrix}\right) =
+\left(\begin{smallmatrix} \cos^2\alpha + \sin^2\alpha & 0\\ 0 & \sin^2\alpha +
+\cos^2\alpha\end{smallmatrix}\right) = \mI$. Hence
+$\mR_\alpha^{-1} = \mR_\alpha^\top = \mR_{-\alpha}$, the rotation by $-\alpha$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Projections and least squares}\label{sec:projections}
+%----------------------------------------------------------------------
+
+\begin{motivation}
+Linear regression, the most basic model of machine learning, asks for the
+weights that make $\mX\vw$ as close as possible to the targets $\vy$. This
+section shows that the answer is a \emph{projection}: drop a perpendicular
+from $\vy$ onto the column space of $\mX$. The geometry gives the famous
+normal equations almost for free.
+\end{motivation}
+
+\subsection{Projecting onto a line}
+
+Given a vector $\vb$ and a line through the origin in the direction $\va$, which
+point $\vp$ of the line is closest to $\vb$? The picture
+(\cref{fig:projection-line}) suggests the answer: the point where the error
+$\ve = \vb - \vp$ is perpendicular to the line.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.15]
+  \coordinate (O) at (0,0);
+  \draw[gray!60,thick] (-0.8,-0.4) -- (4.2,2.1);
+  \draw[vec,PlotRed] (O) -- (2,1) node[below right] {$\vp = (2, 1)$};
+  \draw[vec,PlotBlue] (O) -- (1,3) node[above] {$\vb = (1,3)$};
+  \draw[vec,PlotOrange] (2,1) -- (1,3) node[midway,right=2pt] {$\ve = \vb - \vp$};
+  \draw[vec,thick,black] (O) -- (1,0.5) node[below right=-1pt] {$\va$};
+  \draw (2,1) ++(-0.18,-0.09) -- ++(-0.09,0.18) -- ++(0.18,0.09);
+  \node[gray,font=\small,anchor=west] at (4.2,2.1) {line through $\va$};
+\end{tikzpicture}
+\caption{Projecting $\vb = (1,3)$ onto the line spanned by $\va$. The
+  projection $\vp$ is the closest point of the line to $\vb$; the error
+  $\ve = \vb - \vp$ is perpendicular to the line.}
+\label{fig:projection-line}
+\end{figure}
+
+\begin{theorem}[Projection onto a line]\label{thm:projection-line}
+The projection of $\vb$ onto the line spanned by $\va \neq \vzero$ is
+\[
+  \keyeq{\proj_{\va}(\vb) = \frac{\va\cdot\vb}{\va\cdot\va}\,\va}
+\]
+It is the point of the line closest to $\vb$, and the error
+$\vb - \proj_{\va}(\vb)$ is orthogonal to $\va$.
+\end{theorem}
+
+\begin{proof}
+Points of the line are $t\va$. Requiring the error to be perpendicular to
+$\va$: $\va\cdot(\vb - t\va) = 0$, i.e.\ $\va\cdot\vb - t\,\va\cdot\va = 0$, so
+$t = \frac{\va\cdot\vb}{\va\cdot\va}$. To see that this point is the closest,
+take any other point $\vq$ on the line. The vectors $\vb - \vp$ and $\vp - \vq$
+are perpendicular (the second lies along the line), so by Pythagoras
+$\norm{\vb - \vq}^2 = \norm{\vb - \vp}^2 + \norm{\vp - \vq}^2 \ge \norm{\vb -
+\vp}^2$.
+\end{proof}
+
+\begin{example}[Projecting onto a line]
+Project $\vb = (1, 3)$ onto the line spanned by $\va = (2, 1)$.
+
+\sol $\va\cdot\vb = 2 + 3 = 5$ and $\va\cdot\va = 5$, so $\vp = 1\cdot\va =
+(2, 1)$. The error is $\ve = (1, 3) - (2, 1) = (-1, 2)$, and indeed
+$\ve\cdot\va = -2 + 2 = 0$. The distance from $\vb$ to the line is
+$\norm{\ve} = \sqrt5$.
+\end{example}
+
+In matrix form, $\proj_{\va}(\vb) = \mP\vb$ with the \term{projection matrix}
+$\mP = \frac{\va\va^\top}{\va^\top\va}$. Projecting twice changes nothing, so
+$\mP^2 = \mP$.
+
+\subsection{Projecting onto a subspace}
+
+Now project $\vb \in \R^n$ onto the column space of an $n\times d$ matrix $\mA$
+with independent columns. The projection has the form $\vp = \mA\hat\vx$ for some
+coefficient vector $\hat\vx$. As before, the error $\vb - \mA\hat\vx$ must be
+perpendicular to the whole subspace, i.e.\ to every column of $\mA$. Collecting
+these $d$ conditions ``column $\cdot$ error $= 0$'' into one matrix equation:
+\[
+  \mA^\top(\vb - \mA\hat\vx) = \vzero .
+\]
+
+\begin{theorem}[Normal equations]\label{thm:normal-equations}
+The vector $\hat\vx$ that minimises $\norm{\mA\vx - \vb}$ satisfies the
+\term{normal equations}
+\[
+  \keyeq{\mA^\top\mA\,\hat\vx = \mA^\top\vb}
+\]
+If the columns of $\mA$ are independent, $\mA^\top\mA$ is invertible and
+$\hat\vx = (\mA^\top\mA)^{-1}\mA^\top\vb$.
+\end{theorem}
+
+(The name comes from ``normal'' in the sense of perpendicular.) The minimiser
+is called the \term{least-squares} solution, because $\norm{\mA\vx - \vb}^2$ is
+a sum of squared errors.
+
+\subsection{Linear regression as a projection}
+
+\begin{example}[Fitting a line by least squares]\label{ex:least-squares}
+In the last exercise of \cref{ch:linalg1} we found that no line passes through
+$(1, 2)$, $(2, 3)$ and $(3, 5)$. Find the line $y = w_1x + w_0$ that fits them
+best in the least-squares sense.
+
+\sol The equations $w_1x_i + w_0 = y_i$ are $\mX\vw = \vy$ with
+\[
+  \mX = \begin{pmatrix} 1 & 1\\ 2 & 1\\ 3 & 1\end{pmatrix},\qquad
+  \vw = \begin{pmatrix} w_1\\ w_0\end{pmatrix},\qquad
+  \vy = \begin{pmatrix} 2\\ 3\\ 5\end{pmatrix}.
+\]
+(The column of ones multiplies the intercept $w_0$.) Then
+\[
+  \mX^\top\mX = \begin{pmatrix} 14 & 6\\ 6 & 3\end{pmatrix},\qquad
+  \mX^\top\vy = \begin{pmatrix} 23\\ 10\end{pmatrix}.
+\]
+Using the $2\times2$ inverse formula ($\det = 42 - 36 = 6$):
+\[
+  \hat\vw = \frac16\begin{pmatrix} 3 & -6\\ -6 & 14\end{pmatrix}
+  \begin{pmatrix} 23\\ 10\end{pmatrix}
+  = \frac16\begin{pmatrix} 9\\ 2\end{pmatrix}
+  = \begin{pmatrix} 1.5\\ 0.333\ldots\end{pmatrix}.
+\]
+The best line is $y = 1.5x + \tfrac13$ (\cref{fig:least-squares}). Its
+predictions are $(1.83, 3.33, 4.83)$ and the errors (\emph{residuals}) are
+$(0.17, -0.33, 0.17)$, with sum of squares $\tfrac16$. As the theory predicts,
+the residual vector is orthogonal to both columns of $\mX$:
+$1(0.17) + 2(-0.33) + 3(0.17) = 0$ and $0.17 - 0.33 + 0.17 = 0$.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=8cm,height=6.5cm,xmin=0,xmax=4,ymin=0,ymax=6.5,
+  xlabel=$x$,ylabel=$y$,xtick={0,...,4},ytick={0,...,6},
+  xlabel style={anchor=north,at={(axis description cs:0.5,-0.07)}},
+  ylabel style={anchor=east,at={(axis description cs:-0.06,0.5)}}]
+  \addplot[PlotBlue,domain=0:4]{1.5*x+1/3};
+  \draw[PlotRed,thick] (axis cs:1,2) -- (axis cs:1,1.8333);
+  \draw[PlotRed,thick] (axis cs:2,3) -- (axis cs:2,3.3333);
+  \draw[PlotRed,thick] (axis cs:3,5) -- (axis cs:3,4.8333);
+  \addplot[only marks,mark=*,mark size=2.4pt,black] coordinates {(1,2) (2,3) (3,5)};
+  \node[PlotBlue,font=\small,anchor=west] at (axis cs:0.4,5.4) {$y = 1.5x + \tfrac13$};
+\end{axis}
+\end{tikzpicture}
+\caption{The least-squares line through three points. The red segments are the
+  residuals; the line minimises the sum of their squares.}
+\label{fig:least-squares}
+\end{figure}
+
+\begin{mlnote}[Linear regression in one sentence]
+\emph{Least-squares linear regression projects the target vector $\vy$ onto the
+column space of the data matrix $\mX$.} The fitted values $\hat\vy = \mX\hat\vw$
+are the projection, the residuals $\vy - \hat\vy$ are orthogonal to every
+feature column, and the weights solve $\mX^\top\mX\hat\vw = \mX^\top\vy$. In
+practice, libraries solve this with the QR or singular value decomposition
+(for example \texttt{np.linalg.lstsq}), which is more accurate than forming
+$\mX^\top\mX$. We will derive the same equations with calculus in
+\cref{ch:optimization}.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Project $\vb = (3, 1)$ onto the line spanned by $\va = (1, 1)$, and verify
+that the error is orthogonal to $\va$.
+\end{exercise}
+\begin{solution}
+$\tfrac{\va\cdot\vb}{\va\cdot\va} = \tfrac42 = 2$, so $\vp = (2, 2)$. Error
+$\ve = (1, -1)$, and $\ve\cdot\va = 1 - 1 = 0$.
+\end{solution}
+
+\begin{exercise}
+Project $\vb = (1, 2, 3)$ onto the line spanned by $\va = (1, 0, 1)$. How far is
+$\vb$ from the line?
+\end{exercise}
+\begin{solution}
+$\va\cdot\vb = 4$, $\va\cdot\va = 2$, so $\vp = 2\va = (2, 0, 2)$. The error is
+$(-1, 2, 1)$ (check: $-1 + 0 + 1 = 0$), and the distance is
+$\sqrt{1 + 4 + 1} = \sqrt6 \approx 2.45$.
+\end{solution}
+
+\begin{exercise}
+Find the least-squares line through $(0, 1)$, $(1, 3)$ and $(2, 4)$.
+\end{exercise}
+\begin{solution}
+$\mX = \left(\begin{smallmatrix} 0 & 1\\ 1 & 1\\ 2 & 1\end{smallmatrix}\right)$,
+$\vy = (1, 3, 4)$. $\mX^\top\mX = \left(\begin{smallmatrix} 5 & 3\\ 3 &
+3\end{smallmatrix}\right)$ and $\mX^\top\vy = (11, 8)$. With $\det = 6$:
+$\hat\vw = \tfrac16\left(\begin{smallmatrix} 3 & -3\\ -3 &
+5\end{smallmatrix}\right)(11, 8) = \tfrac16(9, 7) = (1.5, 1.1\overline{6})$. The
+line is $y = 1.5x + \tfrac76$, with residuals $(-\tfrac16, \tfrac13,
+-\tfrac16)$, which sum to zero.
+\end{solution}
+
+\begin{exercise}
+Fit a constant model $\hat y = c$ to the data $y = (2, 4, 9)$ by least squares,
+using the normal equations with $\mX$ a single column of ones. Compare with
+\cref{sec:polynomials}.
+\end{exercise}
+\begin{solution}
+$\mX^\top\mX = 3$ (the number of data points) and $\mX^\top\vy = 2 + 4 + 9 =
+15$, so $c = 5$: the mean, as found with the vertex formula in
+\cref{sec:polynomials}.
+\end{solution}
+
+\begin{exercise}
+Show that the projection matrix $\mP = \frac{\va\va^\top}{\va^\top\va}$
+satisfies $\mP^2 = \mP$ and $\mP^\top = \mP$. Explain $\mP^2 = \mP$
+geometrically.
+\end{exercise}
+\begin{solution}
+$\mP^2 = \frac{\va(\va^\top\va)\va^\top}{(\va^\top\va)^2} =
+\frac{\va\va^\top}{\va^\top\va} = \mP$, using associativity and the fact that
+$\va^\top\va$ is a number. And $(\va\va^\top)^\top = \va\va^\top$. Geometrically:
+once a vector has been projected onto the line, it is on the line, so
+projecting it again leaves it where it is.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Eigenvalues and eigenvectors}\label{sec:eigen}
+%----------------------------------------------------------------------
+
+\begin{motivation}
+A matrix typically turns vectors in all sorts of directions. But for most
+square matrices there are a few special directions that are left alone:
+vectors along them are only stretched or shrunk. These \emph{eigenvectors}
+(from the German \emph{eigen}, ``own'' or ``characteristic'') reveal the
+skeleton of a transformation. They tell us the main axes of variation in data
+(principal component analysis), whether repeated multiplication explodes or
+dies out (recurrent networks, Markov chains, PageRank), and how curved a loss
+surface is (\cref{ch:multivariable,ch:optimization}).
+\end{motivation}
+
+\subsection{The idea}
+
+Consider $\mA = \left(\begin{smallmatrix} 2 & 1\\ 1 & 2\end{smallmatrix}\right)$
+and apply it to a few vectors (\cref{fig:eigenvectors}):
+\[
+  \mA\begin{pmatrix} 1\\ 0\end{pmatrix} = \begin{pmatrix} 2\\ 1\end{pmatrix},
+  \qquad
+  \mA\begin{pmatrix} 1\\ 1\end{pmatrix} = \begin{pmatrix} 3\\ 3\end{pmatrix}
+  = 3\begin{pmatrix} 1\\ 1\end{pmatrix},
+  \qquad
+  \mA\begin{pmatrix} 1\\ -1\end{pmatrix} = \begin{pmatrix} 1\\ -1\end{pmatrix}
+  = 1\begin{pmatrix} 1\\ -1\end{pmatrix}.
+\]
+The vector $(1, 0)$ is knocked off its line. But $(1, 1)$ stays on its line and
+is stretched by a factor $3$, and $(1, -1)$ stays exactly where it is (factor
+$1$).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.95]
+  \draw[gray!22] (-2.5,-2.5) grid (3.5,3.5);
+  \draw[-{Stealth[length=2mm]},gray] (-2.5,0) -- (3.7,0);
+  \draw[-{Stealth[length=2mm]},gray] (0,-2.5) -- (0,3.7);
+  \draw[dashed,gray] (0,0) circle (1);
+  \draw[MLdef,thick,rotate=45] (0,0) ellipse (3 and 1);
+  \draw[gray!60,thin] (-2.5,-2.5) -- (3.5,3.5);
+  \draw[gray!60,thin] (-2.5,2.5) -- (2.5,-2.5);
+  \draw[vec,PlotGreen!60] (0,0) -- (1,0);
+  \draw[vec,PlotGreen!70!black] (0,0) -- (2,1) node[right,font=\small] {$\mA(1,0) = (2,1)$};
+  \draw[vec,PlotRed!45] (0,0) -- (0.707,0.707);
+  \draw[vec,PlotRed] (0,0) -- (2.121,2.121) node[above left,font=\small] {$3\vv_1$};
+  \draw[vec,PlotBlue] (0,0) -- (0.707,-0.707) node[below right,font=\small] {$\vv_2 = \mA\vv_2$};
+\end{tikzpicture}
+\caption{The matrix $\left(\begin{smallmatrix} 2 & 1\\ 1 &
+  2\end{smallmatrix}\right)$ maps the unit circle (dashed) to the ellipse.
+  Vectors along the eigenvector directions (grey lines) stay on their lines:
+  the unit vector $\vv_1$ along $(1,1)$ is stretched by $3$, and $\vv_2$ along
+  $(1,-1)$ is unchanged. Other vectors, such as $(1, 0)$ (green), change
+  direction.}
+\label{fig:eigenvectors}
+\end{figure}
+
+\begin{definition}[Eigenvalue and eigenvector]\label{def:eigen}
+Let $\mA$ be a square matrix. A non-zero vector $\vv$ is an
+\term{eigenvector} of $\mA$, with \term{eigenvalue} $\lambda$ (``lambda''), if
+\[
+  \keyeq{\mA\vv = \lambda\vv}
+\]
+\end{definition}
+
+Any non-zero multiple of an eigenvector is again an eigenvector with the same
+eigenvalue, so really an eigenvector stands for a whole direction. The
+eigenvalue says what happens along that direction: $\lambda > 1$ stretches,
+$0 < \lambda < 1$ shrinks, $\lambda < 0$ flips, and $\lambda = 0$ squashes the
+direction to zero (so $\mA$ is singular).
+
+\begin{example}[Eigenvectors you can see]
+(a) For the diagonal matrix $\left(\begin{smallmatrix} 3 & 0\\ 0 &
+0.5\end{smallmatrix}\right)$, the eigenvectors are $\ve_1$ (eigenvalue $3$) and
+$\ve_2$ (eigenvalue $0.5$): it stretches the $x_1$-axis and shrinks the
+$x_2$-axis.
+(b) The projection onto the $x_1$-axis has eigenvalue $1$ for $\ve_1$ (left
+alone) and $0$ for $\ve_2$ (squashed).
+(c) A rotation by $90^\circ$ has no real eigenvectors at all: it moves every
+non-zero vector off its line.
+\end{example}
+
+\subsection{Finding eigenvalues}
+
+$\mA\vv = \lambda\vv$ can be rewritten as $(\mA - \lambda\mI)\vv = \vzero$. A
+non-zero solution $\vv$ exists exactly when $\mA - \lambda\mI$ is singular, i.e.
+when its determinant is zero.
+
+\begin{theorem}[Characteristic equation]\label{thm:characteristic}
+The eigenvalues of $\mA$ are the solutions $\lambda$ of
+\[
+  \det(\mA - \lambda\mI) = 0 .
+\]
+For a $2\times2$ matrix $\mA = \left(\begin{smallmatrix} a & b\\ c &
+d\end{smallmatrix}\right)$ this is the quadratic equation
+\[
+  \lambda^2 - (a + d)\lambda + (ad - bc) = 0,
+\]
+i.e.\ $\lambda^2 - \tr(\mA)\,\lambda + \det(\mA) = 0$, where the \term{trace}
+$\tr(\mA) = a + d$ is the sum of the diagonal entries.
+\end{theorem}
+
+Once an eigenvalue $\lambda$ is known, its eigenvectors are the non-zero
+solutions of $(\mA - \lambda\mI)\vv = \vzero$, found by elimination.
+
+\begin{example}[Computing eigenvalues and eigenvectors]\label{ex:eigen-computation}
+Find the eigenvalues and eigenvectors of $\mA = \left(\begin{smallmatrix} 4 &
+1\\ 2 & 3\end{smallmatrix}\right)$.
+
+\sol $\tr\mA = 7$ and $\det\mA = 12 - 2 = 10$, so the characteristic equation is
+$\lambda^2 - 7\lambda + 10 = 0$, i.e.\ $(\lambda - 5)(\lambda - 2) = 0$. The
+eigenvalues are $\lambda_1 = 5$ and $\lambda_2 = 2$.
+
+For $\lambda_1 = 5$: $\mA - 5\mI = \left(\begin{smallmatrix} -1 & 1\\ 2 &
+-2\end{smallmatrix}\right)$; both rows say $v_1 = v_2$, so $\vv_1 = (1, 1)$.
+
+For $\lambda_2 = 2$: $\mA - 2\mI = \left(\begin{smallmatrix} 2 & 1\\ 2 &
+1\end{smallmatrix}\right)$; the rows say $2v_1 + v_2 = 0$, so
+$\vv_2 = (1, -2)$.
+
+\emph{Check:} $\mA(1, -2) = (4 - 2, 2 - 6) = (2, -4) = 2(1, -2)$. \checkmark
+\end{example}
+
+\begin{proposition}[Trace and determinant]\label{prop:trace-det}
+The sum of the eigenvalues of a matrix equals its trace, and their product
+equals its determinant. (Above: $5 + 2 = 7$ and $5 \times 2 = 10$.)
+\end{proposition}
+
+\subsection{Diagonalisation and powers}
+
+If an $n\times n$ matrix has $n$ independent eigenvectors $\vv_1, \dots, \vv_n$
+with eigenvalues $\lambda_1, \dots, \lambda_n$, put the eigenvectors as the
+columns of $\mV$ and the eigenvalues on the diagonal of $\mLambda$
+(``capital lambda''). The equations $\mA\vv_i = \lambda_i\vv_i$, written side by
+side, say $\mA\mV = \mV\mLambda$, i.e.
+\[
+  \keyeq{\mA = \mV\mLambda\mV^{-1}}
+\]
+This \term{eigendecomposition} says: in the coordinate system of the
+eigenvectors, $\mA$ is just a diagonal matrix, a pure stretch along each axis.
+
+It makes powers easy: $\mA^k = \mV\mLambda^k\mV^{-1}$, and $\mLambda^k$ is
+diagonal with entries $\lambda_i^k$. In particular, applying $\mA$ many times
+to a vector amplifies its component along the eigenvector with the largest
+$\abs{\lambda}$ and suppresses the others.
+
+\begin{example}[Repeated multiplication]\label{ex:power-iteration}
+For $\mA = \left(\begin{smallmatrix} 2 & 1\\ 1 & 2\end{smallmatrix}\right)$,
+compute $\mA^k\vx$ for $\vx = (1, 0)$.
+
+\sol Write $\vx$ in the eigenvector basis: $(1, 0) = \frac12(1, 1) +
+\frac12(1, -1)$. Then
+\[
+  \mA^k\vx = \tfrac12\cdot3^k(1, 1) + \tfrac12\cdot1^k(1, -1).
+\]
+For large $k$ the first term dominates, so $\mA^k\vx$ points almost exactly
+along the eigenvector $(1, 1)$ and grows like $3^k$. Repeatedly multiplying and
+normalising is a practical algorithm (\emph{power iteration}) for finding the
+dominant eigenvector.
+\end{example}
+
+\subsection{Symmetric matrices}
+
+Symmetric matrices, which are everywhere in machine learning (covariance
+matrices, $\mX^\top\mX$, Hessians), have particularly nice eigenvectors.
+
+\begin{theorem}[Spectral theorem]\label{thm:spectral}
+A real symmetric matrix $\mA$ has only real eigenvalues, and it has an
+orthonormal basis of eigenvectors. Hence
+\[
+  \mA = \mQ\mLambda\mQ^\top ,
+\]
+where $\mQ$ is orthogonal (its columns are the orthonormal eigenvectors) and
+$\mLambda$ is diagonal (the eigenvalues).
+\end{theorem}
+
+Geometrically: a symmetric matrix rotates into its eigenvector coordinates
+($\mQ^\top$), stretches along the axes ($\mLambda$), and rotates back ($\mQ$).
+This is exactly what \cref{fig:eigenvectors} shows: perpendicular eigenvector
+directions, stretched by $3$ and by $1$, turning the circle into an ellipse.
+
+\begin{mlnote}[Where eigenvalues show up]
+Eigenvalues appear across machine learning.
+\begin{itemize}
+  \item \textbf{Principal component analysis:} the eigenvectors of a data set's
+    covariance matrix are its main directions of variation
+    (\cref{sec:pca}).
+  \item \textbf{Exploding and vanishing gradients:} a recurrent network
+    multiplies its state by the same matrix at every time step. Components along
+    eigenvectors with $\abs{\lambda} > 1$ explode, and those with
+    $\abs{\lambda} < 1$ vanish, exactly as in \cref{ex:power-iteration}.
+  \item \textbf{Curvature:} the eigenvalues of the Hessian matrix of a loss
+    measure how sharply it curves in each direction; they decide whether a
+    point is a minimum or a saddle and how large the learning rate may be
+    (\cref{ch:multivariable,ch:optimization}).
+  \item \textbf{PageRank and Markov chains:} the long-run importance of web
+    pages is the dominant eigenvector of a matrix of link probabilities.
+\end{itemize}
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Find the eigenvalues and eigenvectors of (a) $\left(\begin{smallmatrix} 3 & 0\\
+0 & -2\end{smallmatrix}\right)$; (b) $\left(\begin{smallmatrix} 5 & 2\\ 2 &
+2\end{smallmatrix}\right)$. In (b), check that the eigenvectors are orthogonal.
+\end{exercise}
+\begin{solution}
+(a) $3$ with eigenvector $\ve_1$, and $-2$ with eigenvector $\ve_2$.
+(b) $\tr = 7$, $\det = 6$: $\lambda^2 - 7\lambda + 6 = 0$, so $\lambda = 6$ or
+$\lambda = 1$. For $6$: $\left(\begin{smallmatrix} -1 & 2\\ 2 &
+-4\end{smallmatrix}\right)\vv = \vzero$ gives $\vv = (2, 1)$. For $1$:
+$\left(\begin{smallmatrix} 4 & 2\\ 2 & 1\end{smallmatrix}\right)\vv = \vzero$
+gives $\vv = (1, -2)$. Indeed $(2,1)\cdot(1,-2) = 0$, as the spectral theorem
+predicts for a symmetric matrix.
+\end{solution}
+
+\begin{exercise}
+Check that $(1, -1)$ is an eigenvector of $\left(\begin{smallmatrix} 3 & 1\\ 1
+& 3\end{smallmatrix}\right)$ and find its eigenvalue. Then find the other
+eigenvalue using the trace.
+\end{exercise}
+\begin{solution}
+$\left(\begin{smallmatrix} 3 & 1\\ 1 & 3\end{smallmatrix}\right)(1, -1) =
+(2, -2) = 2(1, -1)$: eigenvalue $2$. The eigenvalues add up to the trace $6$,
+so the other one is $4$ (with eigenvector $(1, 1)$).
+\end{solution}
+
+\begin{exercise}
+Show that the rotation by $90^\circ$,
+$\left(\begin{smallmatrix} 0 & -1\\ 1 & 0\end{smallmatrix}\right)$, has no
+real eigenvalues.
+\end{exercise}
+\begin{solution}
+The characteristic equation is $\lambda^2 - 0\cdot\lambda + 1 = 0$, i.e.\
+$\lambda^2 = -1$, which has no real solution. (It has the complex solutions
+$\pm i$, which is how rotations are described in the complex numbers.)
+\end{solution}
+
+\begin{exercise}
+Find the eigenvalues of $\left(\begin{smallmatrix} 1 & 4\\ 2 &
+3\end{smallmatrix}\right)$ and check \cref{prop:trace-det}.
+\end{exercise}
+\begin{solution}
+$\lambda^2 - 4\lambda - 5 = 0$, i.e.\ $(\lambda - 5)(\lambda + 1) = 0$:
+$\lambda = 5$ and $\lambda = -1$. Sum $4$ = trace; product $-5$ = determinant
+$3 - 8$.
+\end{solution}
+
+\begin{exercise}
+A recurrent network multiplies its hidden state by
+$\mW = \left(\begin{smallmatrix} 0.5 & 0\\ 0 & 1.2\end{smallmatrix}\right)$ at
+every time step. Starting from $\vh = (1, 1)$, compute the state after $10$
+steps and comment.
+\end{exercise}
+\begin{solution}
+$\mW^{10}\vh = (0.5^{10}, 1.2^{10}) \approx (0.00098, 6.19)$. The component
+along the eigenvector with eigenvalue $0.5$ has almost vanished, while the
+one with eigenvalue $1.2$ has grown more than sixfold; over $100$ steps it
+would grow by a factor of about $8\times10^7$. This is the vanishing/exploding
+behaviour of recurrent networks.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{The singular value decomposition}\label{sec:svd}
+%----------------------------------------------------------------------
+
+\begin{motivation}
+Eigendecomposition only works for square matrices, and not even for all of
+them. The \emph{singular value decomposition} (SVD) works for \emph{every}
+matrix, of any shape. It is arguably the most useful single result of applied
+linear algebra: it underlies data compression, principal component analysis,
+recommender systems, least squares and the analysis of neural network weights.
+\end{motivation}
+
+\begin{theorem}[Singular value decomposition]\label{thm:svd}
+Every $m\times n$ matrix $\mA$ can be written as
+\[
+  \keyeq{\mA = \mU\mSigma\mV^\top}
+\]
+where $\mU$ ($m\times m$) and $\mV$ ($n\times n$) are orthogonal matrices and
+$\mSigma$ ($m\times n$) is zero except for the numbers
+$\sigma_1 \ge \sigma_2 \ge \dots \ge 0$ on its main diagonal. The $\sigma_i$
+are the \term[singular value]{singular values} of $\mA$, and the columns
+$\vu_i$ of $\mU$ and $\vv_i$ of $\mV$ are its left and right \emph{singular
+vectors}. They satisfy $\mA\vv_i = \sigma_i\vu_i$.
+\end{theorem}
+
+\begin{intuition}[Rotate, stretch, rotate]
+Reading $\mU\mSigma\mV^\top\vx$ from right to left: $\mV^\top$ rotates (or
+reflects) the input, $\mSigma$ stretches along the coordinate axes by the
+factors $\sigma_i$, and $\mU$ rotates the result into place. So \emph{every}
+linear transformation is a rotation, an axis-aligned stretch and another
+rotation. In two dimensions it maps the unit circle to an ellipse whose
+semi-axes have lengths $\sigma_1$ and $\sigma_2$, pointing along $\vu_1$ and
+$\vu_2$ (\cref{fig:svd}).
+\end{intuition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.62]
+  \begin{scope}
+    \draw[-{Stealth[length=2mm]},gray] (-2.2,0) -- (2.4,0);
+    \draw[-{Stealth[length=2mm]},gray] (0,-2.2) -- (0,2.4);
+    \draw[thick,MLdef] (0,0) circle (1.6);
+    \draw[vec,PlotRed] (0,0) -- (45:1.6) node[above right,font=\small] {$\vv_1$};
+    \draw[vec,PlotBlue] (0,0) -- (-45:1.6) node[below right,font=\small] {$\vv_2$};
+    \node[font=\small] at (0,-3.0) {unit circle};
+  \end{scope}
+  \draw[-{Stealth[length=3mm]},very thick] (3.2,0) -- (5.2,0) node[midway,above] {$\mA$};
+  \begin{scope}[xshift=10cm]
+    \draw[-{Stealth[length=2mm]},gray] (-2.6,0) -- (2.9,0);
+    \draw[-{Stealth[length=2mm]},gray] (0,-4.2) -- (0,4.5);
+    \draw[thick,MLdef,rotate=71.565] (0,0) ellipse ({6.708*0.6} and {2.236*0.6});
+    \draw[vec,PlotRed] (0,0) -- ({2.121*0.6},{6.364*0.6}) node[right,font=\small] {$\sigma_1\vu_1$};
+    \draw[vec,PlotBlue] (0,0) -- ({2.121*0.6},{-0.707*0.6}) node[right,font=\small] {$\sigma_2\vu_2$};
+    \node[font=\small] at (0,-4.7) {its image, an ellipse};
+  \end{scope}
+\end{tikzpicture}
+\caption{The SVD of $\mA = \left(\begin{smallmatrix} 3 & 0\\ 4 &
+  5\end{smallmatrix}\right)$. The perpendicular directions $\vv_1$, $\vv_2$
+  are mapped to the perpendicular axes of an ellipse, of lengths
+  $\sigma_1 = \sqrt{45} \approx 6.71$ and $\sigma_2 = \sqrt5 \approx 2.24$.
+  (The two panels are drawn at different scales.)}
+\label{fig:svd}
+\end{figure}
+
+\subsection{How to find the SVD}
+
+From $\mA = \mU\mSigma\mV^\top$ we get
+$\mA^\top\mA = \mV\mSigma^\top\mU^\top\mU\mSigma\mV^\top =
+\mV(\mSigma^\top\mSigma)\mV^\top$. This is an eigendecomposition of the symmetric
+matrix $\mA^\top\mA$, so:
+\begin{itemize}
+  \item the right singular vectors $\vv_i$ are the eigenvectors of
+    $\mA^\top\mA$;
+  \item the singular values are the square roots of its eigenvalues,
+    $\sigma_i = \sqrt{\lambda_i(\mA^\top\mA)}$;
+  \item the left singular vectors are $\vu_i = \mA\vv_i/\sigma_i$ (for
+    $\sigma_i > 0$).
+\end{itemize}
+
+\begin{example}[An SVD by hand]\label{ex:svd}
+Find the SVD of $\mA = \left(\begin{smallmatrix} 3 & 0\\ 4 &
+5\end{smallmatrix}\right)$.
+
+\sol $\mA^\top\mA = \left(\begin{smallmatrix} 3 & 4\\ 0 &
+5\end{smallmatrix}\right)\left(\begin{smallmatrix} 3 & 0\\ 4 &
+5\end{smallmatrix}\right) = \left(\begin{smallmatrix} 25 & 20\\ 20 &
+25\end{smallmatrix}\right)$, with trace $50$ and determinant $625 - 400 =
+225$. Its eigenvalues solve $\lambda^2 - 50\lambda + 225 = 0$: $\lambda = 45$ and
+$\lambda = 5$, with eigenvectors $\vv_1 = \frac{1}{\sqrt2}(1, 1)$ and
+$\vv_2 = \frac{1}{\sqrt2}(1, -1)$. So $\sigma_1 = \sqrt{45} = 3\sqrt5$ and
+$\sigma_2 = \sqrt5$. Then
+\[
+  \vu_1 = \frac{\mA\vv_1}{\sigma_1} = \frac{(3, 9)/\sqrt2}{3\sqrt5}
+  = \frac{1}{\sqrt{10}}(1, 3),
+  \qquad
+  \vu_2 = \frac{\mA\vv_2}{\sigma_2} = \frac{(3, -1)/\sqrt2}{\sqrt5}
+  = \frac{1}{\sqrt{10}}(3, -1).
+\]
+As a check, $\vu_1\cdot\vu_2 = 0$, and
+$\sigma_1\sigma_2 = 15 = \abs{\det\mA}$.
+\end{example}
+
+\subsection{Low-rank approximation}
+
+Multiplying out $\mU\mSigma\mV^\top$ column by row writes $\mA$ as a sum of
+rank-one matrices, ordered by importance:
+\[
+  \mA = \sigma_1\vu_1\vv_1^\top + \sigma_2\vu_2\vv_2^\top + \dots
+  + \sigma_r\vu_r\vv_r^\top ,
+\]
+where $r$ is the rank (the number of non-zero singular values).
+
+\begin{theorem}[Best low-rank approximation (Eckart--Young)]\label{thm:eckart-young}
+Keeping only the first $k$ terms,
+$\mA_k = \sigma_1\vu_1\vv_1^\top + \dots + \sigma_k\vu_k\vv_k^\top$, gives the
+best approximation of $\mA$ by a matrix of rank $k$, in the sense that it
+minimises $\norm{\mA - \mB}_F$ over all matrices $\mB$ of rank at most $k$.
+The error is $\norm{\mA - \mA_k}_F = \sqrt{\sigma_{k+1}^2 + \dots + \sigma_r^2}$.
+\end{theorem}
+
+For the matrix of \cref{ex:svd}, the best rank-one approximation is
+$\mA_1 = \sigma_1\vu_1\vv_1^\top = \left(\begin{smallmatrix} 1.5 & 1.5\\ 4.5 &
+4.5\end{smallmatrix}\right)$, and the error $\mA - \mA_1 =
+\left(\begin{smallmatrix} 1.5 & -1.5\\ -0.5 & 0.5\end{smallmatrix}\right)$ has
+squared Frobenius norm $5 = \sigma_2^2$, as the theorem predicts.
+
+\begin{mlnote}[The SVD at work]
+The SVD is used throughout machine learning.
+\begin{itemize}
+  \item \textbf{Compression.} A grayscale image is a matrix. If its singular
+    values decay quickly, a rank-$50$ approximation of a $1000\times1000$ image
+    needs only $50\times(1000 + 1000 + 1) \approx 10^5$ numbers instead of
+    $10^6$, and often looks almost identical.
+  \item \textbf{Recommender systems.} A matrix of ratings (users $\times$
+    films) is mostly empty. Assuming it is approximately of low rank, i.e.\
+    that tastes are described by a few hidden factors, lets us fill in the
+    missing ratings. This idea was central to the famous Netflix Prize.
+  \item \textbf{Conditioning.} The ratio $\sigma_1/\sigma_n$ of the largest to
+    the smallest singular value, the \term{condition number}, measures how much
+    a matrix can amplify errors. Badly conditioned problems are hard to solve
+    accurately and slow to optimise.
+  \item \textbf{Principal component analysis} can be computed from the SVD of
+    the centred data matrix (\cref{sec:pca}).
+\end{itemize}
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+What are the singular values of $\left(\begin{smallmatrix} 3 & 0\\ 0 &
+-2\end{smallmatrix}\right)$? Why are they not simply the diagonal entries?
+\end{exercise}
+\begin{solution}
+$\mA^\top\mA = \left(\begin{smallmatrix} 9 & 0\\ 0 & 4\end{smallmatrix}\right)$,
+so the singular values are $3$ and $2$. Singular values are lengths of the
+ellipse's axes and are never negative; the sign of $-2$ is absorbed into one
+of the orthogonal matrices (a reflection).
+\end{solution}
+
+\begin{exercise}
+Find the singular values of $\left(\begin{smallmatrix} 1 & 1\\ 1 &
+1\end{smallmatrix}\right)$ and write the matrix as $\sigma_1\vu_1\vv_1^\top$.
+\end{exercise}
+\begin{solution}
+$\mA^\top\mA = \left(\begin{smallmatrix} 2 & 2\\ 2 & 2\end{smallmatrix}\right)$
+has eigenvalues $4$ and $0$, so $\sigma_1 = 2$, $\sigma_2 = 0$ (rank $1$). With
+$\vu_1 = \vv_1 = \tfrac{1}{\sqrt2}(1, 1)$:
+$2\cdot\tfrac12\left(\begin{smallmatrix} 1 & 1\\ 1 & 1\end{smallmatrix}\right)
+= \mA$.
+\end{solution}
+
+\begin{exercise}
+An $800\times1000$ image is approximated with rank $40$. How many numbers must
+be stored, and what fraction of the original is this?
+\end{exercise}
+\begin{solution}
+$40\times(800 + 1000 + 1) = 72\,040$ numbers, versus $800\,000$: about $9\%$.
+\end{solution}
+
+\begin{exercise}
+A matrix has singular values $10, 5, 1, 0.1$. What is the Frobenius error of
+its best rank-$2$ approximation, and what fraction of $\norm{\mA}_F^2$ does the
+approximation capture?
+\end{exercise}
+\begin{solution}
+Error $\sqrt{1^2 + 0.1^2} = \sqrt{1.01} \approx 1.005$. Since
+$\norm{\mA}_F^2 = \sum\sigma_i^2 = 126.01$, the rank-$2$ approximation captures
+$\tfrac{100 + 25}{126.01} \approx 99.2\%$ of it.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Quadratic forms and positive definite matrices}\label{sec:positive-definite}
+%----------------------------------------------------------------------
+
+\begin{motivation}
+Near a minimum, almost every smooth loss function looks like a bowl described
+by a quadratic expression in the parameters (\cref{ch:multivariable}). Whether
+it is really a bowl, rather than a saddle or a flat trough, is decided by a
+symmetric matrix. Positive definite matrices are the matrices of bowls. They
+also appear as covariance matrices of data and of Gaussian distributions.
+\end{motivation}
+
+\begin{definition}[Quadratic form]\label{def:quadratic-form}
+For a symmetric $n\times n$ matrix $\mA$, the function
+$f(\vx) = \vx^\top\mA\vx = \sum_{i,j} a_{ij}x_ix_j$ is called a
+\term{quadratic form}.
+\end{definition}
+
+In two dimensions, with $\mA = \left(\begin{smallmatrix} a & b\\ b &
+c\end{smallmatrix}\right)$,
+\[
+  \vx^\top\mA\vx = ax_1^2 + 2bx_1x_2 + cx_2^2 .
+\]
+For example, $\left(\begin{smallmatrix} 2 & 1\\ 1 & 2\end{smallmatrix}\right)$
+gives $2x_1^2 + 2x_1x_2 + 2x_2^2$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 1,horizontal sep=0.6cm},
+  width=5.4cm,height=5cm,view={35}{30},colormap/viridis,
+  xtick=\empty,ytick=\empty,ztick=\empty,
+  xlabel={$x_1$},ylabel={$x_2$},
+  title style={font=\small,align=center}]
+  \nextgroupplot[title={bowl: $x_1^2 + x_2^2$\\positive definite}]
+    \addplot3[surf,shader=interp,domain=-1:1,y domain=-1:1,samples=21]{x^2+y^2};
+  \nextgroupplot[title={saddle: $x_1^2 - x_2^2$\\indefinite}]
+    \addplot3[surf,shader=interp,domain=-1:1,y domain=-1:1,samples=21]{x^2-y^2};
+  \nextgroupplot[title={trough: $x_1^2$\\positive semidefinite}]
+    \addplot3[surf,shader=interp,domain=-1:1,y domain=-1:1,samples=21]{x^2};
+\end{groupplot}
+\end{tikzpicture}
+\caption{The three basic shapes of quadratic forms in two variables.}
+\label{fig:quadratic-forms}
+\end{figure}
+
+\begin{definition}[Definiteness]\label{def:positive-definite}
+A symmetric matrix $\mA$ is
+\begin{itemize}
+  \item \term[positive definite matrix]{positive definite} if
+    $\vx^\top\mA\vx > 0$ for every $\vx \neq \vzero$ (a bowl);
+  \item \term[positive semidefinite matrix]{positive semidefinite} if
+    $\vx^\top\mA\vx \ge 0$ for every $\vx$ (a bowl or a trough);
+  \item \emph{negative definite} if $\vx^\top\mA\vx < 0$ for every
+    $\vx \neq \vzero$ (an upside-down bowl);
+  \item \term[indefinite matrix]{indefinite} if $\vx^\top\mA\vx$ takes both
+    positive and negative values (a saddle).
+\end{itemize}
+\end{definition}
+
+The definition involves infinitely many vectors $\vx$, so we need practical
+tests. The spectral theorem provides one: in the coordinates
+$\vy = \mQ^\top\vx$ of the orthonormal eigenvectors,
+\[
+  \vx^\top\mA\vx = \vx^\top\mQ\mLambda\mQ^\top\vx = \vy^\top\mLambda\vy
+  = \lambda_1y_1^2 + \lambda_2y_2^2 + \dots + \lambda_ny_n^2 ,
+\]
+a sum of squares weighted by the eigenvalues.
+
+\begin{theorem}[Tests for definiteness]\label{thm:definiteness-tests}
+A symmetric matrix is positive definite exactly when all its eigenvalues are
+positive, and positive semidefinite exactly when all are $\ge 0$; it is
+indefinite when it has eigenvalues of both signs. A symmetric $2\times2$ matrix
+$\left(\begin{smallmatrix} a & b\\ b & c\end{smallmatrix}\right)$ is positive
+definite exactly when $a > 0$ and $ac - b^2 > 0$.
+\end{theorem}
+
+\begin{example}[Classifying quadratic forms]\label{ex:definiteness}
+(a) $\left(\begin{smallmatrix} 2 & 1\\ 1 & 2\end{smallmatrix}\right)$ has
+eigenvalues $3$ and $1$: positive definite. Indeed
+$2x_1^2 + 2x_1x_2 + 2x_2^2 = x_1^2 + x_2^2 + (x_1 + x_2)^2 > 0$ for
+$\vx \neq \vzero$.
+
+(b) $\left(\begin{smallmatrix} 1 & 2\\ 2 & 1\end{smallmatrix}\right)$ has
+eigenvalues $3$ and $-1$: indefinite. At $\vx = (1, -1)$ the form is
+$1 - 4 + 1 = -2 < 0$, while at $(1, 1)$ it is $6 > 0$.
+
+(c) $\left(\begin{smallmatrix} 1 & 1\\ 1 & 1\end{smallmatrix}\right)$ has
+eigenvalues $2$ and $0$: positive semidefinite but not definite. The form is
+$(x_1 + x_2)^2$, which is zero along the whole line $x_2 = -x_1$.
+\end{example}
+
+\begin{intuition}[Level curves are ellipses]
+For a positive definite $\mA$, the curves $\vx^\top\mA\vx = c$ are ellipses
+whose axes point along the eigenvectors. Along an eigenvector with eigenvalue
+$\lambda$, the form grows like $\lambda t^2$, so a large eigenvalue means a
+steep, narrow direction and a small eigenvalue a shallow, wide direction
+(\cref{fig:pd-contours}). These elongated ellipses will explain, in
+\cref{ch:optimization}, why gradient descent zig-zags on badly conditioned
+problems.
+\end{intuition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.95]
+  \draw[-{Stealth[length=2mm]},gray] (-3,0) -- (3.2,0) node[right] {$x_1$};
+  \draw[-{Stealth[length=2mm]},gray] (0,-3) -- (0,3.2) node[above] {$x_2$};
+  \foreach \c in {0.5,2,4.5}
+    \draw[MLdef,thick,rotate=45] (0,0) ellipse ({sqrt(\c/3)} and {sqrt(\c)});
+  \draw[vec,PlotRed] (0,0) -- (45:1.3) node[above right,font=\small] {$\lambda = 3$};
+  \draw[vec,PlotBlue] (0,0) -- (-45:1.3) node[below right,font=\small] {$\lambda = 1$};
+\end{tikzpicture}
+\caption{Level curves $2x_1^2 + 2x_1x_2 + 2x_2^2 = c$ for $c = 0.5, 2, 4.5$.
+  They are ellipses with axes along the eigenvectors $(1,1)$ and $(1,-1)$;
+  the form rises three times as fast along the first.}
+\label{fig:pd-contours}
+\end{figure}
+
+\begin{proposition}[Gram matrices are positive semidefinite]\label{prop:ata-psd}
+For any matrix $\mA$, the matrix $\mA^\top\mA$ is positive semidefinite, and it
+is positive definite if the columns of $\mA$ are independent.
+\end{proposition}
+
+\begin{proof}
+$\vx^\top(\mA^\top\mA)\vx = (\mA\vx)^\top(\mA\vx) = \norm{\mA\vx}^2 \ge 0$. It is
+zero only if $\mA\vx = \vzero$, which for independent columns forces
+$\vx = \vzero$.
+\end{proof}
+
+\begin{mlnote}
+Positive (semi)definite matrices are the mathematical signature of ``bowls''
+and of ``spread''.
+\begin{itemize}
+  \item The least-squares loss $\norm{\mX\vw - \vy}^2$ is a quadratic in $\vw$
+    whose matrix is $\mX^\top\mX$, which is positive semidefinite. That is why
+    linear regression has no bad local minima (\cref{ch:optimization}).
+  \item A critical point of a loss is a minimum if its Hessian matrix is
+    positive definite and a saddle if it is indefinite
+    (\cref{ch:multivariable}).
+  \item Covariance matrices are always positive semidefinite
+    (\cref{ch:probability}), and the multivariate Gaussian distribution needs a
+    positive definite one.
+  \item Kernel methods require the matrix of similarities between data points
+    to be positive semidefinite.
+\end{itemize}
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Write out the quadratic form of
+$\left(\begin{smallmatrix} 3 & -1\\ -1 & 2\end{smallmatrix}\right)$ and decide
+whether the matrix is positive definite.
+\end{exercise}
+\begin{solution}
+$3x_1^2 - 2x_1x_2 + 2x_2^2$. Since $a = 3 > 0$ and $ac - b^2 = 6 - 1 = 5 > 0$,
+it is positive definite.
+\end{solution}
+
+\begin{exercise}
+Classify each matrix as positive definite, positive semidefinite, negative
+definite or indefinite: (a) $\left(\begin{smallmatrix} 1 & 3\\ 3 &
+1\end{smallmatrix}\right)$; (b) $\left(\begin{smallmatrix} 4 & 2\\ 2 &
+1\end{smallmatrix}\right)$; (c) $\left(\begin{smallmatrix} -2 & 0\\ 0 &
+-1\end{smallmatrix}\right)$.
+\end{exercise}
+\begin{solution}
+(a) $\det = 1 - 9 = -8 < 0$, so the eigenvalues have opposite signs:
+indefinite. (b) $\det = 0$ and trace $5 > 0$, so the eigenvalues are $5$ and
+$0$: positive semidefinite (the form is $(2x_1 + x_2)^2$). (c) Eigenvalues $-2$
+and $-1$: negative definite.
+\end{solution}
+
+\begin{exercise}
+For which values of $c$ is $\left(\begin{smallmatrix} 1 & c\\ c &
+4\end{smallmatrix}\right)$ positive definite?
+\end{exercise}
+\begin{solution}
+Need $1 > 0$ (true) and $4 - c^2 > 0$, i.e.\ $-2 < c < 2$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Putting it together: principal component analysis}\label{sec:pca}
+%----------------------------------------------------------------------
+
+\begin{motivation}
+Real data sets have many features, and many of them are correlated: in a data
+set of people, height and arm span carry nearly the same information.
+\emph{Principal component analysis} (PCA) finds new axes, ordered by how much
+the data varies along them. Keeping only the first few axes compresses the data
+with little loss, removes noise, and makes high-dimensional data
+visualisable. PCA uses almost every idea of this chapter.
+\end{motivation}
+
+\subsection{The recipe}
+
+Let the data be $n$ points $\vx_1, \dots, \vx_n \in \R^d$.
+
+\begin{algorithm}[Principal component analysis]\label{alg:pca}
+To find the principal components of a data set:
+\begin{steps}
+  \item \textbf{Centre} the data: subtract the mean $\bar\vx = \frac1n\sum_i\vx_i$
+    from every point, and stack the centred points as the rows of an $n\times d$
+    matrix $\mX_c$.
+  \item Form the $d\times d$ \textbf{covariance matrix}
+    $\mC = \frac1n\mX_c^\top\mX_c$. (Its diagonal entries are the average squared
+    deviations of each feature, i.e.\ how spread out it is; the off-diagonal
+    entries measure how pairs of features vary together. \Cref{ch:probability}
+    explains these ``variances'' and ``covariances'' properly.)
+  \item Compute the \textbf{eigenvalues} $\lambda_1 \ge \lambda_2 \ge \dots \ge
+    \lambda_d \ge 0$ and orthonormal \textbf{eigenvectors}
+    $\vq_1, \dots, \vq_d$ of $\mC$ (the spectral theorem applies, since $\mC$ is
+    symmetric, and the eigenvalues are $\ge 0$ by \cref{prop:ata-psd}). The
+    eigenvectors are the \term[principal component]{principal components}, and
+    $\lambda_j$ is the spread of the data along $\vq_j$.
+  \item \textbf{Project:} to reduce the data to $k$ dimensions, replace each
+    centred point $\vx_i - \bar\vx$ by its $k$ coordinates
+    $\left((\vx_i - \bar\vx)\cdot\vq_1, \dots, (\vx_i - \bar\vx)\cdot\vq_k\right)$.
+    The fraction of the total spread that is kept is
+    $\frac{\lambda_1 + \dots + \lambda_k}{\lambda_1 + \dots + \lambda_d}$.
+\end{steps}
+\end{algorithm}
+
+\begin{example}[PCA by hand]\label{ex:pca}
+Apply PCA to the five points $(1, 2)$, $(2, 1)$, $(3, 4)$, $(4, 3)$, $(5, 5)$.
+
+\sol \textbf{Centre.} The mean is $(3, 3)$, so the centred points are
+$(-2, -1)$, $(-1, -2)$, $(0, 1)$, $(1, 0)$, $(2, 2)$.
+
+\textbf{Covariance.} The average of the squared first coordinates is
+$\frac{4 + 1 + 0 + 1 + 4}{5} = 2$; of the squared second coordinates also $2$;
+and of the products of the two coordinates $\frac{2 + 2 + 0 + 0 + 4}{5} =
+1.6$. So
+\[
+  \mC = \begin{pmatrix} 2 & 1.6\\ 1.6 & 2\end{pmatrix}.
+\]
+\textbf{Eigenvectors.} $\tr\mC = 4$ and $\det\mC = 4 - 2.56 = 1.44$, so
+$\lambda^2 - 4\lambda + 1.44 = 0$, giving $\lambda_1 = 3.6$ and $\lambda_2 = 0.4$,
+with eigenvectors $\vq_1 = \frac{1}{\sqrt2}(1, 1)$ and
+$\vq_2 = \frac{1}{\sqrt2}(1, -1)$.
+
+\textbf{Interpretation.} The data is spread mostly along the diagonal
+direction $(1, 1)$: the first principal component carries
+$\frac{3.6}{3.6 + 0.4} = 90\%$ of the total spread. Projecting onto it reduces
+each point to a single number, $(\vx_i - \bar\vx)\cdot\vq_1$:
+\[
+  -\tfrac{3}{\sqrt2},\ -\tfrac{3}{\sqrt2},\ \tfrac{1}{\sqrt2},\
+  \tfrac{1}{\sqrt2},\ \tfrac{4}{\sqrt2}
+  \;\approx\; -2.12,\ -2.12,\ 0.71,\ 0.71,\ 2.83 .
+\]
+We have compressed two-dimensional data to one dimension while keeping $90\%$
+of its variation (\cref{fig:pca}).
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=8cm,height=8cm,xmin=0,xmax=6,ymin=0,ymax=6,
+  xlabel=$x_1$,ylabel=$x_2$,xtick={1,...,5},ytick={1,...,5},axis equal image]
+  \addplot[gray!60,dashed,domain=0.3:5.7]{x};
+  \draw[dashed,gray] (axis cs:1,2) -- (axis cs:1.5,1.5);
+  \draw[dashed,gray] (axis cs:2,1) -- (axis cs:1.5,1.5);
+  \draw[dashed,gray] (axis cs:3,4) -- (axis cs:3.5,3.5);
+  \draw[dashed,gray] (axis cs:4,3) -- (axis cs:3.5,3.5);
+  \addplot[only marks,mark=*,mark size=1.8pt,PlotOrange] coordinates {(1.5,1.5) (3.5,3.5) (5,5)};
+  \draw[-{Stealth[length=2.5mm]},very thick,PlotRed] (axis cs:3,3) -- (axis cs:{3+1.897*0.7071*1.2},{3+1.897*0.7071*1.2});
+  \draw[-{Stealth[length=2.5mm]},very thick,PlotBlue] (axis cs:3,3) -- (axis cs:{3+0.632*0.7071*1.2},{3-0.632*0.7071*1.2});
+  \addplot[only marks,mark=*,mark size=2.6pt,black] coordinates {(1,2) (2,1) (3,4) (4,3) (5,5)};
+  \addplot[only marks,mark=+,mark size=4pt,very thick,black] coordinates {(3,3)};
+  \node[PlotRed,font=\small,anchor=north west] at (axis cs:4.7,4.2) {$\vq_1$};
+  \node[PlotBlue,font=\small,anchor=north] at (axis cs:3.6,2.45) {$\vq_2$};
+\end{axis}
+\end{tikzpicture}
+\caption{PCA of five points. The mean is marked $+$. The first principal
+  direction $\vq_1$ (red) points along the diagonal, where the data varies
+  most; the second $\vq_2$ (blue) is perpendicular. The arrows are drawn with
+  lengths proportional to $\sqrt{\lambda_j}$. Projecting each point onto the
+  dashed line through the mean (orange dots) keeps $90\%$ of the variation.}
+\label{fig:pca}
+\end{figure}
+
+\begin{remark}[PCA and the SVD]
+Instead of forming $\mC$, one can compute the SVD of the centred data matrix,
+$\mX_c = \mU\mSigma\mV^\top$. Then $\mC = \frac1n\mX_c^\top\mX_c =
+\mV\frac{\mSigma^\top\mSigma}{n}\mV^\top$, so the principal components are the
+right singular vectors and $\lambda_j = \sigma_j^2/n$. This is how PCA is
+computed in practice, because it is more accurate.
+\end{remark}
+
+\begin{mlnote}[PCA in practice]
+PCA is used to visualise high-dimensional data (project onto the first two or
+three components and plot), to compress features before training another
+model, and to remove noise (the last components often contain mostly noise).
+For data such as images of handwritten digits, a few dozen components out of
+hundreds of pixels already capture most of the variation. Two cautions: always
+centre the data, and put features on comparable scales first, because PCA is
+driven by spread and a feature measured in larger units would otherwise
+dominate.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Apply PCA to the four points $(2, 0)$, $(0, 2)$, $(4, 6)$, $(6, 4)$: find the
+mean, the covariance matrix, the principal components and the fraction of
+spread explained by the first one.
+\end{exercise}
+\begin{solution}
+Mean $(3, 3)$; centred points $(-1, -3)$, $(-3, -1)$, $(1, 3)$, $(3, 1)$.
+$\mC = \tfrac14\left(\begin{smallmatrix} 1 + 9 + 1 + 9 & 3 + 3 + 3 + 3\\ 12 & 9
++ 1 + 9 + 1\end{smallmatrix}\right) = \left(\begin{smallmatrix} 5 & 3\\ 3 &
+5\end{smallmatrix}\right)$. Eigenvalues $8$ and $2$ (trace $10$, determinant
+$16$), with eigenvectors $\tfrac{1}{\sqrt2}(1, 1)$ and $\tfrac{1}{\sqrt2}(1,
+-1)$. The first component explains $\tfrac{8}{10} = 80\%$ of the spread. The
+projections onto it are $\pm\tfrac{4}{\sqrt2} \approx \pm2.83$.
+\end{solution}
+
+\begin{exercise}
+Why must the data be centred before PCA? What would the ``first principal
+component'' tend to capture if we skipped this step?
+\end{exercise}
+\begin{solution}
+PCA looks for directions of largest spread \emph{around the mean}. Without
+centring, $\frac1n\mX^\top\mX$ measures spread around the origin, so if the data
+is far from the origin the first ``component'' mostly points from the origin
+towards the centre of the data cloud, describing where the data is rather than
+how it varies.
+\end{solution}
+
+\begin{exercise}
+The eigenvalues of a covariance matrix are $6$, $3$, $0.6$, $0.3$ and $0.1$.
+How many principal components are needed to keep at least $90\%$ of the total
+spread?
+\end{exercise}
+\begin{solution}
+The total is $10$. One component keeps $60\%$, two keep $90\%$. So two
+components suffice.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Chapter summary}\label{sec:ch5-summary}
+%----------------------------------------------------------------------
+
+\begin{keytakeaways}
+\begin{itemize}
+  \item The span of vectors is the set of their linear combinations; the column
+    space $C(\mA)$ is the set of outputs $\mA\vx$, and $\mA\vx = \vb$ is
+    solvable exactly when $\vb \in C(\mA)$.
+  \item Independent vectors have no redundancy; collinear features make
+    $\mX^\top\mX$ singular.
+  \item A basis gives unique coordinates; the dimension counts basis vectors;
+    the rank counts independent columns; rank $+$ nullity $=$ number of columns.
+  \item Norms measure size: $L^1$ (sum of absolute values), $L^2$ (length),
+    $L^\infty$ (largest entry). Ridge ($L^2$) shrinks weights, lasso ($L^1$)
+    makes them sparse.
+  \item In an orthonormal basis, coordinates are dot products; orthogonal
+    matrices ($\mQ^\top\mQ = \mI$) preserve lengths and angles.
+  \item Projection onto a line: $\frac{\va\cdot\vb}{\va\cdot\va}\va$. Least
+    squares solves $\mX^\top\mX\hat\vw = \mX^\top\vy$: linear regression is a
+    projection.
+  \item Eigenvectors satisfy $\mA\vv = \lambda\vv$; eigenvalues solve
+    $\det(\mA - \lambda\mI) = 0$. Symmetric matrices have real eigenvalues and
+    orthonormal eigenvectors: $\mA = \mQ\mLambda\mQ^\top$.
+  \item Every matrix has an SVD $\mA = \mU\mSigma\mV^\top$ (rotate, stretch,
+    rotate); truncating it gives the best low-rank approximation.
+  \item Positive definite matrices ($\vx^\top\mA\vx > 0$, all eigenvalues
+    positive) describe bowls; $\mX^\top\mX$ is always positive semidefinite.
+  \item PCA: centre, form the covariance matrix, take its top eigenvectors,
+    project.
+\end{itemize}
+\end{keytakeaways}
+
+This completes our tour of linear algebra. The next three chapters develop the
+other pillar of machine learning: calculus, the mathematics of change, which
+tells us how to adjust all these vectors and matrices to make a model better.
