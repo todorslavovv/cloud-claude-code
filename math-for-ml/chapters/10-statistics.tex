@@ -1,1 +1,1863 @@
+%======================================================================
+% Chapter 10: Statistics for Machine Learning
+%======================================================================
 \chapter{Statistics for Machine Learning}\label{ch:statistics}
+
+\begin{motivation}
+Probability starts from a known distribution and predicts what data it will
+produce. Statistics runs in the opposite direction: it starts from data and
+draws conclusions about the unknown distribution that produced them. That is
+exactly the situation of machine learning. We never know the true relationship
+between inputs and outputs; we only have a finite, noisy sample of examples,
+and from it we must
+\begin{itemize}
+  \item \emph{estimate} the parameters of a model (training);
+  \item judge how reliable a number computed from a finite sample is (is a test
+    accuracy of $91.2\%$ really better than $90.8\%$?);
+  \item understand why the standard loss functions, squared error and
+    cross-entropy, are what they are;
+  \item understand why a model that fits its training data perfectly can fail
+    badly on new data, and what to do about it.
+\end{itemize}
+This chapter covers these ideas: estimators and their errors, the law of large
+numbers and the central limit theorem, maximum likelihood and Bayesian
+estimation, hypothesis testing, and generalisation.
+\end{motivation}
+
+\begin{objectives}
+\begin{itemize}
+  \item summarise data with means, medians, variances and percentiles;
+  \item describe estimators by their bias, variance and standard error;
+  \item state and use the law of large numbers and Monte Carlo estimation;
+  \item state the central limit theorem and compute confidence intervals;
+  \item derive maximum likelihood estimates;
+  \item derive the squared-error and cross-entropy losses from likelihoods;
+  \item connect priors with regularisation through MAP estimation;
+  \item carry out and correctly interpret a hypothesis test;
+  \item explain overfitting, underfitting and the bias--variance trade-off, and
+    use validation sets and cross-validation.
+\end{itemize}
+\end{objectives}
+
+%----------------------------------------------------------------------
+\section{Data, samples and summary statistics}\label{sec:descriptive}
+%----------------------------------------------------------------------
+
+Statistics views a data set $x_1, \dots, x_n$ as the observed values of random
+variables $X_1, \dots, X_n$. Usually they are assumed to be \emph{i.i.d.}
+(\cref{sec:independence-events}): drawn independently from one and the same
+distribution, called the \term{population}. The data are a \term{sample} from
+the population.
+
+Numbers that describe the population, such as its mean $\mu$ and variance
+$\sigma^2$, are called \term[parameter (statistics)]{parameters}; they are fixed
+but unknown. Numbers computed from the sample are called
+\term[statistic]{statistics}; they are known, but they would come out
+differently for a different sample.
+
+\begin{definition}[Sample mean, variance and standard deviation]\label{def:sample-stats}
+For data $x_1, \dots, x_n$, the \term{sample mean} and the \term{sample variance}
+are
+\[
+  \bar x = \frac1n\sum_{i=1}^n x_i,
+  \qquad
+  s^2 = \frac{1}{n-1}\sum_{i=1}^n (x_i - \bar x)^2 ,
+\]
+and the \emph{sample standard deviation} is $s = \sqrt{s^2}$.
+\end{definition}
+
+The division by $n - 1$ instead of $n$ looks strange; \cref{sec:estimators}
+explains it. For large $n$ the difference is negligible.
+
+\begin{example}[Computing summary statistics]\label{ex:summary-stats}
+Find the sample mean, variance and standard deviation of the data
+$2, 4, 4, 4, 5, 5, 7, 9$.
+
+\sol The mean is $\bar x = \frac{40}{8} = 5$. The deviations from the mean are
+$-3$, $-1$, $-1$, $-1$, $0$, $0$, $2$ and $4$, and their squares add up to
+$9 + 1 + 1 + 1 + 0 + 0 + 4 + 16 = 32$. So $s^2 = \frac{32}{7} \approx 4.57$ and
+$s \approx 2.14$.
+\end{example}
+
+\subsection{Medians and percentiles}
+
+\begin{definition}[Median and percentiles]\label{def:median}
+The \term{median} of a data set is its middle value after sorting (the average
+of the two middle values if $n$ is even). More generally, the
+$p$-th \term{percentile} is a value below which $p\%$ of the data lie; the
+median is the $50$th percentile, and the $25$th and $75$th percentiles are
+called the lower and upper \term[quartile]{quartiles}.
+\end{definition}
+
+\begin{example}[Mean versus median]\label{ex:mean-median}
+The annual salaries (in thousands) of eight employees are
+\[
+  32,\ 35,\ 38,\ 40,\ 41,\ 44,\ 47,\ 250 .
+\]
+The mean is $\frac{527}{8} \approx 65.9$, more than all but one of the salaries.
+The median is $\frac{40 + 41}{2} = 40.5$, a much better description of a typical
+salary.
+\end{example}
+
+\begin{intuition}[Two kinds of centre]
+The mean is the balance point of the data, so one extreme value (an
+\term{outlier}) can drag it far away. The median only cares about the order of
+the values and is \emph{robust} to outliers. There is a deeper connection: the
+mean is the number $c$ that minimises the total \emph{squared} distance
+$\sum_i(x_i - c)^2$ (\cref{ex:mean-minimises}), while the median minimises the
+total \emph{absolute} distance $\sum_i\abs{x_i - c}$ (an exercise below). This is
+the same contrast as between the squared and the absolute error
+(\cref{sec:absolute-value}).
+\end{intuition}
+
+\begin{mlnote}[Look at your data]
+Before training anything, practitioners compute summary statistics of every
+feature: means and standard deviations (for standardisation,
+\cref{sec:variance}), minima and maxima (to find impossible values), and
+percentiles (to see skew and outliers). Percentiles are also how systems are
+measured: the ``p99 latency'' of a model server is the $99$th percentile of its
+response times.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+For the data $4, 8, 6, 5, 3, 10$, compute the mean, the median, the sample
+variance and the sample standard deviation.
+\end{exercise}
+\begin{solution}
+Mean $\tfrac{36}{6} = 6$. Sorted: $3, 4, 5, 6, 8, 10$, so the median is
+$\tfrac{5 + 6}{2} = 5.5$. Deviations $-2, 2, 0, -1, -3, 4$; squares add up to
+$34$, so $s^2 = \tfrac{34}{5} = 6.8$ and $s \approx 2.61$.
+\end{solution}
+
+\begin{exercise}
+In the previous exercise, the value $10$ is replaced by $100$ (a typo). What are
+the new mean and median?
+\end{exercise}
+\begin{solution}
+Mean $\tfrac{126}{6} = 21$; the median is unchanged at $5.5$.
+\end{solution}
+
+\begin{exercise}
+Every value of a data set is transformed by $y_i = 2x_i + 3$. How do the mean,
+the median and the standard deviation change?
+\end{exercise}
+\begin{solution}
+$\bar y = 2\bar x + 3$ and the median becomes $2m + 3$ (the order of the values is
+unchanged). The deviations from the mean are doubled and the shift cancels, so
+$s_y = 2s_x$.
+\end{solution}
+
+\begin{exercise}
+Let $g(c) = \sum_{i=1}^n\abs{x_i - c}$. Explain why, if $c$ is not a data value,
+the slope of $g$ at $c$ equals (number of data values below $c$) minus (number
+of data values above $c$). Deduce that $g$ is smallest at the median.
+\end{exercise}
+\begin{solution}
+Each term $\abs{x_i - c}$ has slope $+1$ in $c$ if $x_i < c$ (moving $c$ right
+moves it away from $x_i$) and $-1$ if $x_i > c$. Adding up gives the stated
+slope. It is negative while fewer than half of the values lie below $c$ and
+positive once more than half do, so $g$ decreases up to the median and increases
+after it.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Estimators: bias, variance and standard error}\label{sec:estimators}
+%----------------------------------------------------------------------
+
+\begin{definition}[Estimator]\label{def:estimator}
+An \term{estimator} is a rule that computes, from the data, a guess $\hat\theta$
+(read ``theta hat'') of an unknown parameter $\theta$. Because the data are
+random, an estimator is a random variable, and its distribution is called its
+\term{sampling distribution}.
+\end{definition}
+
+The sample mean $\bar X$ is an estimator of $\mu$; a model's accuracy on a test
+set is an estimator of its accuracy on all possible inputs; the weights found by
+training are estimators of the ``best'' weights. How good is an estimator? Two
+numbers answer this.
+
+\begin{definition}[Bias and unbiasedness]\label{def:bias}
+The \term{bias} of an estimator $\hat\theta$ is
+$\Bias(\hat\theta) = \E[\hat\theta] - \theta$. The estimator is
+\term[unbiased estimator]{unbiased} if its bias is $0$: on average, it hits the
+true value.
+\end{definition}
+
+\begin{theorem}[Mean and variance of the sample mean]\label{thm:sample-mean}
+Let $X_1, \dots, X_n$ be i.i.d.\ with mean $\mu$ and variance $\sigma^2$. Then
+\[
+  \E[\bar X] = \mu
+  \qquad\text{and}\qquad
+  \Var(\bar X) = \frac{\sigma^2}{n} .
+\]
+\end{theorem}
+
+\begin{proof}
+By linearity of expectation, $\E[\bar X] = \frac1n\sum_i\E[X_i] = \frac1n\cdot
+n\mu = \mu$. By independence the variances of the $X_i$ add up, so
+$\Var\left(\sum_iX_i\right) = n\sigma^2$, and by \cref{thm:variance-properties}
+$\Var(\bar X) = \frac{1}{n^2}\,n\sigma^2 = \frac{\sigma^2}{n}$.
+\end{proof}
+
+\begin{definition}[Standard error]\label{def:standard-error}
+The \term{standard error} of an estimator is its standard deviation. For the
+sample mean it is $\operatorname{SE}(\bar X) = \sigma/\sqrt n$, which we
+estimate by $s/\sqrt n$.
+\end{definition}
+
+\begin{intuition}[The square-root law]
+Averaging $n$ independent measurements makes the error $\sqrt n$ times smaller,
+not $n$ times. To halve the uncertainty you need four times as much data; to
+gain one more correct decimal digit, a hundred times as much. This law explains
+a great deal about machine learning, from the noise in mini-batch gradients to
+the size of test sets.
+\end{intuition}
+
+\begin{example}[How precise is a test accuracy?]\label{ex:accuracy-se}
+A classifier is correct on $850$ of $1000$ test examples. How precise is the
+accuracy estimate $0.85$?
+
+\sol Each test example gives a Bernoulli variable, $1$ if the prediction is
+correct and $0$ otherwise, with some unknown mean $p$ (the true accuracy) and
+variance $p(1 - p)$. The test accuracy is their sample mean, so its standard
+error is
+\[
+  \sqrt{\frac{p(1 - p)}{n}} \approx \sqrt{\frac{0.85\times0.15}{1000}}
+  \approx 0.011 .
+\]
+The accuracy is uncertain by about one percentage point, so a difference
+between $85.3\%$ and $85.7\%$ on this test set means very little.
+\end{example}
+
+\subsection{Why divide by \texorpdfstring{$n - 1$}{n-1}?}
+
+\begin{theorem}[An unbiased estimator of the variance]\label{thm:bessel}
+For i.i.d.\ $X_1, \dots, X_n$ with variance $\sigma^2$,
+\[
+  \E\left[\sum_{i=1}^n(X_i - \bar X)^2\right] = (n - 1)\,\sigma^2 .
+\]
+So dividing by $n$ gives an estimator that is too small on average, by the
+factor $\frac{n-1}{n}$, whereas $s^2$, which divides by $n - 1$, is unbiased.
+\end{theorem}
+
+\begin{proof}
+Write $X_i - \bar X = (X_i - \mu) - (\bar X - \mu)$ and expand. Since
+$\sum_i(X_i - \mu) = n(\bar X - \mu)$,
+\[
+  \sum_i(X_i - \bar X)^2 = \sum_i(X_i - \mu)^2 - 2n(\bar X - \mu)^2 + n(\bar X - \mu)^2
+  = \sum_i(X_i - \mu)^2 - n(\bar X - \mu)^2 .
+\]
+Taking expectations, using $\E[(X_i - \mu)^2] = \sigma^2$ and
+$\E[(\bar X - \mu)^2] = \Var(\bar X) = \sigma^2/n$, gives
+$n\sigma^2 - \sigma^2 = (n - 1)\sigma^2$.
+\end{proof}
+
+The intuition: the data are on average closer to their own mean $\bar x$ (which
+was computed from them) than to the true mean $\mu$, so squared deviations from
+$\bar x$ underestimate the spread. Dividing by $n - 1$, a correction known as
+\term{Bessel's correction}, compensates exactly.
+
+\subsection{Mean squared error}
+
+Bias is not everything: an unbiased estimator that is wildly variable is useless.
+The overall quality of an estimator combines both.
+
+\begin{theorem}[Bias--variance decomposition of the MSE]\label{thm:mse-decomposition}
+The \term[mean squared error!of an estimator]{mean squared error} of an
+estimator, $\MSE(\hat\theta) = \E\bigl[(\hat\theta - \theta)^2\bigr]$, satisfies
+\[
+  \keyeq{\MSE(\hat\theta) = \Bias(\hat\theta)^2 + \Var(\hat\theta)}
+\]
+\end{theorem}
+
+\begin{proof}
+Let $m = \E[\hat\theta]$. Then $\hat\theta - \theta = (\hat\theta - m) + (m -
+\theta)$, where the second part is a constant. Squaring and taking expectations,
+\[
+  \E\bigl[(\hat\theta - \theta)^2\bigr] = \E\bigl[(\hat\theta - m)^2\bigr]
+  + 2(m - \theta)\,\E[\hat\theta - m] + (m - \theta)^2 .
+\]
+The middle term vanishes because $\E[\hat\theta - m] = 0$; the other two are the
+variance and the squared bias.
+\end{proof}
+
+\begin{mlnote}[A little bias can help]
+A biased estimator can have a smaller mean squared error than an unbiased one, if
+it has much smaller variance. Shrinking an estimate towards zero introduces
+bias but reduces variance, and this is exactly what regularisation does to the
+weights of a model (\cref{ex:ridge-1d}). We meet the same trade-off for whole
+models in \cref{sec:generalisation}.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Measurements have standard deviation $\sigma = 10$. How many must be averaged for
+the standard error of the mean to be $1$? To be $0.5$?
+\end{exercise}
+\begin{solution}
+$\tfrac{10}{\sqrt n} = 1$ gives $n = 100$; $\tfrac{10}{\sqrt n} = 0.5$ gives
+$n = 400$.
+\end{solution}
+
+\begin{exercise}
+From i.i.d.\ data $X_1, \dots, X_{25}$ with mean $\mu$ and variance $\sigma^2$,
+someone estimates $\mu$ by the first observation $X_1$ alone. Is this estimator
+unbiased? Compare its variance with that of $\bar X$.
+\end{exercise}
+\begin{solution}
+$\E[X_1] = \mu$, so it is unbiased, but its variance is $\sigma^2$, versus
+$\tfrac{\sigma^2}{25}$ for $\bar X$. Being unbiased is not enough; $\bar X$ uses
+all the data and is much more precise.
+\end{solution}
+
+\begin{exercise}
+With $n = 5$ observations, what is the expected value of the variance estimator
+$\frac1n\sum_i(X_i - \bar X)^2$, and what is its bias?
+\end{exercise}
+\begin{solution}
+By \cref{thm:bessel} its expectation is $\tfrac{n-1}{n}\sigma^2 = 0.8\sigma^2$, so
+its bias is $-0.2\sigma^2$.
+\end{solution}
+
+\begin{exercise}
+Estimator A is unbiased with variance $4$. Estimator B has bias $1$ and variance
+$1$. Which has the smaller mean squared error?
+\end{exercise}
+\begin{solution}
+$\MSE(A) = 0 + 4 = 4$ and $\MSE(B) = 1 + 1 = 2$, so the biased estimator B is
+better on average.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{The law of large numbers and Monte Carlo}\label{sec:lln}
+%----------------------------------------------------------------------
+
+Why should averages of data tell us anything about the population? Because of
+the following theorem, which turns the intuition ``averages settle down'' into
+mathematics.
+
+\begin{theorem}[Law of large numbers]\label{thm:lln}
+Let $X_1, X_2, \dots$ be i.i.d.\ with mean $\mu$ and finite variance $\sigma^2$,
+and let $\bar X_n = \frac1n\sum_{i=1}^nX_i$. Then for every $\varepsilon > 0$,
+\[
+  P\bigl(\abs{\bar X_n - \mu} \ge \varepsilon\bigr) \to 0
+  \qquad\text{as } n \to \infty .
+\]
+\end{theorem}
+\index{law of large numbers}
+
+\begin{proof}
+Apply Chebyshev's inequality (\cref{sec:variance}) to $\bar X_n$, whose mean is
+$\mu$ and variance $\frac{\sigma^2}{n}$ (\cref{thm:sample-mean}):
+$P\bigl(\abs{\bar X_n - \mu} \ge \varepsilon\bigr) \le \frac{\sigma^2}{n\varepsilon^2}$,
+which tends to $0$.
+\end{proof}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,xmode=log,log basis x=10,width=11cm,height=6cm,
+  xmin=1,xmax=10000,ymin=1,ymax=6.3,ytick={1,...,6},clip=false,
+  xtick={1,10,100,1000,10000},xticklabels={$1$,$10$,$100$,$1000$,$10\,000$},
+  xlabel={number of rolls $n$ (logarithmic scale)},ylabel={running average},
+  xlabel style={at={(ticklabel cs:0.5)},anchor=north},
+  ylabel style={at={(ticklabel cs:0.5)},anchor=south,rotate=90}]
+  \draw[gray,dashed,thick] (axis cs:1,3.5) -- (axis cs:10000,3.5);
+  \node[gray,font=\small,anchor=west] at (axis cs:10000,3.5) {mean $3.5$};
+  \addplot[PlotBlue] coordinates {(1,6.000) (2,6.000) (3,5.667) (4,5.750) (5,4.800) (6,4.833) (7,5.000) (8,4.625) (9,4.333)
+    (10,4.000) (12,4.250) (13,4.231) (15,4.267) (16,4.062) (18,4.278) (21,4.286) (23,4.130)
+    (26,4.115) (29,4.034) (33,4.121) (37,4.135) (42,4.024) (47,4.000) (53,4.019) (59,4.017)
+    (66,3.924) (75,3.853) (84,3.714) (94,3.755) (106,3.849) (119,3.832) (134,3.761)
+    (150,3.687) (169,3.663) (190,3.726) (213,3.681) (240,3.708) (269,3.732) (303,3.647)
+    (340,3.638) (382,3.644) (429,3.641) (483,3.588) (542,3.594) (609,3.573) (685,3.531)
+    (769,3.506) (864,3.497) (971,3.454) (1091,3.461) (1226,3.445) (1378,3.459) (1548,3.467)
+    (1740,3.464) (1955,3.471) (2197,3.471) (2468,3.490) (2774,3.480) (3117,3.479) (3502,3.470)
+    (3935,3.472) (4421,3.487) (4968,3.487) (5583,3.486) (6273,3.499) (7049,3.506) (7920,3.511)
+    (8900,3.502) (10000,3.502)};
+  \addplot[PlotRed] coordinates {(1,3.000) (2,3.000) (3,3.667) (4,3.000) (5,3.200) (6,2.833) (7,2.571) (8,2.750) (9,3.111)
+    (10,3.400) (12,3.500) (13,3.385) (15,3.467) (16,3.438) (18,3.500) (21,3.524) (23,3.652)
+    (26,3.462) (29,3.379) (33,3.485) (37,3.378) (42,3.452) (47,3.404) (53,3.302) (59,3.203)
+    (66,3.212) (75,3.160) (84,3.131) (94,3.170) (106,3.255) (119,3.218) (134,3.336)
+    (150,3.313) (169,3.361) (190,3.411) (213,3.418) (240,3.375) (269,3.413) (303,3.403)
+    (340,3.444) (382,3.421) (429,3.422) (483,3.439) (542,3.472) (609,3.471) (685,3.477)
+    (769,3.471) (864,3.454) (971,3.458) (1091,3.459) (1226,3.495) (1378,3.498) (1548,3.477)
+    (1740,3.494) (1955,3.495) (2197,3.512) (2468,3.500) (2774,3.494) (3117,3.478) (3502,3.482)
+    (3935,3.482) (4421,3.467) (4968,3.482) (5583,3.484) (6273,3.484) (7049,3.479) (7920,3.480)
+    (8900,3.483) (10000,3.490)};
+  \addplot[PlotGreen] coordinates {(1,1.000) (2,1.000) (3,1.000) (4,1.750) (5,2.000) (6,2.667) (7,2.571) (8,2.750) (9,2.889)
+    (10,2.700) (12,2.917) (13,3.077) (15,3.200) (16,3.125) (18,3.167) (21,3.190) (23,3.174)
+    (26,3.308) (29,3.172) (33,3.152) (37,3.324) (42,3.214) (47,3.191) (53,3.283) (59,3.322)
+    (66,3.303) (75,3.200) (84,3.143) (94,3.202) (106,3.377) (119,3.345) (134,3.366)
+    (150,3.313) (169,3.325) (190,3.316) (213,3.291) (240,3.300) (269,3.297) (303,3.314)
+    (340,3.350) (382,3.377) (429,3.380) (483,3.402) (542,3.408) (609,3.374) (685,3.412)
+    (769,3.404) (864,3.418) (971,3.434) (1091,3.475) (1226,3.481) (1378,3.499) (1548,3.490)
+    (1740,3.495) (1955,3.490) (2197,3.508) (2468,3.522) (2774,3.514) (3117,3.515) (3502,3.505)
+    (3935,3.500) (4421,3.502) (4968,3.486) (5583,3.485) (6273,3.491) (7049,3.494) (7920,3.494)
+    (8900,3.496) (10000,3.502)};
+\end{axis}
+\end{tikzpicture}
+\caption{The law of large numbers. Each curve shows the average of the first $n$
+  rolls of a die, for three independent sequences of $10\,000$ rolls. The
+  averages wander at first and then settle down to the mean $3.5$.}
+\label{fig:lln}
+\end{figure}
+
+\begin{pitfall}[The gambler's fallacy]
+The law of large numbers does \emph{not} say that after a run of heads, tails
+become ``due''. A coin has no memory: after ten heads in a row, the next toss is
+still heads with probability $\frac12$. Early imbalances are not compensated;
+they are \emph{diluted} by the many tosses that follow.
+\end{pitfall}
+
+\subsection{Monte Carlo estimation}
+
+The law of large numbers gives a universal recipe for computing expectations,
+probabilities and integrals: \emph{simulate and average}.
+
+\begin{definition}[Monte Carlo estimation]\label{def:monte-carlo}
+To estimate $\E[g(X)]$, draw independent samples $x_1, \dots, x_n$ from the
+distribution of $X$ and compute
+\[
+  \E[g(X)] \approx \frac1n\sum_{i=1}^n g(x_i) .
+\]
+This is the \term{Monte Carlo method}. Its standard error is
+$\sigma_g/\sqrt n$, where $\sigma_g$ is the standard deviation of $g(X)$,
+\emph{whatever the dimension of $X$}.
+\end{definition}
+
+\begin{example}[Estimating $\pi$ by throwing darts]\label{ex:monte-carlo-pi}
+Choose points uniformly at random in the unit square $[0, 1]^2$. The probability
+that a point lands inside the quarter disc $x^2 + y^2 \le 1$ is its area,
+$\frac\pi4$. In a simulation with $400$ points (\cref{fig:monte-carlo-pi}), $318$
+landed inside, giving the estimate
+\[
+  \pi \approx 4\times\frac{318}{400} = 3.18 .
+\]
+The standard error is about $4\sqrt{0.785\times0.215/400} \approx 0.08$,
+and the estimate is indeed within $0.04$ of $\pi$.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=box,width=6.2cm,height=6.2cm,xmin=0,xmax=1,ymin=0,ymax=1,
+  axis equal image,xtick={0,0.5,1},ytick={0,0.5,1},grid=none]
+  \addplot[only marks,mark=*,mark size=0.7pt,PlotBlue] coordinates {(0.262,0.298) (0.814,0.092) (0.600,0.729) (0.188,0.055) (0.275,0.657) (0.562,0.150)
+    (0.433,0.669) (0.423,0.633) (0.392,0.187) (0.346,0.511) (0.318,0.924) (0.471,0.694)
+    (0.107,0.105) (0.202,0.884) (0.644,0.407) (0.517,0.593) (0.862,0.438) (0.829,0.498)
+    (0.693,0.339) (0.523,0.216) (0.101,0.039) (0.702,0.456) (0.592,0.766) (0.407,0.196)
+    (0.172,0.181) (0.604,0.113) (0.020,0.833) (0.099,0.451) (0.488,0.620) (0.750,0.574)
+    (0.617,0.507) (0.965,0.227) (0.689,0.555) (0.042,0.296) (0.013,0.297) (0.010,0.827)
+    (0.110,0.057) (0.318,0.049) (0.390,0.366) (0.523,0.007) (0.148,0.210) (0.441,0.302)
+    (0.613,0.285) (0.059,0.209) (0.563,0.771) (0.064,0.185) (0.457,0.669) (0.794,0.053)
+    (0.086,0.255) (0.621,0.386) (0.447,0.805) (0.824,0.547) (0.792,0.406) (0.968,0.044)
+    (0.714,0.193) (0.549,0.289) (0.105,0.003) (0.205,0.258) (0.466,0.818) (0.118,0.968)
+    (0.944,0.245) (0.641,0.360) (0.697,0.087) (0.470,0.588) (0.626,0.693) (0.891,0.241)
+    (0.153,0.391) (0.259,0.423) (0.295,0.651) (0.952,0.154) (0.518,0.678) (0.112,0.196)
+    (0.066,0.829) (0.963,0.014) (0.908,0.270) (0.715,0.237) (0.076,0.745) (0.042,0.700)
+    (0.283,0.487) (0.892,0.243) (0.468,0.355) (0.190,0.474) (0.182,0.799) (0.615,0.283)
+    (0.671,0.733) (0.265,0.012) (0.170,0.154) (0.433,0.598) (0.599,0.436) (0.231,0.065)
+    (0.169,0.358) (0.088,0.151) (0.045,0.623) (0.493,0.244) (0.526,0.424) (0.353,0.645)
+    (0.219,0.940) (0.618,0.159) (0.257,0.159) (0.179,0.307) (0.823,0.457) (0.277,0.419)
+    (0.267,0.734) (0.059,0.289) (0.323,0.182) (0.738,0.180) (0.300,0.056) (0.756,0.364)
+    (0.656,0.217) (0.022,0.322) (0.349,0.847) (0.050,0.522) (0.257,0.439) (0.222,0.894)
+    (0.302,0.945) (0.109,0.430) (0.443,0.709) (0.345,0.492) (0.070,0.311) (0.725,0.106)
+    (0.463,0.237) (0.165,0.121) (0.379,0.392) (0.728,0.604) (0.482,0.659) (0.545,0.310)
+    (0.454,0.721) (0.553,0.632) (0.776,0.131) (0.817,0.343) (0.368,0.243) (0.056,0.472)
+    (0.659,0.223) (0.803,0.368) (0.890,0.326) (0.092,0.730) (0.108,0.870) (0.412,0.780)
+    (0.053,0.544) (0.677,0.130) (0.608,0.143) (0.304,0.365) (0.620,0.130) (0.185,0.781)
+    (0.716,0.454) (0.282,0.692) (0.468,0.312) (0.875,0.202) (0.646,0.682) (0.921,0.255)
+    (0.164,0.896) (0.204,0.222) (0.845,0.517) (0.736,0.629) (0.011,0.195) (0.013,0.907)
+    (0.236,0.171) (0.583,0.203) (0.864,0.245) (0.916,0.399) (0.523,0.325) (0.737,0.620)
+    (0.689,0.104) (0.563,0.197) (0.053,0.330) (0.746,0.025) (0.049,0.657) (0.882,0.439)
+    (0.624,0.257) (0.273,0.475) (0.219,0.454) (0.148,0.924) (0.648,0.094) (0.193,0.829)
+    (0.372,0.260) (0.023,0.675) (0.170,0.752) (0.746,0.442) (0.047,0.644) (0.026,0.086)
+    (0.409,0.121) (0.452,0.851) (0.174,0.798) (0.998,0.037) (0.423,0.708) (0.732,0.280)
+    (0.809,0.371) (0.201,0.518) (0.664,0.083) (0.575,0.344) (0.705,0.045) (0.040,0.015)
+    (0.177,0.922) (0.407,0.519) (0.471,0.335) (0.475,0.571) (0.006,0.768) (0.140,0.944)
+    (0.044,0.708) (0.769,0.542) (0.096,0.812) (0.321,0.288) (0.096,0.436) (0.673,0.277)
+    (0.076,0.155) (0.143,0.456) (0.910,0.112) (0.151,0.212) (0.573,0.430) (0.418,0.145)
+    (0.824,0.479) (0.866,0.030) (0.458,0.368) (0.521,0.161) (0.591,0.314) (0.221,0.799)
+    (0.782,0.486) (0.242,0.588) (0.656,0.203) (0.145,0.220) (0.002,0.939) (0.174,0.834)
+    (0.512,0.057) (0.211,0.258) (0.764,0.368) (0.142,0.946) (0.515,0.067) (0.441,0.146)
+    (0.693,0.097) (0.864,0.469) (0.812,0.110) (0.211,0.111) (0.110,0.589) (0.181,0.205)
+    (0.758,0.282) (0.346,0.496) (0.249,0.595) (0.187,0.449) (0.602,0.112) (0.770,0.102)
+    (0.045,0.786) (0.304,0.495) (0.787,0.609) (0.849,0.395) (0.903,0.398) (0.908,0.309)
+    (0.644,0.592) (0.361,0.514) (0.491,0.678) (0.540,0.318) (0.619,0.173) (0.338,0.650)
+    (0.239,0.895) (0.541,0.681) (0.664,0.162) (0.146,0.570) (0.528,0.310) (0.375,0.259)
+    (0.631,0.429) (0.100,0.227) (0.152,0.629) (0.554,0.393) (0.547,0.629) (0.217,0.056)
+    (0.962,0.186) (0.242,0.704) (0.986,0.124) (0.402,0.856) (0.085,0.250) (0.103,0.416)
+    (0.592,0.547) (0.256,0.400) (0.101,0.146) (0.294,0.198) (0.617,0.298) (0.014,0.094)
+    (0.878,0.109) (0.641,0.419) (0.769,0.509) (0.231,0.211) (0.235,0.234) (0.251,0.299)
+    (0.598,0.528) (0.069,0.421) (0.320,0.156) (0.293,0.133) (0.259,0.925) (0.877,0.452)
+    (0.550,0.701) (0.701,0.694) (0.736,0.591) (0.133,0.687) (0.669,0.162) (0.195,0.637)
+    (0.386,0.811) (0.277,0.666) (0.615,0.111) (0.278,0.353) (0.302,0.091) (0.236,0.537)
+    (0.226,0.636) (0.415,0.456) (0.207,0.787) (0.077,0.944) (0.549,0.352) (0.521,0.394)
+    (0.156,0.152) (0.416,0.452) (0.804,0.122) (0.454,0.133) (0.254,0.493) (0.877,0.132)
+    (0.174,0.706) (0.527,0.088) (0.743,0.329) (0.800,0.568) (0.091,0.362) (0.370,0.709)};
+  \addplot[only marks,mark=*,mark size=0.7pt,PlotRed] coordinates {(0.967,0.683) (0.891,0.776) (0.680,0.849) (0.892,0.614) (0.898,0.835) (0.385,0.974)
+    (0.504,0.937) (0.927,0.785) (0.982,0.446) (0.910,0.962) (0.903,0.867) (0.977,0.615)
+    (0.974,0.605) (0.883,0.559) (0.907,0.671) (0.569,0.961) (0.711,0.738) (0.973,0.268)
+    (0.493,0.914) (0.737,0.882) (0.789,0.728) (0.973,0.345) (0.893,0.956) (0.989,0.963)
+    (0.988,0.246) (0.659,0.933) (0.779,0.837) (0.814,0.687) (0.916,0.919) (0.487,0.953)
+    (0.814,0.918) (0.850,0.769) (0.662,0.847) (0.804,0.618) (0.748,0.881) (0.805,0.966)
+    (0.376,0.989) (0.547,0.950) (1.000,0.307) (0.537,0.997) (0.570,0.840) (0.827,0.824)
+    (0.612,0.838) (0.657,0.792) (0.892,0.895) (0.884,0.611) (0.932,0.622) (0.925,0.515)
+    (0.692,0.972) (0.925,0.603) (0.841,0.692) (0.683,0.896) (0.777,0.967) (0.812,0.635)
+    (0.852,0.695) (0.936,0.806) (0.973,0.675) (0.939,0.752) (0.713,0.770) (0.700,0.751)
+    (0.917,0.892) (0.929,0.663) (0.776,0.669) (0.855,0.658) (0.822,0.620) (0.948,0.934)
+    (0.932,0.534) (0.673,0.947) (0.845,0.861) (0.594,0.980) (0.191,0.987) (0.932,0.846)
+    (0.614,0.829) (0.536,0.993) (0.984,0.210) (0.565,0.987) (0.930,0.940) (0.589,0.944)
+    (0.370,0.929) (0.681,0.958) (0.738,0.996) (0.946,0.655)};
+  \addplot[black,thick,domain=0:90,samples=60] ({cos(x)},{sin(x)});
+\end{axis}
+\end{tikzpicture}
+\caption{Monte Carlo estimation of $\pi$: $318$ of $400$ random points (blue) lie
+  inside the quarter circle.}
+\label{fig:monte-carlo-pi}
+\end{figure}
+
+Monte Carlo also computes integrals: $\int_0^1e^{-x^2}\,\dd x$, which has no
+formula in terms of elementary functions, equals $\E\bigl[e^{-U^2}\bigr]$ for $U$
+uniform on $[0, 1]$. Averaging $e^{-u^2}$ over $10\,000$ random numbers $u$ gave
+$0.7460$, with standard error $0.002$; the true value is $0.7468$. The method
+gets more accurate only slowly (the square-root law again), but it works the
+same way in a thousand dimensions, where other methods are hopeless.
+
+\begin{mlnote}[Monte Carlo is everywhere in machine learning]
+Whenever an expectation is too expensive to compute exactly, machine learning
+replaces it by an average over random samples.
+\begin{itemize}
+  \item A \textbf{mini-batch gradient} is a Monte Carlo estimate of the full
+    gradient (\cref{sec:sgd}): unbiased, with a standard error proportional to
+    $1/\sqrt B$ for batch size $B$. Quadrupling the batch only halves the noise.
+  \item A \textbf{test-set evaluation} is a Monte Carlo estimate of a model's
+    expected loss on new data.
+  \item Generative models, reinforcement learning and Bayesian methods all rely
+    on averages over random samples to approximate expectations that cannot be
+    computed exactly.
+\end{itemize}
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Use Chebyshev's inequality to find a number of die rolls $n$ that guarantees
+$P\bigl(\abs{\bar X_n - 3.5} \ge 0.1\bigr) \le 0.05$. (The variance of one roll
+is $\tfrac{35}{12}$.)
+\end{exercise}
+\begin{solution}
+We need $\tfrac{35/12}{n\times0.1^2} \le 0.05$, i.e.\ $n \ge \tfrac{2.9167}{0.0005}
+\approx 5833.3$, so $n = 5834$ rolls suffice. (Chebyshev is pessimistic; the
+central limit theorem shows that about $1100$ are enough.)
+\end{solution}
+
+\begin{exercise}
+The five numbers $0.1, 0.4, 0.5, 0.8, 0.9$ are random samples from the uniform
+distribution on $[0, 1]$. Use them to give a Monte Carlo estimate of $\E[X^2]$,
+and compare with the exact value.
+\end{exercise}
+\begin{solution}
+$\tfrac15(0.01 + 0.16 + 0.25 + 0.64 + 0.81) = \tfrac{1.87}{5} = 0.374$. The exact
+value is $\int_0^1x^2\,\dd x = \tfrac13 \approx 0.333$.
+\end{solution}
+
+\begin{exercise}
+With a batch size of $32$, the standard deviation of a mini-batch gradient
+component is $0.4$. Roughly which batch size would bring it down to $0.1$?
+\end{exercise}
+\begin{solution}
+The standard deviation scales like $1/\sqrt B$. Dividing it by $4$ requires
+multiplying $B$ by $16$: $B = 512$.
+\end{solution}
+
+\begin{exercise}
+A fair coin has landed heads ten times in a row. What is the probability of heads
+on the next toss? What was the probability, before any toss, of eleven heads in a
+row?
+\end{exercise}
+\begin{solution}
+The next toss is independent of the past: $\tfrac12$. Eleven heads in a row had
+probability $\left(\tfrac12\right)^{11} = \tfrac{1}{2048}$ before the first toss;
+the rarity of the whole sequence does not change the next toss.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{The central limit theorem and confidence intervals}\label{sec:clt}
+%----------------------------------------------------------------------
+
+The law of large numbers says that $\bar X_n$ approaches $\mu$. The central limit
+theorem says something much more detailed: \emph{how} $\bar X_n$ fluctuates
+around $\mu$. The answer is always the same: like a normal distribution.
+
+\begin{theorem}[Central limit theorem]\label{thm:clt}
+Let $X_1, X_2, \dots$ be i.i.d.\ with mean $\mu$ and finite variance
+$\sigma^2 > 0$. For large $n$, the sample mean is approximately normal:
+\[
+  \keyeq{\bar X_n \approx \mathcal{N}\!\left(\mu, \frac{\sigma^2}{n}\right)}
+\]
+Precisely: for every number $z$,
+\[
+  P\left(\frac{\bar X_n - \mu}{\sigma/\sqrt n} \le z\right) \to P(Z \le z)
+  \qquad\text{as } n \to \infty,
+\]
+where $Z \sim \mathcal{N}(0, 1)$.
+\end{theorem}
+\index{central limit theorem}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 2,horizontal sep=1.2cm,vertical sep=1.3cm},
+  mlplot,axis lines=left,width=6.4cm,height=4.4cm,xmin=0.5,xmax=6.5,ymin=0,
+  xtick={1,...,6},yticklabel style={/pgf/number format/fixed},
+  title style={font=\small,yshift=-3pt}]
+  \nextgroupplot[title={$n = 1$},ymax=0.3,ytick={0,0.1,0.2,0.3}]
+    \addplot[ybar interval,fill=MLdef!35,draw=MLdef!70,thin] coordinates {(0.5000,0.1667) (1.5000,0.1667) (2.5000,0.1667) (3.5000,0.1667) (4.5000,0.1667) (5.5000,0.1667) (6.5000,0.1667)};
+    \addplot[PlotRed,domain=0.5:6.5,samples=100]{exp(-(x-3.5)^2/(2*35/12))/sqrt(2*pi*35/12)};
+  \nextgroupplot[title={$n = 2$},ymax=0.42,ytick={0,0.1,0.2,0.3,0.4}]
+    \addplot[ybar interval,fill=MLdef!35,draw=MLdef!70,thin] coordinates {(0.7500,0.0556) (1.2500,0.1111) (1.7500,0.1667) (2.2500,0.2222) (2.7500,0.2778)
+      (3.2500,0.3333) (3.7500,0.2778) (4.2500,0.2222) (4.7500,0.1667) (5.2500,0.1111)
+      (5.7500,0.0556) (6.2500,0.0556)};
+    \addplot[PlotRed,domain=0.5:6.5,samples=100]{exp(-(x-3.5)^2/(2*35/24))/sqrt(2*pi*35/24)};
+  \nextgroupplot[title={$n = 5$},ymax=0.65,ytick={0,0.2,0.4,0.6}]
+    \addplot[ybar interval,fill=MLdef!35,draw=MLdef!70,thin] coordinates {(0.9000,0.0006) (1.1000,0.0032) (1.3000,0.0096) (1.5000,0.0225) (1.7000,0.0450)
+      (1.9000,0.0810) (2.1000,0.1318) (2.3000,0.1961) (2.5000,0.2701) (2.7000,0.3472)
+      (2.9000,0.4186) (3.1000,0.4726) (3.3000,0.5015) (3.5000,0.5015) (3.7000,0.4726)
+      (3.9000,0.4186) (4.1000,0.3472) (4.3000,0.2701) (4.5000,0.1961) (4.7000,0.1318)
+      (4.9000,0.0810) (5.1000,0.0450) (5.3000,0.0225) (5.5000,0.0096) (5.7000,0.0032)
+      (5.9000,0.0006) (6.1000,0.0006)};
+    \addplot[PlotRed,domain=0.5:6.5,samples=100]{exp(-(x-3.5)^2/(2*35/60))/sqrt(2*pi*35/60)};
+  \nextgroupplot[title={$n = 25$},ymax=1.35,ytick={0,0.5,1}]
+    \addplot[ybar interval,fill=MLdef!35,draw=none] coordinates {(2.1800,0.0006) (2.2200,0.0010) (2.2600,0.0016) (2.3000,0.0025) (2.3400,0.0039)
+      (2.3800,0.0058) (2.4200,0.0087) (2.4600,0.0127) (2.5000,0.0181) (2.5400,0.0256)
+      (2.5800,0.0355) (2.6200,0.0485) (2.6600,0.0652) (2.7000,0.0863) (2.7400,0.1125)
+      (2.7800,0.1445) (2.8200,0.1827) (2.8600,0.2278) (2.9000,0.2798) (2.9400,0.3389)
+      (2.9800,0.4046) (3.0200,0.4763) (3.0600,0.5528) (3.1000,0.6329) (3.1400,0.7146)
+      (3.1800,0.7959) (3.2200,0.8744) (3.2600,0.9478) (3.3000,1.0135) (3.3400,1.0693)
+      (3.3800,1.1131) (3.4200,1.1432) (3.4600,1.1586) (3.5000,1.1586) (3.5400,1.1432)
+      (3.5800,1.1131) (3.6200,1.0693) (3.6600,1.0135) (3.7000,0.9478) (3.7400,0.8744)
+      (3.7800,0.7959) (3.8200,0.7146) (3.8600,0.6329) (3.9000,0.5528) (3.9400,0.4763)
+      (3.9800,0.4046) (4.0200,0.3389) (4.0600,0.2798) (4.1000,0.2278) (4.1400,0.1827)
+      (4.1800,0.1445) (4.2200,0.1125) (4.2600,0.0863) (4.3000,0.0652) (4.3400,0.0485)
+      (4.3800,0.0355) (4.4200,0.0256) (4.4600,0.0181) (4.5000,0.0127) (4.5400,0.0087)
+      (4.5800,0.0058) (4.6200,0.0039) (4.6600,0.0025) (4.7000,0.0016) (4.7400,0.0010)
+      (4.7800,0.0006) (4.8200,0.0006)};
+    \addplot[PlotRed,domain=0.5:6.5,samples=150]{exp(-(x-3.5)^2/(2*35/300))/sqrt(2*pi*35/300)};
+\end{groupplot}
+\end{tikzpicture}
+\caption{The central limit theorem in action. The bars show the exact
+  distribution of the average of $n$ rolls of a fair die, drawn as a density
+  (bar heights are probabilities divided by the bar width $\frac1n$). The red
+  curves are the normal densities $\mathcal{N}(3.5, \frac{35}{12n})$ predicted by
+  the theorem. A flat distribution turns into a bell curve that becomes narrower
+  as $n$ grows.}
+\label{fig:clt}
+\end{figure}
+
+\begin{intuition}[Why averages become bell-shaped]
+An average of many independent pieces has many ways to come out near the middle
+and few ways to come out at the extremes: to average $6$ over $25$ dice, every
+single die must show a $6$. Remarkably, the limiting shape does not depend on the
+shape of the individual distribution (flat, skewed, two-humped): only its mean
+and variance survive. This is why the normal distribution appears whenever many
+small independent effects add up.
+\end{intuition}
+
+\subsection{Confidence intervals}
+
+The central limit theorem lets us attach error bars to an estimate. Since
+$\bar X$ is approximately normal with mean $\mu$ and standard deviation
+$\operatorname{SE} = \sigma/\sqrt n$, and a normal random variable lies within
+$1.96$ standard deviations of its mean with probability $0.95$,
+\[
+  P\bigl(\bar X - 1.96\operatorname{SE} \le \mu \le \bar X + 1.96\operatorname{SE}\bigr)
+  \approx 0.95 .
+\]
+
+\begin{definition}[Confidence interval]\label{def:confidence-interval}
+An approximate $95\%$ \term{confidence interval} for a mean $\mu$ is
+\[
+  \bar x \pm 1.96\,\frac{s}{\sqrt n}
+  = \left[\bar x - 1.96\,\frac{s}{\sqrt n},\ \bar x + 1.96\,\frac{s}{\sqrt n}\right].
+\]
+\end{definition}
+
+\begin{example}[Error bars for an accuracy]\label{ex:accuracy-ci}
+For the classifier of \cref{ex:accuracy-se}, with accuracy $0.85$ on $1000$ test
+examples, the standard error is $0.0113$, and an approximate $95\%$ confidence
+interval for the true accuracy is
+\[
+  0.85 \pm 1.96\times0.0113 = 0.85 \pm 0.022 = [0.828,\ 0.872].
+\]
+\end{example}
+
+\begin{pitfall}[What ``$95\%$ confident'' means]
+The true accuracy is a fixed number; it is the interval that is random. The
+$95\%$ describes the \emph{procedure}: if we repeated the whole experiment many
+times, with new test sets, about $95\%$ of the intervals computed this way would
+contain the true value. It does not mean that the true value lies in our
+particular interval with probability $95\%$ (in the Bayesian approach of
+\cref{sec:map} one can make such statements, using a prior).
+\end{pitfall}
+
+\begin{mlnote}[Error bars in machine learning]
+Results computed from finite samples should come with error bars: report the
+mean and standard error over several training runs with different random seeds,
+or a confidence interval for a test metric. The central limit theorem also
+explains why the input $\sum_iw_ix_i$ to a neuron with many inputs is
+approximately normal, which is the starting point of the analysis of weight
+initialisation (\cref{sec:variance}).
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+A die is rolled $100$ times. What is the approximate distribution of the average
+roll? Estimate the probability that the average exceeds $3.84$.
+\end{exercise}
+\begin{solution}
+Approximately $\mathcal{N}\bigl(3.5, \tfrac{35/12}{100}\bigr)$, with standard
+deviation $\sqrt{0.02917} \approx 0.171$. Since $3.84$ is $\tfrac{0.34}{0.171}
+\approx 2$ standard deviations above the mean, the probability is about
+$2.5\%$ (more precisely $0.023$).
+\end{solution}
+
+\begin{exercise}
+A model is correct on $360$ of $400$ test examples. Give an approximate $95\%$
+confidence interval for its accuracy.
+\end{exercise}
+\begin{solution}
+$\hat p = 0.9$ and $\operatorname{SE} = \sqrt{\tfrac{0.9\times0.1}{400}} = 0.015$, so
+the interval is $0.9 \pm 0.029 = [0.871, 0.929]$.
+\end{solution}
+
+\begin{exercise}
+About how many test examples are needed to measure an accuracy of about $90\%$
+to within $\pm1$ percentage point (as a $95\%$ confidence interval)?
+\end{exercise}
+\begin{solution}
+We need $1.96\sqrt{\tfrac{0.9\times0.1}{n}} \le 0.01$, i.e.\ $n \ge
+\tfrac{1.96^2\times0.09}{0.0001} \approx 3457$: about $3500$ examples.
+\end{solution}
+
+\begin{exercise}
+Let $U_1, \dots, U_{12}$ be independent and uniform on $[0, 1]$ (mean
+$\tfrac12$, variance $\tfrac1{12}$). Find the mean and variance of
+$S = U_1 + \dots + U_{12} - 6$. What does the central limit theorem suggest about
+its distribution?
+\end{exercise}
+\begin{solution}
+$\E[S] = 12\times\tfrac12 - 6 = 0$ and $\Var(S) = 12\times\tfrac1{12} = 1$. As a sum
+of many independent pieces, $S$ is approximately standard normal; this was once a
+popular way of generating normal random numbers.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Maximum likelihood estimation}\label{sec:mle}
+%----------------------------------------------------------------------
+
+Most models in machine learning are \emph{parametric}: a family of
+distributions $p(x \mid \theta)$, one for each value of a parameter $\theta$
+(which may be a vector of millions of weights). Training means choosing
+$\theta$. The most important principle for doing this is maximum likelihood.
+
+\begin{picturethis}[Which coin produced these tosses?]
+A coin is tossed $10$ times and shows $7$ heads and $3$ tails. Suppose the
+probability of heads is $\theta$. How probable was this particular sequence of
+tosses?
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+$\theta$ & $0.5$ & $0.7$ & $0.9$\\
+\midrule
+$P(\text{data} \mid \theta) = \theta^7(1 - \theta)^3$ & $0.00098$ & $0.00222$ &
+  $0.00048$\\
+\bottomrule
+\end{tabular}
+\end{center}
+Of these values, $\theta = 0.7$ makes the observed data most probable, more than
+twice as probable as a fair coin does. Maximum likelihood says: \emph{choose the
+parameter value under which the observed data would have been most probable}.
+\end{picturethis}
+
+\begin{definition}[Likelihood]\label{def:likelihood}
+For data $x_1, \dots, x_n$ and a model $p(x \mid \theta)$, the
+\term[likelihood]{likelihood} is the probability (or density) of the data,
+viewed as a function of the parameter:
+\[
+  \mathcal{L}(\theta) = p(x_1, \dots, x_n \mid \theta)
+  = \prod_{i=1}^n p(x_i \mid \theta) ,
+\]
+where the product form holds for i.i.d.\ data. Its logarithm
+$\ln\mathcal{L}(\theta) = \sum_{i=1}^n\ln p(x_i \mid \theta)$ is the
+\term{log-likelihood}.
+\end{definition}
+
+\begin{definition}[Maximum likelihood estimate]\label{def:mle}
+The \term[maximum likelihood estimation]{maximum likelihood estimate} (MLE) is
+the parameter value that maximises the likelihood:
+\[
+  \keyeq{\hat\theta_{\mathrm{MLE}} = \argmax_\theta\,\ln\mathcal{L}(\theta)
+  = \argmin_\theta\,\Bigl(-\sum_{i=1}^n\ln p(x_i \mid \theta)\Bigr)}
+\]
+The quantity being minimised on the right is the
+\term{negative log-likelihood} (NLL).
+\end{definition}
+
+Maximising $\ln\mathcal{L}$ instead of $\mathcal{L}$ gives the same answer,
+because $\ln$ is increasing, and it is far more convenient: sums are easier to
+differentiate than products, and a product of thousands of probabilities would
+underflow to $0$ on a computer (\cref{sec:logarithms}).
+
+\begin{example}[Maximum likelihood for a coin]\label{ex:mle-coin}
+Find the MLE of $\theta = P(\text{heads})$ after $h$ heads in $n$ tosses; in
+particular for $7$ heads in $10$ tosses.
+
+\sol The log-likelihood is $\ln\mathcal{L}(\theta) = h\ln\theta + (n - h)\ln(1 -
+\theta)$. Setting its derivative to zero,
+\[
+  \frac{h}{\theta} - \frac{n - h}{1 - \theta} = 0
+  \quad\Longrightarrow\quad h(1 - \theta) = (n - h)\,\theta
+  \quad\Longrightarrow\quad \hat\theta = \frac hn .
+\]
+The second derivative $-\frac{h}{\theta^2} - \frac{n-h}{(1-\theta)^2}$ is negative,
+so this is a maximum. For $7$ heads in $10$ tosses, $\hat\theta = 0.7$
+(\cref{fig:likelihood}): the MLE is the observed frequency, as common sense
+suggests.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1,horizontal sep=1.6cm},
+  mlplot,axis lines=left,width=6.6cm,height=5cm,xmin=0,xmax=1,
+  xlabel={$\theta$},
+  xlabel style={at={(ticklabel cs:0.5)},anchor=north},
+  ylabel style={at={(ticklabel cs:0.5)},anchor=south,rotate=90}]
+  \nextgroupplot[ymin=0,ymax=2.6,ylabel={$\mathcal{L}(\theta)\times10^{3}$}]
+    \addplot[PlotBlue,domain=0:1,samples=150]{1000*x^7*(1-x)^3};
+    \draw[dashed,gray] (axis cs:0.7,0) -- (axis cs:0.7,2.2236);
+    \fill[PlotRed] (axis cs:0.7,2.2236) circle (2pt);
+  \nextgroupplot[ymin=-22,ymax=-4,ylabel={$\ln\mathcal{L}(\theta)$}]
+    \addplot[PlotBlue,domain=0.05:0.99,samples=150]{7*ln(x)+3*ln(1-x)};
+    \draw[dashed,gray] (axis cs:0.7,-22) -- (axis cs:0.7,-6.109);
+    \fill[PlotRed] (axis cs:0.7,-6.109) circle (2pt);
+\end{groupplot}
+\end{tikzpicture}
+\caption{The likelihood (left) and log-likelihood (right) of $\theta$ after
+  $7$ heads in $10$ tosses. Both are maximised at $\hat\theta = 0.7$; the
+  logarithm changes the shape of the curve but not the location of its maximum.}
+\label{fig:likelihood}
+\end{figure}
+
+\begin{example}[Maximum likelihood for a normal distribution]\label{ex:mle-gaussian}
+Data $x_1, \dots, x_n$ are modelled as i.i.d.\ from $\mathcal{N}(\mu, \sigma^2)$.
+Find the MLEs of $\mu$ and $\sigma^2$.
+
+\sol Taking the logarithm of the normal density (\cref{sec:distributions}) and
+adding over the data,
+\[
+  \ln\mathcal{L}(\mu, \sigma^2) = -\frac n2\ln(2\pi\sigma^2)
+  - \frac{1}{2\sigma^2}\sum_{i=1}^n(x_i - \mu)^2 .
+\]
+For any fixed $\sigma^2$, this is largest when $\sum_i(x_i - \mu)^2$ is smallest,
+which happens at $\hat\mu = \bar x$ (\cref{ex:mean-minimises}). Next, writing
+$v = \sigma^2$ and differentiating with respect to $v$,
+\[
+  -\frac{n}{2v} + \frac{1}{2v^2}\sum_{i=1}^n(x_i - \bar x)^2 = 0
+  \quad\Longrightarrow\quad
+  \hat\sigma^2 = \frac1n\sum_{i=1}^n(x_i - \bar x)^2 .
+\]
+Note that the MLE of the variance divides by $n$, so it is slightly biased
+(\cref{thm:bessel}). Maximum likelihood estimates need not be unbiased.
+\end{example}
+
+For a categorical distribution with $K$ outcomes, observed $n_1, \dots, n_K$
+times in $N$ trials, the MLE is $\hat p_k = \frac{n_k}{N}$, the observed
+frequencies; we derived this with a Lagrange multiplier in
+\cref{ex:lagrange-categorical}.
+
+\begin{remark}[How good is maximum likelihood?]
+If the model is correct, then as the amount of data grows the MLE converges to
+the true parameter, its sampling distribution becomes approximately normal, and
+no other (approximately unbiased) estimator has a smaller variance. With little
+data, however, it can be badly overconfident: after $3$ heads in $3$ tosses the
+MLE is $\hat\theta = 1$, which declares tails impossible. Priors
+(\cref{sec:map}) fix this.
+\end{remark}
+
+\begin{mlnote}[Training is maximum likelihood]
+Most of machine learning is maximum likelihood in disguise. A language model is
+trained by maximising the log-likelihood of its training text: by the chain rule
+of probability (\cref{sec:conditional}), this is the sum of the log-probabilities
+that it assigns to each actual next token. Minimising the average negative
+log-likelihood with stochastic gradient descent is the training procedure of
+nearly every modern neural network, as the next section shows.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+A coin shows $12$ heads in $40$ tosses. What is the maximum likelihood estimate
+of the probability of heads?
+\end{exercise}
+\begin{solution}
+$\hat\theta = \tfrac{12}{40} = 0.3$.
+\end{solution}
+
+\begin{exercise}
+Counts $x_1, \dots, x_n$ are modelled as Poisson with
+$p(x \mid \lambda) = \frac{\lambda^xe^{-\lambda}}{x!}$. Show that the MLE is
+$\hat\lambda = \bar x$, and compute it for the data $2, 0, 3, 1, 4$.
+\end{exercise}
+\begin{solution}
+$\ln\mathcal{L}(\lambda) = \sum_i(x_i\ln\lambda - \lambda - \ln x_i!)$. Its
+derivative $\tfrac{1}{\lambda}\sum_ix_i - n$ vanishes at $\hat\lambda =
+\tfrac1n\sum_ix_i = \bar x$ (and the second derivative $-\sum_ix_i/\lambda^2$ is
+negative). For the data, $\hat\lambda = \tfrac{10}{5} = 2$.
+\end{solution}
+
+\begin{exercise}
+Waiting times $0.5, 1.5, 2.0, 1.0$ are modelled as exponential with density
+$\lambda e^{-\lambda t}$. Find the MLE of $\lambda$.
+\end{exercise}
+\begin{solution}
+$\ln\mathcal{L}(\lambda) = n\ln\lambda - \lambda\sum_it_i$, with derivative
+$\tfrac n\lambda - \sum_it_i = 0$, so $\hat\lambda = \tfrac{n}{\sum_it_i} =
+\tfrac{1}{\bar t} = \tfrac{1}{1.25} = 0.8$.
+\end{solution}
+
+\begin{exercise}
+Find the MLEs of $\mu$ and $\sigma^2$ for the data of \cref{ex:summary-stats},
+assuming a normal model, and compare $\hat\sigma^2$ with $s^2$.
+\end{exercise}
+\begin{solution}
+$\hat\mu = \bar x = 5$ and $\hat\sigma^2 = \tfrac{32}{8} = 4$, slightly smaller
+than $s^2 = \tfrac{32}{7} \approx 4.57$.
+\end{solution}
+
+\begin{exercise}
+The log-likelihood of a data set is $-120.5$ under model A and $-118.2$ under
+model B. Which model explains the data better, and how many times larger is its
+likelihood?
+\end{exercise}
+\begin{solution}
+Model B, whose log-likelihood is larger. The ratio of the likelihoods is
+$e^{-118.2}/e^{-120.5} = e^{2.3} \approx 10$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Loss functions from likelihoods}\label{sec:losses-from-likelihood}
+%----------------------------------------------------------------------
+
+In supervised learning the model describes the \emph{conditional} distribution
+$p(y \mid \vx, \vtheta)$ of a label $y$ given an input $\vx$. Maximum likelihood
+then says: minimise $-\sum_i\ln p(y_i \mid \vx_i, \vtheta)$. Choosing a
+distribution for the labels determines the loss function.
+
+\subsection{Regression: Gaussian noise gives squared error}
+
+Suppose that the targets are a deterministic function plus Gaussian noise,
+\[
+  y = f(\vx; \vtheta) + \varepsilon,
+  \qquad \varepsilon \sim \mathcal{N}(0, \sigma^2),
+\]
+so that $p(y \mid \vx, \vtheta)$ is the normal density with mean $f(\vx;
+\vtheta)$ and variance $\sigma^2$ (\cref{fig:gaussian-noise}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=10cm,height=6.5cm,xmin=0,xmax=6.3,ymin=0,ymax=5.2,
+  xlabel={$x$},ylabel={$y$},
+  xlabel style={at={(ticklabel cs:0.5)},anchor=north},
+  ylabel style={at={(ticklabel cs:0.5)},anchor=south,rotate=90}]
+  \addplot[only marks,mark=*,mark size=1.4pt,PlotBlue] coordinates {(0.40,0.75) (0.54,1.28) (0.56,1.27) (0.59,1.19) (0.63,0.95) (0.65,1.18) (1.53,1.38)
+    (1.57,1.31) (1.77,1.96) (1.84,1.53) (2.37,2.59) (2.42,2.46) (2.51,1.55) (2.65,2.42)
+    (2.96,2.10) (3.08,2.55) (3.30,2.67) (3.82,2.22) (3.95,2.90) (3.97,2.89) (4.65,3.66)
+    (4.66,2.92) (4.86,3.69) (5.00,3.11) (5.01,3.39) (5.05,3.23) (5.14,4.07) (5.15,3.77)
+    (5.56,4.63) (5.70,4.07)};
+  \addplot[MLdef,very thick,domain=0:6.3]{0.5*x+1};
+  \addplot[PlotRed,thick,domain=-3:3,samples=60,variable=\t] ({1.5+0.9*exp(-(\t)^2/2)},{1.75+0.35*\t});
+  \addplot[PlotRed,thick,domain=-3:3,samples=60,variable=\t] ({3+0.9*exp(-(\t)^2/2)},{2.5+0.35*\t});
+  \addplot[PlotRed,thick,domain=-3:3,samples=60,variable=\t] ({4.5+0.9*exp(-(\t)^2/2)},{3.25+0.35*\t});
+  \draw[PlotRed] (axis cs:1.5,0.7) -- (axis cs:1.5,2.8);
+  \draw[PlotRed] (axis cs:3,1.45) -- (axis cs:3,3.55);
+  \draw[PlotRed] (axis cs:4.5,2.2) -- (axis cs:4.5,4.3);
+  \node[MLdef,font=\small,anchor=north east] at (axis cs:6.25,3.75) {$f(x)$};
+\end{axis}
+\end{tikzpicture}
+\caption{The probabilistic view of regression. For each input $x$, the target
+  $y$ is drawn from a normal distribution (red) centred on the line $f(x)$. Maximum
+  likelihood for this model is least squares.}
+\label{fig:gaussian-noise}
+\end{figure}
+
+The negative log-likelihood is
+\[
+  -\ln\mathcal{L}(\vtheta)
+  = \frac{1}{2\sigma^2}\sum_{i=1}^n\bigl(y_i - f(\vx_i; \vtheta)\bigr)^2
+  + n\ln\bigl(\sigma\sqrt{2\pi}\bigr) .
+\]
+The second term does not depend on $\vtheta$, and the first is a positive
+multiple of the sum of squared errors. Therefore:
+
+\begin{theorem}[Least squares is maximum likelihood]\label{thm:ls-mle}
+If the noise is Gaussian with constant variance, maximum likelihood estimation
+of $\vtheta$ is the same as minimising the sum of squared errors (equivalently,
+the mean squared error) $\sum_i\bigl(y_i - f(\vx_i; \vtheta)\bigr)^2$.
+\end{theorem}
+
+This is the statistical reason why squared error is the default loss for
+regression. It also explains its weakness: the normal distribution has very thin
+tails, so the model regards a large residual as nearly impossible and bends
+itself to reduce it, which makes least squares sensitive to outliers. If the
+noise is instead modelled by the heavier-tailed \emph{Laplace distribution},
+with density $\frac{1}{2b}e^{-\abs\varepsilon/b}$, maximum likelihood gives the
+more robust absolute error (an exercise below).
+
+\subsection{Classification: Bernoulli labels give cross-entropy}
+
+For binary classification, $y \in \{0, 1\}$, and the model outputs the
+probability $q = P(y = 1 \mid \vx, \vtheta)$, for example
+$q = \sigma(\vw^\top\vx + b)$ with the sigmoid function of \cref{ch:functions};
+this model is called \term{logistic regression}. The Bernoulli probability of
+the observed label can be written in one formula as $q^y(1 - q)^{1-y}$ (which is
+$q$ if $y = 1$ and $1 - q$ if $y = 0$). So the negative log-likelihood is
+\[
+  \keyeq{-\ln\mathcal{L}(\vtheta)
+  = -\sum_{i=1}^n\Bigl[y_i\ln q_i + (1 - y_i)\ln(1 - q_i)\Bigr]}
+\]
+where $q_i$ is the predicted probability for example $i$. This loss is the
+\term{binary cross-entropy} or \emph{log loss}.
+
+\begin{example}[Computing the binary cross-entropy]\label{ex:bce}
+Three examples have labels $1, 0, 1$, and a model predicts
+$q = 0.9, 0.2, 0.6$. Compute the loss.
+
+\sol For each example the loss is $-\ln$ of the probability given to the true
+label: $-\ln0.9 \approx 0.105$, $-\ln(1 - 0.2) = -\ln0.8 \approx 0.223$ and
+$-\ln0.6 \approx 0.511$. The total is $0.839$ and the average $0.280$.
+\end{example}
+
+\begin{intuition}[Cross-entropy punishes confident mistakes]
+The loss on an example is $-\ln(\text{probability assigned to the truth})$. It
+is $0$ for a confident correct prediction, about $0.69$ for an undecided
+prediction of $0.5$, and it grows without limit as the probability of the truth
+goes to $0$: predicting $q = 0.99$ for an example whose label is $0$ costs
+$-\ln0.01 \approx 4.6$. A model trained with cross-entropy learns to be confident
+only when it has reason to be.
+\end{intuition}
+
+For $K$ classes the labels are categorical, the model outputs probabilities
+$q_1, \dots, q_K$ (usually through a softmax function), and the negative
+log-likelihood is $-\sum_i\ln q_{i, y_i}$, the \emph{cross-entropy} loss. Its
+connection with information theory, and its strikingly simple gradient, are the
+subject of \cref{ch:dl}.
+
+\begin{keytakeaways}[Choosing a loss means choosing a noise model]
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}lll@{}}
+\textbf{Target} & \textbf{Model for $y$ given $\vx$} & \textbf{Negative log-likelihood}\\
+\hline
+real number & normal, mean $f(\vx)$ & squared error\\
+real number & Laplace, centre $f(\vx)$ & absolute error\\
+binary label & Bernoulli$(q(\vx))$ & binary cross-entropy\\
+one of $K$ classes & categorical$(\vq(\vx))$ & cross-entropy\\
+count & Poisson$(\lambda(\vx))$ & $\lambda(\vx) - y\ln\lambda(\vx)$ (Poisson loss)
+\end{tabular}
+\end{keytakeaways}
+
+\sectionexercises
+
+\begin{exercise}
+Four examples have labels $0, 1, 1, 0$, and a model predicts the probabilities
+$q = 0.1, 0.7, 0.4, 0.3$ that the label is $1$. Compute the average binary
+cross-entropy. Which example contributes most?
+\end{exercise}
+\begin{solution}
+The losses are $-\ln0.9 \approx 0.105$, $-\ln0.7 \approx 0.357$,
+$-\ln0.4 \approx 0.916$ and $-\ln0.7 \approx 0.357$, with total $1.735$ and average
+$0.434$. The third example, a positive example given only $0.4$, contributes
+most.
+\end{solution}
+
+\begin{exercise}
+Suppose the noise is Laplace: $p(y \mid \vx) = \frac{1}{2b}\exp\bigl(-\abs{y -
+f(\vx)}/b\bigr)$. Show that maximum likelihood minimises the sum of absolute errors
+$\sum_i\abs{y_i - f(\vx_i)}$.
+\end{exercise}
+\begin{solution}
+$-\ln\mathcal{L} = \sum_i\left(\ln(2b) + \tfrac1b\abs{y_i - f(\vx_i)}\right)
+= n\ln(2b) + \tfrac1b\sum_i\abs{y_i - f(\vx_i)}$. The first term and the factor
+$\tfrac1b$ do not depend on the model, so minimising the NLL means minimising
+$\sum_i\abs{y_i - f(\vx_i)}$.
+\end{solution}
+
+\begin{exercise}
+A ``model'' predicts the same probability $q$ for every example of a data set
+with $h$ positive and $n - h$ negative labels. Which $q$ minimises the binary
+cross-entropy?
+\end{exercise}
+\begin{solution}
+The loss is $-h\ln q - (n - h)\ln(1 - q)$, the negative log-likelihood of the coin
+in \cref{ex:mle-coin}, so it is minimised by $q = \tfrac hn$, the fraction of
+positive labels.
+\end{solution}
+
+\begin{exercise}
+For a label $y = 1$, compare the binary cross-entropy of the predictions
+$q = 0.9$, $q = 0.5$, $q = 0.1$ and $q = 0.001$.
+\end{exercise}
+\begin{solution}
+$-\ln0.9 \approx 0.105$, $-\ln0.5 \approx 0.693$, $-\ln0.1 \approx 2.303$ and
+$-\ln0.001 \approx 6.908$. The loss grows slowly at first and then very fast as the
+prediction becomes confidently wrong.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Bayesian inference and MAP estimation}\label{sec:map}
+%----------------------------------------------------------------------
+
+Maximum likelihood uses only the data. Often we also have prior knowledge: coins
+are usually close to fair; the weights of a good model are usually not huge.
+Bayes' theorem (\cref{sec:bayes}) combines prior knowledge with data. Treating
+the parameter $\theta$ itself as a random variable with a \term{prior}
+distribution $p(\theta)$,
+\[
+  \underbrace{p(\theta \mid \mathcal{D})}_{\text{posterior}}
+  = \frac{p(\mathcal{D} \mid \theta)\,p(\theta)}{p(\mathcal{D})}
+  \;\propto\; \underbrace{p(\mathcal{D} \mid \theta)}_{\text{likelihood}}\,
+  \underbrace{p(\theta)}_{\text{prior}} ,
+\]
+where $\mathcal{D}$ denotes the data and $\propto$ means ``is proportional to''
+(the denominator does not depend on $\theta$).
+
+\begin{definition}[MAP estimate]\label{def:map}
+The \term[MAP estimation]{maximum a posteriori} (MAP) estimate is the parameter
+value with the highest posterior density:
+\[
+  \hat\theta_{\mathrm{MAP}} = \argmax_\theta\, p(\theta \mid \mathcal{D})
+  = \argmin_\theta\Bigl(\underbrace{-\ln p(\mathcal{D} \mid \theta)}_{\text{NLL}}
+  \;\underbrace{-\ln p(\theta)}_{\text{penalty}}\Bigr).
+\]
+\end{definition}
+
+So MAP estimation is maximum likelihood plus a penalty term coming from the prior.
+
+\begin{example}[A coin with a prior]\label{ex:map-coin}
+Take the prior density $p(\theta) = 6\theta(1 - \theta)$ on $[0, 1]$, which
+favours values near $\frac12$ without ruling anything out. (It is a valid
+density: $\int_0^16\theta(1 - \theta)\,\dd\theta = 6\left(\frac12 -
+\frac13\right) = 1$.) After $h$ heads and $t$ tails, find the MAP estimate.
+
+\sol The posterior is proportional to
+$\theta^h(1 - \theta)^t\cdot\theta(1 - \theta) = \theta^{h+1}(1 - \theta)^{t+1}$.
+This has the same form as the likelihood in \cref{ex:mle-coin}, with $h + 1$
+``heads'' and $t + 1$ ``tails'', so it is maximised at
+\[
+  \hat\theta_{\mathrm{MAP}} = \frac{h + 1}{n + 2}, \qquad n = h + t .
+\]
+After $3$ heads in $3$ tosses, the MLE is $1$ but the MAP estimate is
+$\frac45 = 0.8$ (\cref{fig:prior-posterior}). After $700$ heads in $1000$ tosses,
+the two are almost identical ($0.7$ and $0.6996$): with lots of data, the prior's
+influence fades away.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=10cm,height=5.8cm,xmin=0,xmax=1,ymin=0,ymax=4.3,
+  xlabel={$\theta$},ylabel={density},
+  xlabel style={at={(ticklabel cs:0.5)},anchor=north},
+  ylabel style={at={(ticklabel cs:0.5)},anchor=south,rotate=90},
+  legend style={font=\small,at={(0.03,0.97)},anchor=north west,draw=gray!40},
+  legend cell align=left]
+  \addplot[PlotGreen,dashed,domain=0:1,samples=100]{6*x*(1-x)};
+  \addlegendentry{prior $6\theta(1-\theta)$}
+  \addplot[PlotGray,densely dotted,very thick,domain=0:1,samples=100]{4*x^3};
+  \addlegendentry{likelihood $\theta^3$ (rescaled)}
+  \addplot[PlotBlue,very thick,domain=0:1,samples=150]{30*x^4*(1-x)};
+  \addlegendentry{posterior $30\theta^4(1-\theta)$}
+  \draw[dashed,gray] (axis cs:0.8,0) -- (axis cs:0.8,2.62);
+  \node[font=\small,anchor=south] at (axis cs:0.8,2.62) {MAP};
+\end{axis}
+\end{tikzpicture}
+\caption{Bayesian updating for a coin that shows $3$ heads in $3$ tosses. The
+  likelihood alone is maximised at $\theta = 1$; combined with the prior, the
+  posterior peaks at $\theta = 0.8$.}
+\label{fig:prior-posterior}
+\end{figure}
+
+The estimate $\frac{h + 1}{n + 2}$ is known as \term{Laplace smoothing} or
+\emph{add-one smoothing}. In a naive Bayes spam filter (\cref{ex:naive-bayes}) it
+prevents a word that never appeared in the spam training emails from getting
+probability $0$, which would make any email containing it impossible to classify
+as spam, whatever its other words.
+
+\subsection{Regularisation is a prior}
+
+Consider linear regression with Gaussian noise of variance $\sigma^2$, and give
+each weight a normal prior, $w_j \sim \mathcal{N}(0, \tau^2)$, independently:
+we believe that weights are usually small. Then
+$-\ln p(\vw) = \frac{1}{2\tau^2}\norm{\vw}^2 + \text{constant}$, and the MAP
+objective becomes
+\[
+  \frac{1}{2\sigma^2}\sum_{i=1}^n(y_i - \vw^\top\vx_i)^2
+  + \frac{1}{2\tau^2}\norm{\vw}^2 .
+\]
+Multiplying by $2\sigma^2$ (which does not change the minimiser) gives
+\[
+  \sum_{i=1}^n(y_i - \vw^\top\vx_i)^2 + \lambda\norm{\vw}^2,
+  \qquad \lambda = \frac{\sigma^2}{\tau^2} ,
+\]
+which is exactly ridge regression (\cref{sec:analytic-optimisation}).
+
+\begin{theorem}[Priors and penalties]\label{thm:priors-penalties}
+MAP estimation with a Gaussian prior on the weights is $L^2$ regularisation
+(ridge regression, weight decay). With a Laplace prior,
+$p(w_j) \propto e^{-\abs{w_j}/b}$, it is $L^1$ regularisation (the lasso), which
+favours sparse weight vectors (\cref{sec:norms}).
+\end{theorem}
+
+The stronger the prior belief that the weights are small (the smaller $\tau$),
+the larger $\lambda$. A flat prior ($\tau \to \infty$) gives $\lambda \to 0$: MAP
+becomes maximum likelihood.
+
+\begin{remark}[Full Bayesian inference]
+MAP keeps only the peak of the posterior. A fully Bayesian approach keeps the
+whole posterior and averages the predictions of all parameter values, weighted
+by their posterior probabilities:
+$p(y \mid \vx, \mathcal{D}) = \int p(y \mid \vx, \vtheta)\,p(\vtheta \mid
+\mathcal{D})\,\dd\vtheta$. This gives honest uncertainty estimates, but the
+integral is usually intractable for neural networks; approximations include
+ensembles of independently trained networks, Monte Carlo dropout and
+variational inference.
+\end{remark}
+
+\sectionexercises
+
+\begin{exercise}
+With the prior $6\theta(1 - \theta)$ of \cref{ex:map-coin}, find the MAP estimate
+after $7$ heads in $10$ tosses, and compare it with the MLE.
+\end{exercise}
+\begin{solution}
+$\hat\theta_{\mathrm{MAP}} = \tfrac{7 + 1}{10 + 2} = \tfrac23 \approx 0.667$, pulled
+slightly from the MLE $0.7$ towards $\tfrac12$.
+\end{solution}
+
+\begin{exercise}
+In ridge regression derived as MAP estimation, the noise variance is
+$\sigma^2 = 1$ and the prior variance of each weight is $\tau^2 = 0.1$. What is
+$\lambda$? What happens to $\lambda$ as $\tau^2$ grows?
+\end{exercise}
+\begin{solution}
+$\lambda = \tfrac{\sigma^2}{\tau^2} = 10$. As $\tau^2 \to \infty$ (a vaguer and
+vaguer prior), $\lambda \to 0$ and we recover least squares.
+\end{solution}
+
+\begin{exercise}
+Show that with the uniform prior $p(\theta) = 1$ on $[0, 1]$, the MAP estimate
+equals the MLE.
+\end{exercise}
+\begin{solution}
+The posterior is proportional to $\mathcal{L}(\theta)\cdot1$, so it has the same
+maximiser as the likelihood. ($-\ln p(\theta) = 0$: no penalty.)
+\end{solution}
+
+\begin{exercise}
+In $50$ spam training emails a certain word never occurs. Estimate the probability
+that a spam email contains the word, by maximum likelihood and with Laplace
+smoothing. Why is the first answer dangerous for a naive Bayes classifier?
+\end{exercise}
+\begin{solution}
+MLE: $\tfrac{0}{50} = 0$. Laplace: $\tfrac{0 + 1}{50 + 2} = \tfrac{1}{52} \approx
+0.019$. With the MLE, every email containing the word gets a spam likelihood of
+exactly $0$, so it can never be classified as spam, no matter how ``spammy'' its
+other words are.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Hypothesis testing and p-values}\label{sec:hypothesis-testing}
+%----------------------------------------------------------------------
+
+A new model scores better than the old one on a test set. Is it really better,
+or was it lucky? Hypothesis testing is a framework for answering such questions.
+
+\begin{definition}[Hypothesis test]\label{def:hypothesis-test}
+A hypothesis test has the following ingredients:
+\begin{itemize}
+  \item a \term{null hypothesis} $H_0$, the sceptical default (``the new model
+    is no better'', ``the coin is fair''), and an \term{alternative hypothesis}
+    $H_1$;
+  \item a \term{test statistic}: a number computed from the data whose
+    distribution is known if $H_0$ is true;
+  \item the \term{p-value}: the probability, \emph{assuming $H_0$ is true}, of
+    obtaining a test statistic at least as extreme as the one observed;
+  \item a \term{significance level} $\alpha$, chosen in advance (often $0.05$):
+    if $p \le \alpha$, we \emph{reject} $H_0$ and call the result
+    \emph{statistically significant}.
+\end{itemize}
+\end{definition}
+
+A small p-value means: if $H_0$ were true, data like ours would be surprising. So
+either something surprising happened, or $H_0$ is false.
+
+\begin{example}[Is the new model better?]\label{ex:hypothesis-test}
+A baseline classifier has accuracy $80\%$. A new model is correct on $340$ of $400$
+test examples ($85\%$). Is this convincing evidence that its accuracy is higher
+than $80\%$?
+
+\sol Take $H_0$: the new model's accuracy is $p = 0.8$, and $H_1$: $p > 0.8$. Under
+$H_0$ the number of correct predictions is binomial with mean $400\times0.8 = 320$
+and standard deviation $\sqrt{400\times0.8\times0.2} = 8$. The observed $340$ is
+\[
+  z = \frac{340 - 320}{8} = 2.5
+\]
+standard deviations above the mean. By the central limit theorem, the p-value is
+approximately $P(Z \ge 2.5) \approx 0.006$ (\cref{fig:p-value}); an exact
+binomial computation gives the same. Since $0.006 < 0.05$, we reject $H_0$: the
+improvement is very unlikely to be luck.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=10cm,height=5cm,xmin=-4,xmax=4,ymin=0,ymax=0.45,
+  xtick={-3,...,3},
+  ytick=\empty,grid=none,clip=false,xlabel={$z$},
+  xlabel style={at={(ticklabel cs:0.5)},anchor=north}]
+  \addplot[name path=f,MLdef,very thick,domain=-4:4,samples=150]{exp(-x^2/2)/sqrt(2*pi)};
+  \path[name path=axis] (axis cs:-4,0) -- (axis cs:4,0);
+  \addplot[PlotRed!50] fill between[of=f and axis,soft clip={domain=2.5:4}];
+  \draw[PlotRed,thick] (axis cs:2.5,0) -- (axis cs:2.5,0.13);
+  \node[PlotRed,font=\small,anchor=south west] at (axis cs:2.35,0.13) {observed $z = 2.5$};
+  \draw[-{Stealth[length=1.6mm]},PlotRed] (axis cs:3.45,0.06) -- (axis cs:2.85,0.008);
+  \node[PlotRed,font=\small,anchor=south west] at (axis cs:3.35,0.06) {$p \approx 0.006$};
+\end{axis}
+\end{tikzpicture}
+\caption{The p-value of \cref{ex:hypothesis-test} is the area of the tail of the
+  standard normal distribution beyond the observed test statistic.}
+\label{fig:p-value}
+\end{figure}
+
+If we had asked whether the new model is \emph{different} (better or worse), we
+would count extreme results in both directions; this \emph{two-sided} p-value is
+$P(\abs Z \ge 2.5) \approx 0.012$.
+
+\subsection{Two kinds of error}
+
+A test can go wrong in two ways:
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+ & $H_0$ true & $H_0$ false\\
+\midrule
+reject $H_0$ & \textbf{Type I error} (false positive) & correct\\
+do not reject & correct & \textbf{Type II error} (false negative)\\
+\bottomrule
+\end{tabular}
+\end{center}
+\index{Type I error}\index{Type II error}
+The significance level $\alpha$ is the probability of a Type I error. The
+probability of correctly rejecting a false $H_0$ is the \term{power} of the test;
+it grows with the amount of data. This is the same trade-off as between false
+positives and false negatives of a classifier, or of the medical test of
+\cref{ex:medical-test}.
+
+\begin{pitfall}[Misreading p-values]
+p-values are among the most misinterpreted numbers in science. Keep four points
+in mind.
+\begin{itemize}
+  \item \textbf{A p-value is not the probability that $H_0$ is true.} It is
+    $P(\text{data this extreme} \mid H_0)$, not $P(H_0 \mid \text{data})$; confusing
+    the two is the error of \cref{sec:conditional}.
+  \item \textbf{``Not significant'' does not mean ``no effect''.} With little
+    data, a test has low power and may miss a real effect.
+  \item \textbf{Significant does not mean important.} With a million test
+    examples, an improvement of $0.1$ percentage points can be highly significant
+    and practically irrelevant. Report the size of the effect, with a confidence
+    interval, not just the p-value.
+  \item \textbf{Multiple comparisons.} Test $20$ useless ideas at $\alpha = 0.05$
+    and, on average, one will look significant: the probability of at least one
+    false positive is $1 - 0.95^{20} \approx 0.64$. Trying many models or
+    hyperparameters and reporting the best test score has the same effect.
+\end{itemize}
+\end{pitfall}
+
+\begin{remark}[Tests and confidence intervals]
+A two-sided test at level $5\%$ rejects $H_0\colon\mu = \mu_0$ exactly when (up to
+the approximations involved) $\mu_0$ lies outside the $95\%$ confidence interval.
+Confidence intervals carry more information, because they also show the size of
+the effect and the precision with which it is known.
+\end{remark}
+
+\begin{mlnote}[Testing in machine learning]
+Statistical tests are used to compare models (preferably \emph{paired} tests that
+evaluate both models on the same test examples), to run A/B tests of deployed
+systems, and to check whether an apparent improvement exceeds the noise between
+random seeds. The multiple-comparisons problem is the reason for keeping a final
+test set that is used only once, after all decisions have been made
+(\cref{sec:generalisation}).
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+A coin shows $61$ heads in $100$ tosses. Test the hypothesis that it is fair,
+using a two-sided test at the $5\%$ level and the normal approximation.
+\end{exercise}
+\begin{solution}
+Under $H_0$ the number of heads has mean $50$ and standard deviation
+$\sqrt{100\times0.25} = 5$, so $z = \tfrac{61 - 50}{5} = 2.2$. The two-sided
+p-value is $P(\abs Z \ge 2.2) \approx 0.028 < 0.05$: we reject fairness.
+\end{solution}
+
+\begin{exercise}
+A study reports $p = 0.03$. Which statements are correct? (a) There is a $3\%$
+probability that $H_0$ is true. (b) If $H_0$ were true, results at least this
+extreme would occur about $3\%$ of the time. (c) The effect is large.
+(d) At the $5\%$ level, $H_0$ is rejected.
+\end{exercise}
+\begin{solution}
+Only (b) and (d). Statement (a) confuses $P(\text{data} \mid H_0)$ with
+$P(H_0 \mid \text{data})$, and (c) confuses significance with size: a tiny effect
+can be significant if there is enough data.
+\end{solution}
+
+\begin{exercise}
+You compare $20$ hyperparameter settings, none of which is actually better than
+the baseline, each with a test at $\alpha = 0.05$ (assume the tests are
+independent). What is the probability that at least one comparison looks
+significant? What per-test level would keep this probability below about $0.05$?
+\end{exercise}
+\begin{solution}
+$1 - 0.95^{20} \approx 0.64$. Testing each at $\alpha = \tfrac{0.05}{20} = 0.0025$
+(the \emph{Bonferroni correction}) gives $1 - 0.9975^{20} \approx 0.049$.
+\end{solution}
+
+\begin{exercise}
+A model has accuracy $0.9$ on $400$ test examples. Is it significantly different
+from a competitor whose accuracy is known to be $0.88$? Use the confidence
+interval of the second exercise of \cref{sec:clt}.
+\end{exercise}
+\begin{solution}
+The $95\%$ confidence interval $[0.871, 0.929]$ contains $0.88$, so the difference
+is not significant at the $5\%$ level. (Directly: $z = \tfrac{0.9 -
+0.88}{\sqrt{0.88\times0.12/400}} \approx 1.23$, with two-sided p-value about $0.22$.)
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Generalisation, overfitting and the bias--variance trade-off}\label{sec:generalisation}
+%----------------------------------------------------------------------
+
+The goal of learning is not to do well on the training data, which we already
+have, but on \emph{new} data from the same distribution: to \term{generalise}.
+The training error is an optimistic estimate of the error on new data, because
+the parameters were chosen to fit precisely those examples.
+
+\begin{definition}[Training error, test error, generalisation gap]\label{def:generalisation}
+The \term{training error} is the average loss of a model on the data it was
+trained on. Its \term{test error} (or \emph{generalisation error}) is its expected
+loss on new examples from the same distribution, estimated on a held-out
+\term{test set}. The difference between the two is the \emph{generalisation gap}.
+\end{definition}
+
+\begin{example}[Fitting polynomials]\label{ex:polynomial-overfitting}
+Ten points are generated from $y = \sin(2\pi x)$ plus Gaussian noise with
+standard deviation $0.25$. Polynomials of degree $d$ are fitted by least squares
+(\cref{sec:projections}), and their root mean squared errors (RMSE) are measured on
+the training points and on $2000$ fresh test points:
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+degree $d$ & $0$ & $1$ & $3$ & $9$\\
+\midrule
+training RMSE & $0.68$ & $0.55$ & $0.35$ & $0.00$\\
+test RMSE & $0.75$ & $0.55$ & $0.30$ & $1.05$\\
+\bottomrule
+\end{tabular}
+\end{center}
+The degree-$9$ polynomial has $10$ coefficients, enough to pass exactly through
+all $10$ points: zero training error. But it achieves this by wild oscillations
+between the points (\cref{fig:overfitting}), and its test error is the worst of
+all. The cubic captures the true shape and comes close to the noise level $0.25$,
+the best any model can do.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 1,horizontal sep=0.45cm,y descriptions at=edge left},
+  mlplot,axis lines=box,width=5.3cm,height=4.6cm,xmin=0,xmax=1,ymin=-2,ymax=2,
+  xtick={0,0.5,1},ytick={-2,-1,0,1,2},grid=none,title style={font=\small}]
+  \nextgroupplot[title={degree $1$: underfitting}]
+    \addplot[gray,dashed,domain=0:1,samples=100]{sin(360*x)};
+    \addplot[PlotRed] coordinates {(0.00,0.716) (0.01,0.703) (0.02,0.690) (0.03,0.678) (0.04,0.665) (0.05,0.653) (0.06,0.640)
+      (0.07,0.627) (0.08,0.615) (0.09,0.602) (0.10,0.590) (0.11,0.577) (0.12,0.564) (0.13,0.552)
+      (0.14,0.539) (0.15,0.526) (0.16,0.514) (0.17,0.501) (0.18,0.489) (0.19,0.476) (0.20,0.463)
+      (0.21,0.451) (0.22,0.438) (0.23,0.426) (0.24,0.413) (0.25,0.400) (0.26,0.388) (0.27,0.375)
+      (0.28,0.363) (0.29,0.350) (0.30,0.337) (0.31,0.325) (0.32,0.312) (0.33,0.299) (0.34,0.287)
+      (0.35,0.274) (0.36,0.262) (0.37,0.249) (0.38,0.236) (0.39,0.224) (0.40,0.211) (0.41,0.199)
+      (0.42,0.186) (0.43,0.173) (0.44,0.161) (0.45,0.148) (0.46,0.136) (0.47,0.123) (0.48,0.110)
+      (0.49,0.098) (0.50,0.085) (0.51,0.072) (0.52,0.060) (0.53,0.047) (0.54,0.035) (0.55,0.022)
+      (0.56,0.009) (0.57,-0.003) (0.58,-0.016) (0.59,-0.028) (0.60,-0.041) (0.61,-0.054)
+      (0.62,-0.066) (0.63,-0.079) (0.64,-0.091) (0.65,-0.104) (0.66,-0.117) (0.67,-0.129)
+      (0.68,-0.142) (0.69,-0.155) (0.70,-0.167) (0.71,-0.180) (0.72,-0.192) (0.73,-0.205)
+      (0.74,-0.218) (0.75,-0.230) (0.76,-0.243) (0.77,-0.255) (0.78,-0.268) (0.79,-0.281)
+      (0.80,-0.293) (0.81,-0.306) (0.82,-0.318) (0.83,-0.331) (0.84,-0.344) (0.85,-0.356)
+      (0.86,-0.369) (0.87,-0.382) (0.88,-0.394) (0.89,-0.407) (0.90,-0.419) (0.91,-0.432)
+      (0.92,-0.445) (0.93,-0.457) (0.94,-0.470) (0.95,-0.482) (0.96,-0.495) (0.97,-0.508)
+      (0.98,-0.520) (0.99,-0.533) (1.00,-0.545)};
+    \addplot[only marks,mark=*,mark size=1.6pt,PlotBlue] coordinates {(0.000,0.457) (0.111,-0.127) (0.222,1.224) (0.333,0.883) (0.444,0.672) (0.556,-0.246)
+      (0.667,-0.409) (0.778,-0.977) (0.889,-0.772) (1.000,0.145)};
+  \nextgroupplot[title={degree $3$: a good fit}]
+    \addplot[gray,dashed,domain=0:1,samples=100]{sin(360*x)};
+    \addplot[PlotRed] coordinates {(0.00,0.037) (0.01,0.127) (0.02,0.211) (0.03,0.290) (0.04,0.364) (0.05,0.433) (0.06,0.498)
+      (0.07,0.557) (0.08,0.612) (0.09,0.662) (0.10,0.708) (0.11,0.750) (0.12,0.787) (0.13,0.821)
+      (0.14,0.850) (0.15,0.875) (0.16,0.897) (0.17,0.915) (0.18,0.930) (0.19,0.940) (0.20,0.948)
+      (0.21,0.952) (0.22,0.953) (0.23,0.952) (0.24,0.947) (0.25,0.939) (0.26,0.929) (0.27,0.916)
+      (0.28,0.900) (0.29,0.882) (0.30,0.862) (0.31,0.839) (0.32,0.815) (0.33,0.788) (0.34,0.760)
+      (0.35,0.730) (0.36,0.698) (0.37,0.664) (0.38,0.629) (0.39,0.593) (0.40,0.555) (0.41,0.517)
+      (0.42,0.477) (0.43,0.436) (0.44,0.395) (0.45,0.352) (0.46,0.310) (0.47,0.266) (0.48,0.222)
+      (0.49,0.178) (0.50,0.134) (0.51,0.089) (0.52,0.045) (0.53,0.001) (0.54,-0.043)
+      (0.55,-0.087) (0.56,-0.130) (0.57,-0.173) (0.58,-0.215) (0.59,-0.257) (0.60,-0.297)
+      (0.61,-0.337) (0.62,-0.375) (0.63,-0.413) (0.64,-0.449) (0.65,-0.483) (0.66,-0.517)
+      (0.67,-0.548) (0.68,-0.578) (0.69,-0.606) (0.70,-0.632) (0.71,-0.657) (0.72,-0.679)
+      (0.73,-0.699) (0.74,-0.716) (0.75,-0.731) (0.76,-0.744) (0.77,-0.754) (0.78,-0.761)
+      (0.79,-0.765) (0.80,-0.766) (0.81,-0.765) (0.82,-0.760) (0.83,-0.752) (0.84,-0.740)
+      (0.85,-0.725) (0.86,-0.706) (0.87,-0.684) (0.88,-0.658) (0.89,-0.628) (0.90,-0.594)
+      (0.91,-0.556) (0.92,-0.513) (0.93,-0.466) (0.94,-0.415) (0.95,-0.360) (0.96,-0.299)
+      (0.97,-0.234) (0.98,-0.164) (0.99,-0.089) (1.00,-0.009)};
+    \addplot[only marks,mark=*,mark size=1.6pt,PlotBlue] coordinates {(0.000,0.457) (0.111,-0.127) (0.222,1.224) (0.333,0.883) (0.444,0.672) (0.556,-0.246)
+      (0.667,-0.409) (0.778,-0.977) (0.889,-0.772) (1.000,0.145)};
+  \nextgroupplot[title={degree $9$: overfitting}]
+    \addplot[gray,dashed,domain=0:1,samples=100]{sin(360*x)};
+    \addplot[PlotRed] coordinates {(0.00,0.457) (0.01,-1.392) (0.02,-2.491) (0.03,-3.028) (0.04,-3.153) (0.05,-2.991)
+      (0.06,-2.639) (0.07,-2.176) (0.08,-1.659) (0.09,-1.134) (0.10,-0.632) (0.11,-0.174)
+      (0.12,0.226) (0.13,0.561) (0.14,0.831) (0.15,1.037) (0.16,1.183) (0.17,1.277) (0.18,1.326)
+      (0.19,1.339) (0.20,1.323) (0.21,1.287) (0.22,1.237) (0.23,1.179) (0.24,1.120) (0.25,1.062)
+      (0.26,1.011) (0.27,0.967) (0.28,0.931) (0.29,0.906) (0.30,0.889) (0.31,0.880) (0.32,0.878)
+      (0.33,0.882) (0.34,0.888) (0.35,0.895) (0.36,0.900) (0.37,0.902) (0.38,0.899) (0.39,0.889)
+      (0.40,0.870) (0.41,0.842) (0.42,0.805) (0.43,0.757) (0.44,0.700) (0.45,0.634) (0.46,0.559)
+      (0.47,0.478) (0.48,0.391) (0.49,0.301) (0.50,0.209) (0.51,0.117) (0.52,0.027)
+      (0.53,-0.058) (0.54,-0.137) (0.55,-0.209) (0.56,-0.273) (0.57,-0.326) (0.58,-0.370)
+      (0.59,-0.403) (0.60,-0.425) (0.61,-0.439) (0.62,-0.444) (0.63,-0.442) (0.64,-0.435)
+      (0.65,-0.425) (0.66,-0.415) (0.67,-0.407) (0.68,-0.404) (0.69,-0.408) (0.70,-0.422)
+      (0.71,-0.447) (0.72,-0.486) (0.73,-0.539) (0.74,-0.607) (0.75,-0.690) (0.76,-0.785)
+      (0.77,-0.890) (0.78,-1.002) (0.79,-1.116) (0.80,-1.226) (0.81,-1.325) (0.82,-1.405)
+      (0.83,-1.458) (0.84,-1.475) (0.85,-1.447) (0.86,-1.366) (0.87,-1.223) (0.88,-1.015)
+      (0.89,-0.738) (0.90,-0.393) (0.91,0.011) (0.92,0.463) (0.93,0.938) (0.94,1.405)
+      (0.95,1.817) (0.96,2.111) (0.97,2.208) (0.98,2.003) (0.99,1.369) (1.00,0.145)};
+    \addplot[only marks,mark=*,mark size=1.6pt,PlotBlue] coordinates {(0.000,0.457) (0.111,-0.127) (0.222,1.224) (0.333,0.883) (0.444,0.672) (0.556,-0.246)
+      (0.667,-0.409) (0.778,-0.977) (0.889,-0.772) (1.000,0.145)};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Polynomial fits (red) to ten noisy samples (blue) of $\sin(2\pi x)$
+  (dashed). The straight line is too simple, the cubic is about right, and the
+  degree-$9$ polynomial passes through every point but oscillates wildly
+  between them.}
+\label{fig:overfitting}
+\end{figure}
+
+\begin{definition}[Underfitting and overfitting]\label{def:overfitting}
+A model \term[underfitting]{underfits} when it is too simple to capture the
+pattern in the data: both its training and its test error are high. It
+\term[overfitting]{overfits} when it is so flexible that it fits the noise in
+the training data: its training error is low but its test error is high.
+\end{definition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=10cm,height=6cm,xmin=-0.3,xmax=9.3,ymin=0,ymax=1.15,
+  xtick={0,...,9},xlabel={polynomial degree $d$ (model complexity)},ylabel={RMSE},
+  xlabel style={at={(ticklabel cs:0.5)},anchor=north},
+  ylabel style={at={(ticklabel cs:0.5)},anchor=south,rotate=90},
+  legend style={font=\small,at={(0.03,0.97)},anchor=north west,draw=gray!40},
+  legend cell align=left]
+  \addplot[PlotBlue,mark=*,mark size=1.6pt] coordinates
+    {(0,0.684) (1,0.553) (2,0.552) (3,0.353) (4,0.284) (5,0.230) (6,0.158) (7,0.119) (8,0.116) (9,0.000)};
+  \addlegendentry{training error}
+  \addplot[PlotRed,mark=square*,mark size=1.6pt] coordinates
+    {(0,0.752) (1,0.547) (2,0.548) (3,0.297) (4,0.351) (5,0.347) (6,0.384) (7,0.425) (8,0.445) (9,1.053)};
+  \addlegendentry{test error}
+  \addplot[gray,dashed,domain=-0.3:9.3,samples=2]{0.25};
+  \node[gray,font=\small,anchor=south east] at (axis cs:9.2,0.25) {noise level};
+  \node[font=\small,align=center] at (axis cs:1.2,0.12) {under-\\fitting};
+  \node[font=\small,align=center] at (axis cs:7,0.75) {overfitting};
+\end{axis}
+\end{tikzpicture}
+\caption{Training and test error of the polynomial fits of
+  \cref{ex:polynomial-overfitting} for every degree. The training error always
+  decreases with complexity; the test error first decreases, then increases.}
+\label{fig:train-test}
+\end{figure}
+
+\subsection{The bias--variance trade-off}
+
+Why does the test error first fall and then rise? Imagine repeating the whole
+experiment many times, each time with a fresh training set, and look at the
+prediction $\hat f(x)$ at one fixed input $x$. Its error has three sources.
+
+\begin{theorem}[Bias--variance decomposition]\label{thm:bias-variance}
+Suppose $y = f(x) + \varepsilon$, where the noise $\varepsilon$ has mean $0$ and
+variance $\sigma^2$ and is independent of the training set, and let $\hat f$ be
+learned from a random training set. Then the expected squared error of the
+prediction at $x$ is
+\[
+  \E\bigl[(y - \hat f(x))^2\bigr]
+  = \underbrace{\bigl(f(x) - \E[\hat f(x)]\bigr)^2}_{\text{bias}^2}
+  + \underbrace{\Var\bigl(\hat f(x)\bigr)}_{\text{variance}}
+  + \underbrace{\sigma^2}_{\text{noise}} .
+\]
+\end{theorem}
+
+\begin{proof}
+Write $y - \hat f(x) = \varepsilon + \bigl(f(x) - \hat f(x)\bigr)$. The noise is
+independent of $\hat f(x)$ and has mean $0$, so the cross term has expectation
+$0$ and $\E\bigl[(y - \hat f(x))^2\bigr] = \sigma^2 + \E\bigl[(f(x) - \hat
+f(x))^2\bigr]$. The last expectation is the mean squared error of $\hat f(x)$ as
+an estimator of $f(x)$, which is bias squared plus variance by
+\cref{thm:mse-decomposition}.
+\end{proof}
+
+\begin{itemize}
+  \item \textbf{Bias} is the systematic error of the model class: even averaged
+    over many training sets, a straight line cannot follow a sine curve.
+  \item \textbf{Variance} measures how much the learned function changes from one
+    training set to another. A degree-$9$ polynomial through ten noisy points
+    changes completely with every new sample.
+  \item \textbf{Noise} is the irreducible error: no model can predict the random
+    part of $y$.
+\end{itemize}
+\index{bias--variance trade-off}
+Simple models have high bias and low variance; flexible models have low bias and
+high variance. The best test error lies in between (\cref{fig:bias-variance}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.82]
+  \begin{scope}[shift={(0,0)}]
+    \fill[MLdef!6] (0,0) circle (1.5);
+    \foreach \rad in {1.5,1.0,0.5}{\draw[MLdef!50] (0,0) circle (\rad);}
+    \fill[MLdef!40] (0,0) circle (0.12);
+    \fill[PlotRed] (0.05,0.12) circle (1.6pt); \fill[PlotRed] (0.05,-0.20) circle (1.6pt); \fill[PlotRed] (0.14,0.07) circle (1.6pt);
+    \fill[PlotRed] (-0.08,0.09) circle (1.6pt); \fill[PlotRed] (0.05,0.04) circle (1.6pt); \fill[PlotRed] (0.00,0.08) circle (1.6pt);
+    \fill[PlotRed] (-0.11,-0.02) circle (1.6pt); \fill[PlotRed] (-0.07,0.09) circle (1.6pt); \fill[PlotRed] (0.01,-0.04) circle (1.6pt);
+    \fill[PlotRed] (-0.12,-0.04) circle (1.6pt);
+  \end{scope}
+  \begin{scope}[shift={(3.4,0)}]
+    \fill[MLdef!6] (0,0) circle (1.5);
+    \foreach \rad in {1.5,1.0,0.5}{\draw[MLdef!50] (0,0) circle (\rad);}
+    \fill[MLdef!40] (0,0) circle (0.12);
+    \fill[PlotRed] (0.00,-0.12) circle (1.6pt); \fill[PlotRed] (0.54,0.42) circle (1.6pt); \fill[PlotRed] (-1.14,-0.79) circle (1.6pt);
+    \fill[PlotRed] (-0.07,-0.18) circle (1.6pt); \fill[PlotRed] (0.09,0.09) circle (1.6pt); \fill[PlotRed] (0.89,-0.47) circle (1.6pt);
+    \fill[PlotRed] (-0.16,0.86) circle (1.6pt); \fill[PlotRed] (0.27,0.28) circle (1.6pt); \fill[PlotRed] (-0.22,-0.69) circle (1.6pt);
+    \fill[PlotRed] (0.07,0.05) circle (1.6pt);
+  \end{scope}
+  \begin{scope}[shift={(0,-3.4)}]
+    \fill[MLdef!6] (0,0) circle (1.5);
+    \foreach \rad in {1.5,1.0,0.5}{\draw[MLdef!50] (0,0) circle (\rad);}
+    \fill[MLdef!40] (0,0) circle (0.12);
+    \fill[PlotRed] (0.42,0.30) circle (1.6pt); \fill[PlotRed] (0.59,0.26) circle (1.6pt); \fill[PlotRed] (0.59,0.41) circle (1.6pt);
+    \fill[PlotRed] (0.61,0.32) circle (1.6pt); \fill[PlotRed] (0.69,0.53) circle (1.6pt); \fill[PlotRed] (0.65,0.28) circle (1.6pt);
+    \fill[PlotRed] (0.71,0.32) circle (1.6pt); \fill[PlotRed] (0.73,0.24) circle (1.6pt); \fill[PlotRed] (0.74,0.40) circle (1.6pt);
+    \fill[PlotRed] (0.41,0.35) circle (1.6pt);
+  \end{scope}
+  \begin{scope}[shift={(3.4,-3.4)}]
+    \fill[MLdef!6] (0,0) circle (1.5);
+    \foreach \rad in {1.5,1.0,0.5}{\draw[MLdef!50] (0,0) circle (\rad);}
+    \fill[MLdef!40] (0,0) circle (0.12);
+    \fill[PlotRed] (0.62,0.51) circle (1.6pt); \fill[PlotRed] (0.19,-0.07) circle (1.6pt); \fill[PlotRed] (0.68,0.20) circle (1.6pt);
+    \fill[PlotRed] (0.70,0.72) circle (1.6pt); \fill[PlotRed] (-0.09,0.51) circle (1.6pt); \fill[PlotRed] (1.11,0.28) circle (1.6pt);
+    \fill[PlotRed] (0.26,0.72) circle (1.6pt); \fill[PlotRed] (0.71,0.78) circle (1.6pt); \fill[PlotRed] (0.46,-0.22) circle (1.6pt);
+    \fill[PlotRed] (0.55,0.21) circle (1.6pt);
+  \end{scope}
+  \node[font=\small] at (0,1.9) {low variance};
+  \node[font=\small] at (3.4,1.9) {high variance};
+  \node[font=\small,rotate=90] at (-1.95,0) {low bias};
+  \node[font=\small,rotate=90] at (-1.95,-3.4) {high bias};
+\end{tikzpicture}
+\caption{Bias and variance as a game of darts. Each dot is the prediction of a
+  model trained on a different training set; the centre is the truth. Bias is
+  the distance from the centre of the cloud to the bull's-eye; variance is the
+  spread of the cloud.}
+\label{fig:bias-variance}
+\end{figure}
+
+\subsection{Fighting overfitting}
+
+\begin{itemize}
+  \item \textbf{More data.} Variance shrinks as the training set grows; a
+    flexible model that overfits $10$ points may be perfect for $10\,000$.
+  \item \textbf{Regularisation.} Penalise large weights ($L^2$ or $L^1$,
+    \cref{sec:map}), randomly drop units during training (\emph{dropout}), or
+    stop training when the validation error starts to rise (\emph{early
+    stopping}).
+  \item \textbf{A simpler model}, or fewer features.
+  \item \textbf{Data augmentation}: create new training examples by
+    transformations that do not change the label (rotating or cropping images).
+  \item \textbf{Ensembles}: averaging several models reduces variance.
+\end{itemize}
+Underfitting calls for the opposite: a bigger model, better features, longer
+training or less regularisation.
+
+\subsection{Validation sets and cross-validation}
+
+Choices such as the polynomial degree, the regularisation strength $\lambda$ or
+the learning rate are called \emph{hyperparameters}. They cannot be chosen by
+training error (which always favours complexity), nor by test error (which would
+then no longer be an honest estimate: this is the multiple-comparisons problem of
+\cref{sec:hypothesis-testing}). The standard solution is to split the data three
+ways:
+\begin{itemize}
+  \item a \textbf{training set}, used to fit the parameters;
+  \item a \term{validation set}, used to choose hyperparameters and compare models;
+  \item a \textbf{test set}, used once, at the very end, to estimate the
+    performance of the final model.
+\end{itemize}
+
+When data are scarce, \term{cross-validation} uses them more efficiently. In
+\emph{$k$-fold} cross-validation, the data are split into $k$ equal parts
+(\emph{folds}); the model is trained $k$ times, each time on $k - 1$ folds and
+validated on the remaining one, and the $k$ validation scores are averaged
+(\cref{fig:cross-validation}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1.45cm,y=0.62cm]
+  \foreach \r in {1,...,5}{
+    \node[font=\small,anchor=east] at (0,-\r+0.5) {fold \r};
+    \foreach \c in {1,...,5}{
+      \ifnum\c=\r
+        \fill[MLintuition!70,draw=white,thick] (\c-1,-\r) rectangle (\c,-\r+1);
+      \else
+        \fill[MLdef!35,draw=white,thick] (\c-1,-\r) rectangle (\c,-\r+1);
+      \fi}
+    \node[font=\small,anchor=west] at (5.1,-\r+0.5) {$\to$ score $s_{\r}$};}
+  \fill[MLdef!35] (0.2,-6.1) rectangle (0.5,-5.7);
+  \node[font=\small,anchor=west] at (0.55,-5.9) {training};
+  \fill[MLintuition!70] (2.0,-6.1) rectangle (2.3,-5.7);
+  \node[font=\small,anchor=west] at (2.35,-5.9) {validation};
+  \node[font=\small,anchor=west] at (3.6,-5.9) {CV score $= \frac15\sum_k s_k$};
+\end{tikzpicture}
+\caption{Five-fold cross-validation. Every example is used for validation exactly
+  once and for training four times.}
+\label{fig:cross-validation}
+\end{figure}
+
+\begin{pitfall}[Data leakage]
+Any information from the validation or test data that leaks into training makes
+the error estimates optimistic. Common leaks: standardising features with the
+mean and standard deviation of the \emph{whole} data set instead of the training
+set; duplicates or near-duplicates of training examples in the test set; and
+choosing a model because of its test score.
+\end{pitfall}
+
+\begin{remark}[Overparameterised models and double descent]
+Modern neural networks often have far more parameters than training examples
+and can fit even randomly shuffled labels perfectly, yet they generalise well on
+real data. Beyond the point where a model can interpolate the training data,
+the test error can \emph{decrease again} as the model grows, a phenomenon called
+\term{double descent}. Explaining this (through the implicit preferences of
+gradient descent, the architecture, and the structure of real data) is an active
+area of research. The practical tools of this section, held-out data and
+regularisation, remain as important as ever.
+\end{remark}
+
+\sectionexercises
+
+\begin{exercise}
+Diagnose each situation and suggest a remedy. (a) Training error $1\%$,
+validation error $30\%$. (b) Training error $25\%$, validation error $26\%$,
+while humans achieve $5\%$.
+\end{exercise}
+\begin{solution}
+(a) Overfitting (high variance): get more data, regularise, augment the data or
+use a simpler model. (b) Underfitting (high bias): use a bigger model or better
+features, train longer, or reduce regularisation.
+\end{solution}
+
+\begin{exercise}
+In $5$-fold cross-validation on $1000$ examples, how many times is the model
+trained, and on how many examples is each trained and validated?
+\end{exercise}
+\begin{solution}
+It is trained $5$ times, each time on $800$ examples, and validated on the
+remaining $200$.
+\end{solution}
+
+\begin{exercise}
+At some input, a model has squared bias $0.04$ and variance $0.10$, and the noise
+variance is $0.25$. What is the expected squared prediction error? Which parts
+could a better method reduce?
+\end{exercise}
+\begin{solution}
+$0.04 + 0.10 + 0.25 = 0.39$. Bias and variance can be reduced (by a better model
+class, more data, regularisation); the noise $0.25$ cannot.
+\end{solution}
+
+\begin{exercise}
+You train $100$ models and report the test error of the one with the lowest test
+error. Why is this number likely to be too optimistic?
+\end{exercise}
+\begin{solution}
+The test errors contain random fluctuations, and choosing the minimum selects the
+model whose fluctuation happened to be most favourable, the multiple-comparisons
+effect. An honest estimate requires choosing the model on a validation set and
+then evaluating it once on an untouched test set.
+\end{solution}
+
+\begin{exercise}
+Explain, using the bias--variance decomposition, why collecting more training data
+usually helps an overfitting model much more than an underfitting one.
+\end{exercise}
+\begin{solution}
+More data reduces the variance of the learned function (it depends less on the
+particular sample), which is the main problem of an overfitting model. The bias of
+an underfitting model comes from its limited model class and does not go away
+with more data.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Chapter summary}\label{sec:ch10-summary}
+%----------------------------------------------------------------------
+
+\begin{keytakeaways}
+\begin{itemize}
+  \item Data are modelled as i.i.d.\ samples from a population. The mean is
+    sensitive to outliers; the median is robust. The sample variance divides by
+    $n - 1$ to be unbiased.
+  \item An estimator has a bias and a variance; $\MSE = \Bias^2 + \Var$. The
+    sample mean has standard error $\sigma/\sqrt n$: four times the data halves
+    the error.
+  \item Law of large numbers: averages converge to expectations, which justifies
+    Monte Carlo estimation (mini-batch gradients, test-set evaluation).
+  \item Central limit theorem: $\bar X_n \approx \mathcal{N}(\mu, \sigma^2/n)$;
+    approximate $95\%$ confidence interval $\bar x \pm 1.96\,s/\sqrt n$.
+  \item Maximum likelihood: choose $\theta$ to maximise
+    $\sum_i\ln p(x_i \mid \theta)$; for a coin, $\hat\theta = h/n$; for a normal
+    distribution, $\hat\mu = \bar x$.
+  \item Gaussian noise $\Rightarrow$ squared error; Bernoulli labels
+    $\Rightarrow$ binary cross-entropy; categorical labels $\Rightarrow$
+    cross-entropy.
+  \item MAP = maximum likelihood + prior penalty; a Gaussian prior gives $L^2$
+    regularisation, a Laplace prior $L^1$.
+  \item A p-value is $P(\text{data this extreme} \mid H_0)$, not the probability
+    that $H_0$ is true. Beware of multiple comparisons.
+  \item Test error $=$ bias$^2$ $+$ variance $+$ noise. Underfitting is high
+    bias; overfitting is high variance. Use validation sets or cross-validation
+    to choose hyperparameters, and touch the test set only once.
+\end{itemize}
+\end{keytakeaways}
+
+We now have all the ingredients of modern deep learning: functions and their
+compositions, vectors and matrices, gradients and optimisation, probability and
+likelihood. The final chapter puts them together: softmax and cross-entropy,
+information theory, and the backpropagation algorithm that trains neural
+networks.
