@@ -1,1 +1,1644 @@
+%======================================================================
+% Chapter 11: Mathematics for Deep Learning
+%======================================================================
 \chapter{Mathematics for Deep Learning}\label{ch:dl}
+
+\begin{motivation}
+A deep neural network is a long composition of simple functions: matrix
+multiplications followed by simple non-linear functions. It turns its input
+into probabilities, is scored by a loss derived from probability theory, and is
+trained by gradient descent, with gradients computed by the chain rule. Every
+one of these ingredients has appeared in this book:
+\begin{itemize}
+  \item layers are matrix--vector products (\cref{ch:linalg1,ch:linalg2});
+  \item activation functions, exponentials and logarithms come from
+    \cref{ch:functions};
+  \item gradients and the chain rule come from \cref{ch:calculus,ch:multivariable};
+  \item training is optimisation (\cref{ch:optimization});
+  \item outputs are probability distributions, losses are negative
+    log-likelihoods, and generalisation is a statistical question
+    (\cref{ch:probability,ch:statistics}).
+\end{itemize}
+This final technical chapter puts them together. We study softmax outputs, the
+information theory behind the cross-entropy loss, the matrix calculus that
+backpropagation needs, backpropagation itself, the problem of vanishing
+gradients, automatic differentiation and attention, and we end with a complete
+neural network trained from scratch.
+\end{motivation}
+
+\begin{objectives}
+\begin{itemize}
+  \item describe a feed-forward network as a composition of layers and count its
+    parameters;
+  \item compute softmax probabilities, and do so in a numerically stable way;
+  \item compute entropy, cross-entropy and KL divergence, and explain why
+    cross-entropy is the loss for classification;
+  \item use the basic identities of matrix calculus and check them with shapes;
+  \item derive the gradient $\vq - \vy$ of the softmax cross-entropy loss;
+  \item carry out backpropagation by hand on a small network;
+  \item explain vanishing and exploding gradients and their remedies;
+  \item explain how automatic differentiation works;
+  \item compute scaled dot-product attention;
+  \item assemble the complete training loop of a neural network.
+\end{itemize}
+\end{objectives}
+
+%----------------------------------------------------------------------
+\section{Neural networks: compositions of simple functions}\label{sec:neural-networks}
+%----------------------------------------------------------------------
+
+A linear model $\hat y = \vw^\top\vx + b$ can only separate classes by a straight
+line (or a plane, in higher dimensions). Neural networks get their flexibility
+by stacking many simple non-linear steps.
+
+\begin{definition}[Neuron and layer]\label{def:layer}
+A \term{neuron} computes a weighted sum of its inputs plus a bias, the
+\term{pre-activation} $z = \vw^\top\vx + b$, and outputs $a = \varphi(z)$, where
+$\varphi$ is an \term{activation function} such as ReLU, sigmoid or $\tanh$
+(\cref{sec:activation-gallery}). A \emph{layer} of $m$ neurons with $n$ inputs
+computes
+\[
+  \vz = \mW\vx + \vb, \qquad \va = \varphi(\vz),
+\]
+where $\mW$ is an $m\times n$ matrix (one row of weights per neuron),
+$\vb \in \R^m$, and $\varphi$ is applied to each component.
+\end{definition}
+
+\begin{definition}[Feed-forward network]\label{def:mlp}
+A \term{feed-forward neural network} (or \emph{multilayer perceptron}) with $L$
+layers computes, starting from $\va^{(0)} = \vx$,
+\[
+  \keyeq{\vz^{(l)} = \mW^{(l)}\va^{(l-1)} + \vb^{(l)}, \qquad
+  \va^{(l)} = \varphi\bigl(\vz^{(l)}\bigr), \qquad l = 1, \dots, L}
+\]
+The superscript $(l)$ numbers the layers. The layers between input and output
+are called \term[hidden layer]{hidden layers}. The output layer usually has no
+activation, or a special one (\cref{sec:softmax}), and its outputs
+$\vz^{(L)}$ are called \term{logits}.
+\end{definition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>={Stealth[length=2mm]},
+  neuron/.style={circle,draw,thick,minimum size=8mm,inner sep=0pt},
+  innode/.style={neuron,fill=MLdef!12},
+  hidnode/.style={neuron,fill=MLexample!14},
+  outnode/.style={neuron,fill=MLintuition!22}]
+  \foreach \i in {1,2,3}{\node[innode] (x\i) at (0,2.4-1.2*\i) {$x_\i$};}
+  \foreach \i in {1,...,4}{\node[hidnode] (h\i) at (4,3-1.2*\i) {};}
+  \foreach \i in {1,2}{\node[outnode] (o\i) at (8,1.8-1.2*\i) {};}
+  \foreach \i in {1,2,3}{\foreach \j in {1,...,4}{\draw[->,gray!70] (x\i) -- (h\j);}}
+  \foreach \i in {1,...,4}{\foreach \j in {1,2}{\draw[->,gray!70] (h\i) -- (o\j);}}
+  \node[font=\small,align=center,anchor=north] at (0,-2.5) {input\\$\vx \in \R^3$};
+  \node[font=\small,align=center,anchor=north] at (4,-2.5) {hidden layer\\$\va^{(1)} = \varphi(\mW^{(1)}\vx + \vb^{(1)})$};
+  \node[font=\small,align=center,anchor=north] at (8.2,-2.5) {output\\$\vz^{(2)} = \mW^{(2)}\va^{(1)} + \vb^{(2)}$};
+  \node[font=\small,MLdef] at (2,2.6) {$\mW^{(1)}$: $4\times3$};
+  \node[font=\small,MLdef] at (6,2.6) {$\mW^{(2)}$: $2\times4$};
+\end{tikzpicture}
+\caption{A network with $3$ inputs, one hidden layer of $4$ neurons and $2$
+  outputs. Each arrow carries one weight; each neuron also has a bias.}
+\label{fig:network}
+\end{figure}
+
+\begin{example}[A two-layer network]\label{ex:two-layer-forward}
+Take the layer of \cref{sec:matrix-vector}: $\mW^{(1)} = \left(\begin{smallmatrix} 1 &
+-1 & 2\\ 0 & -2 & 1\end{smallmatrix}\right)$, $\vb^{(1)} = (0.5, -1)$, ReLU
+activation and input $\vx = (1, 2, 3)$, which gave $\va^{(1)} = (5.5, 0)$. Add an
+output layer with $\mW^{(2)} = (1\ \ 3)$ and $b^{(2)} = -2$. The network's output
+is $z^{(2)} = 1\cdot5.5 + 3\cdot0 - 2 = 3.5$. It has $2\cdot3 + 2 = 8$ parameters in
+the first layer and $2 + 1 = 3$ in the second.
+\end{example}
+
+In general a layer with $n$ inputs and $m$ outputs has $mn + m$ parameters. A
+classic network for recognising handwritten digits, with $784$ inputs (the
+pixels of a $28\times28$ image), $128$ hidden units and $10$ outputs, has
+$784\cdot128 + 128 + 128\cdot10 + 10 = 101\,770$ parameters; large language
+models have hundreds of billions.
+
+\begin{proposition}[Depth needs non-linearity]\label{prop:linear-collapse}
+Without activation functions, a network collapses to a single linear layer:
+\[
+  \mW^{(2)}\bigl(\mW^{(1)}\vx + \vb^{(1)}\bigr) + \vb^{(2)}
+  = \bigl(\mW^{(2)}\mW^{(1)}\bigr)\vx + \bigl(\mW^{(2)}\vb^{(1)} + \vb^{(2)}\bigr).
+\]
+\end{proposition}
+
+This is \cref{prop:compose-linear} again, in matrix form: compositions of
+linear functions are linear, so stacking linear layers adds nothing. The
+activation functions are what make depth useful. A network of ReLU layers
+computes a function that is linear on each of many small regions, with kinks
+between them; with enough neurons, such functions can follow any shape.
+
+\begin{remark}[Universal approximation]
+A network with a single hidden layer can approximate any continuous function on
+a bounded region as accurately as desired, provided it has enough hidden
+neurons. This \emph{universal approximation theorem} guarantees that neural
+networks are flexible enough; it says nothing about how many neurons are needed
+or how to find the weights. In practice, deep networks represent complicated
+functions far more economically than wide, shallow ones.
+\end{remark}
+
+\sectionexercises
+
+\begin{exercise}
+How many parameters does a network with $2$ inputs, one hidden layer of $3$
+neurons and $1$ output have? And one with layers of sizes $10$, $20$, $20$, $5$?
+\end{exercise}
+\begin{solution}
+$2\cdot3 + 3 + 3\cdot1 + 1 = 13$. For $10$--$20$--$20$--$5$:
+$(200 + 20) + (400 + 20) + (100 + 5) = 745$.
+\end{solution}
+
+\begin{exercise}
+Two linear layers have $\mW^{(1)} = \left(\begin{smallmatrix} 1 & 2\\ 0 &
+1\end{smallmatrix}\right)$, $\vb^{(1)} = (1, 0)$, $\mW^{(2)} = (1\ \ {-1})$ and
+$b^{(2)} = 2$, and no activation. Write the network as a single linear function
+$w_1x_1 + w_2x_2 + c$.
+\end{exercise}
+\begin{solution}
+$\mW^{(2)}\mW^{(1)} = (1\ \ 1)$ and $\mW^{(2)}\vb^{(1)} + b^{(2)} = 1 + 2 = 3$, so the
+network computes $x_1 + x_2 + 3$.
+\end{solution}
+
+\begin{exercise}
+In \cref{ex:two-layer-forward}, change the input to $\vx = (0, 1, 0)$ and compute
+the output.
+\end{exercise}
+\begin{solution}
+$\mW^{(1)}\vx + \vb^{(1)} = (-1 + 0.5,\ -2 - 1) = (-0.5, -3)$, so $\va^{(1)} = (0,
+0)$ and the output is $z^{(2)} = 0 + 0 - 2 = -2$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{From scores to probabilities: the softmax function}\label{sec:softmax}
+%----------------------------------------------------------------------
+
+A classifier's last layer produces arbitrary real numbers, the logits. To turn
+them into probabilities we need positive numbers that add up to $1$.
+
+For \textbf{two classes}, one logit suffices: $q = \sigma(z) = \frac{1}{1 + e^{-z}}$
+is the probability of class $1$, as in logistic regression
+(\cref{sec:losses-from-likelihood}). The logit is then the log-odds,
+$z = \ln\frac{q}{1 - q}$, the inverse of the sigmoid (\cref{sec:inverse-functions}).
+
+For \textbf{$K$ classes}, the network outputs $K$ logits, and we exponentiate
+them (making them positive, \cref{sec:exponential}) and normalise.
+
+\begin{definition}[Softmax]\label{def:softmax}
+The \term{softmax} of a vector $\vz \in \R^K$ is the vector $\vq \in \R^K$ with
+\[
+  \keyeq{q_k = \softmax(\vz)_k = \frac{e^{z_k}}{\sum_{j=1}^K e^{z_j}}}
+\]
+\end{definition}
+
+\begin{example}[Computing a softmax]\label{ex:softmax}
+For the logits $\vz = (2, 1, 0.1)$: $e^2 \approx 7.389$, $e^1 \approx 2.718$ and
+$e^{0.1} \approx 1.105$, with sum $11.212$. So
+$\softmax(\vz) \approx (0.659, 0.242, 0.099)$. The largest logit gets the largest
+probability, but the others are not ignored.
+\end{example}
+
+\begin{theorem}[Properties of softmax]\label{thm:softmax-properties}
+For every $\vz \in \R^K$:
+\begin{enumerate}
+  \item the outputs are positive and add up to $1$, so they form a categorical
+    distribution (\cref{sec:distributions});
+  \item larger logits get larger probabilities;
+  \item \textbf{shift invariance:} $\softmax(\vz + c\vone) = \softmax(\vz)$ for any
+    number $c$, where $\vone = (1, \dots, 1)$;
+  \item for $K = 2$, $\softmax(z_1, z_2)_1 = \sigma(z_1 - z_2)$: softmax
+    generalises the sigmoid.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(1) and (2) hold because $e^x$ is positive and increasing. (3):
+$e^{z_k + c} = e^ce^{z_k}$, and the factor $e^c$ cancels between numerator and
+denominator. (4): dividing numerator and denominator by $e^{z_1}$,
+\[
+  \frac{e^{z_1}}{e^{z_1} + e^{z_2}} = \frac{1}{1 + e^{-(z_1 - z_2)}}
+  = \sigma(z_1 - z_2). \qedhere
+\]
+\end{proof}
+
+\begin{intuition}[A soft maximum]
+If the logits are multiplied by a large number, the largest one dominates and
+softmax approaches the one-hot vector of the largest logit, a ``hard'' maximum.
+Softmax is a smooth, differentiable version of picking the maximum, which is
+exactly what gradient-based training needs.
+\end{intuition}
+
+\subsection{Temperature}
+
+Dividing the logits by a \term{temperature} $T > 0$ before the softmax,
+$\vq = \softmax(\vz/T)$, controls how peaked the distribution is
+(\cref{fig:temperature}). A low temperature makes the model more decisive; a high
+temperature makes it more uniform. Language models use temperature when
+generating text: low temperatures give predictable text, high temperatures give
+varied (and eventually incoherent) text.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,ybar,bar width=11pt,width=10cm,height=5.4cm,
+  ymin=0,ymax=1,xtick={1,2,3},xticklabels={class 1 ($z = 2$),class 2 ($z = 1$),class 3 ($z = 0.1$)},
+  enlarge x limits=0.25,ylabel={probability},
+  ylabel style={at={(ticklabel cs:0.5)},anchor=south,rotate=90},
+  legend style={font=\small,at={(0.97,0.97)},anchor=north east,draw=gray!40},
+  legend cell align=left]
+  \addplot[fill=PlotBlue!70,draw=PlotBlue] coordinates {(1,0.864) (2,0.117) (3,0.019)};
+  \addlegendentry{$T = 0.5$}
+  \addplot[fill=PlotGreen!60,draw=PlotGreen] coordinates {(1,0.659) (2,0.242) (3,0.099)};
+  \addlegendentry{$T = 1$}
+  \addplot[fill=PlotOrange!60,draw=PlotOrange] coordinates {(1,0.502) (2,0.304) (3,0.194)};
+  \addlegendentry{$T = 2$}
+\end{axis}
+\end{tikzpicture}
+\caption{The softmax of the logits $(2, 1, 0.1)$ at three temperatures. Lower
+  temperatures sharpen the distribution; higher ones flatten it.}
+\label{fig:temperature}
+\end{figure}
+
+\subsection{Computing softmax safely}
+
+A computer cannot evaluate $e^{1000}$: it overflows (double-precision numbers
+stop at about $1.8\times10^{308} \approx e^{709.8}$). Shift invariance is the
+cure: subtract the largest logit first. For example,
+$\softmax(1000, 999) = \softmax(1, 0) \approx (0.731, 0.269)$. The same trick
+evaluates the \term{log-sum-exp} function, which appears in the logarithm of
+the softmax:
+\[
+  \ln\sum_{j=1}^K e^{z_j} = m + \ln\sum_{j=1}^K e^{z_j - m}, \qquad m = \max_j z_j,
+  \qquad\text{and}\qquad
+  \ln q_k = z_k - \ln\sum_{j=1}^K e^{z_j} .
+\]
+
+\sectionexercises
+
+\begin{exercise}
+Compute $\softmax(0, \ln2, \ln3)$ exactly.
+\end{exercise}
+\begin{solution}
+The exponentials are $1$, $2$ and $3$, with sum $6$, so the result is
+$\left(\tfrac16, \tfrac13, \tfrac12\right)$.
+\end{solution}
+
+\begin{exercise}
+Compute $\softmax(1000, 1001, 1002)$ by hand, using shift invariance.
+\end{exercise}
+\begin{solution}
+It equals $\softmax(0, 1, 2)$. The exponentials are $1$, $2.718$ and $7.389$, with
+sum $11.107$, giving approximately $(0.090, 0.245, 0.665)$.
+\end{solution}
+
+\begin{exercise}
+What does $\softmax(\vz/T)$ approach as $T \to \infty$? As $T \to 0$ (assuming the
+largest logit is unique)?
+\end{exercise}
+\begin{solution}
+As $T \to \infty$ all the scaled logits approach $0$, and the output approaches
+the uniform distribution $\left(\tfrac1K, \dots, \tfrac1K\right)$. As $T \to 0$ the
+differences between the scaled logits blow up, and the output approaches the
+one-hot vector of the largest logit.
+\end{solution}
+
+\begin{exercise}
+Show that $\max_jz_j \le \ln\sum_{j=1}^Ke^{z_j} \le \max_jz_j + \ln K$. (This is why
+log-sum-exp is called a ``soft maximum''.)
+\end{exercise}
+\begin{solution}
+Let $m = \max_jz_j$. The sum $\sum_je^{z_j}$ contains the term $e^m$ and consists of
+$K$ terms that are each at most $e^m$, so $e^m \le \sum_je^{z_j} \le Ke^m$. Taking
+logarithms gives $m \le \ln\sum_je^{z_j} \le m + \ln K$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Information theory: entropy, cross-entropy and KL divergence}\label{sec:information-theory}
+%----------------------------------------------------------------------
+
+Why is $-\ln q$ the right loss for classification? \Cref{ch:statistics} gave one
+answer, maximum likelihood. Information theory, founded by Claude Shannon in
+1948 to study communication, gives a second one, and with it a vocabulary
+(entropy, cross-entropy, KL divergence) used throughout machine learning.
+
+\subsection{Surprise and entropy}
+
+Learning that an unlikely event happened is more informative than learning that
+a likely one did. The \term{information content} or \emph{surprise} of an event
+of probability $p$ is
+\[
+  I = -\log_2 p \quad\text{bits}.
+\]
+A fair coin toss carries $-\log_2\frac12 = 1$ bit of information; a roll of a fair
+die $\log_26 \approx 2.585$ bits; an event of probability $\frac{1}{1024}$, $10$
+bits. A certain event carries none. For independent events probabilities
+multiply, so surprises add (\cref{thm:log-laws}).
+
+\begin{definition}[Entropy]\label{def:entropy}
+The \term{entropy} of a discrete distribution $\vp = (p_1, \dots, p_K)$ is its
+expected surprise,
+\[
+  \keyeq{H(\vp) = -\sum_{k=1}^K p_k\log p_k}
+\]
+with the convention $0\log0 = 0$. With $\log_2$ it is measured in \emph{bits};
+with the natural logarithm, as is usual in machine learning, in \emph{nats}.
+\end{definition}
+
+\begin{example}[Entropies]\label{ex:entropies}
+A fair coin has entropy $1$ bit. A coin with $P(\text{heads}) = 0.9$ has
+$-(0.9\log_20.9 + 0.1\log_20.1) \approx 0.469$ bits: it is much more predictable. A
+fair die has $\log_26 \approx 2.585$ bits. The distribution
+$\left(\frac12, \frac14, \frac18, \frac18\right)$ has
+$\frac12\cdot1 + \frac14\cdot2 + \frac18\cdot3 + \frac18\cdot3 = 1.75$ bits.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=8.5cm,height=5.4cm,xmin=0,xmax=1,ymin=0,ymax=1.12,clip=false,
+  xlabel={$p = P(\text{heads})$},ylabel={$H$ (bits)},
+  xlabel style={at={(ticklabel cs:0.5)},anchor=north},
+  ylabel style={at={(ticklabel cs:0.5)},anchor=south,rotate=90}]
+  \addplot[PlotBlue,very thick,domain=0.0005:0.9995,samples=200]
+    {-x*ln(x)/ln(2) - (1-x)*ln(1-x)/ln(2)};
+  \addplot[only marks,mark=*,mark size=1.8pt,PlotRed] coordinates {(0.5,1) (0.9,0.469)};
+  \node[font=\small,anchor=south] at (axis cs:0.5,1) {fair coin};
+  \node[font=\small,anchor=north east] at (axis cs:0.9,0.469) {$0.469$};
+\end{axis}
+\end{tikzpicture}
+\caption{The entropy of a coin with $P(\text{heads}) = p$. It is largest, $1$ bit,
+  for a fair coin and $0$ when the outcome is certain.}
+\label{fig:binary-entropy}
+\end{figure}
+
+\begin{intuition}[Entropy as the length of a code]
+Entropy is the average number of yes/no questions (bits) needed to communicate
+an outcome, using the best possible code. For
+$\left(\frac12, \frac14, \frac18, \frac18\right)$ the code
+$\texttt{0}, \texttt{10}, \texttt{110}, \texttt{111}$ gives frequent outcomes short
+codewords, with average length $\frac12\cdot1 + \frac14\cdot2 + \frac18\cdot3 +
+\frac18\cdot3 = 1.75$ bits, exactly the entropy. Shannon proved that no code can
+do better on average. In general, the best code spends $-\log_2p_k$ bits on an
+outcome of probability $p_k$.
+\end{intuition}
+
+\subsection{Cross-entropy and KL divergence}
+
+Suppose the outcomes follow $\vp$, but we use a code designed for a different
+distribution $\vq$, spending $-\log q_k$ on outcome $k$.
+
+\begin{definition}[Cross-entropy and KL divergence]\label{def:cross-entropy}
+The \term{cross-entropy} of $\vq$ relative to $\vp$ and the
+\term{Kullback--Leibler divergence} (KL divergence) of $\vq$ from $\vp$ are
+\[
+  H(\vp, \vq) = -\sum_{k=1}^K p_k\log q_k,
+  \qquad
+  \keyeq{D_{\KL}(\vp \,\Vert\, \vq) = \sum_{k=1}^K p_k\log\frac{p_k}{q_k}
+  = H(\vp, \vq) - H(\vp)}
+\]
+\end{definition}
+
+The cross-entropy is the average code length when we are wrong about the
+distribution, and the KL divergence is the price of being wrong: the number of
+extra bits (or nats) per outcome.
+
+\begin{theorem}[Gibbs' inequality]\label{thm:gibbs}
+$D_{\KL}(\vp \,\Vert\, \vq) \ge 0$, with equality only if $\vp = \vq$. Consequently
+$H(\vp, \vq) \ge H(\vp)$.
+\end{theorem}
+
+\begin{proof}
+We use natural logarithms and the inequality $\ln t \le t - 1$, which says that the
+concave function $\ln$ lies below its tangent line at $t = 1$, touching it only
+at $t = 1$ (\cref{sec:convexity}). Summing over the $k$ with $p_k > 0$,
+\[
+  -D_{\KL}(\vp \,\Vert\, \vq) = \sum_kp_k\ln\frac{q_k}{p_k}
+  \le \sum_kp_k\left(\frac{q_k}{p_k} - 1\right) = \sum_kq_k - \sum_kp_k
+  \le 1 - 1 = 0 .
+\]
+Equality requires $\frac{q_k}{p_k} = 1$ for all these $k$, i.e.\ $\vq = \vp$.
+\end{proof}
+
+\begin{example}[KL divergence is not symmetric]\label{ex:kl}
+Let $\vp = (0.5, 0.5)$ and $\vq = (0.9, 0.1)$. In nats,
+\begin{align*}
+  D_{\KL}(\vp \,\Vert\, \vq) &= 0.5\ln\tfrac{0.5}{0.9} + 0.5\ln\tfrac{0.5}{0.1} \approx 0.511,\\
+  D_{\KL}(\vq \,\Vert\, \vp) &= 0.9\ln\tfrac{0.9}{0.5} + 0.1\ln\tfrac{0.1}{0.5} \approx 0.368 .
+\end{align*}
+The KL divergence measures how different two distributions are, but it is not
+a distance in the sense of \cref{sec:distance}: it is not symmetric.
+\end{example}
+
+\subsection{Cross-entropy as a loss function}
+
+For one training example of class $c$, the ``true'' distribution is the one-hot
+vector $\vy$ (with $y_c = 1$), and the model predicts $\vq = \softmax(\vz)$. Then
+\[
+  H(\vy, \vq) = -\sum_ky_k\ln q_k = -\ln q_c ,
+\]
+the negative log-probability of the correct class: precisely the negative
+log-likelihood of \cref{sec:losses-from-likelihood}. Since a one-hot vector has
+entropy $H(\vy) = 0$, this is also $D_{\KL}(\vy \,\Vert\, \vq)$.
+
+\begin{keytakeaways}[Three names for one loss]
+Averaged over a training set, the following are the same thing:
+\begin{itemize}
+  \item the negative log-likelihood of the data (\cref{sec:mle});
+  \item the cross-entropy between the labels and the predictions;
+  \item the KL divergence from the labels to the predictions, up to a constant
+    that does not depend on the model.
+\end{itemize}
+Training a classifier by minimising cross-entropy means making its predicted
+distribution as close as possible to the observed one.
+\end{keytakeaways}
+
+\begin{mlnote}[Information theory in machine learning]
+Entropy, cross-entropy and KL divergence turn up all over machine learning.
+\begin{itemize}
+  \item \textbf{Perplexity.} Language models report $e^{\text{cross-entropy}}$,
+    the \term{perplexity}. A model with an average cross-entropy of $3$ nats per
+    token has perplexity $e^3 \approx 20$: it is as uncertain as if it were choosing
+    uniformly among $20$ tokens. Guessing uniformly from a vocabulary of $50\,000$
+    tokens gives a cross-entropy of $\ln50\,000 \approx 10.8$ nats.
+  \item \textbf{KL divergence} appears in variational autoencoders, in
+    \emph{knowledge distillation} (training a small model to match the softened
+    output distribution of a large one), and in fine-tuning language models with
+    human feedback, where a KL penalty keeps the new model close to the original.
+  \item \textbf{Maximum entropy.} For a continuous distribution with density
+    $p$, the entropy is defined as $-\int p(x)\ln p(x)\,\dd x$. Among all
+    distributions with a given variance, the normal distribution has the largest
+    entropy, which is one more reason why it is the default model of noise
+    (\cref{sec:distributions}).
+\end{itemize}
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Compute the entropy in bits of $\left(\tfrac14, \tfrac14, \tfrac14, \tfrac14\right)$
+and of $\left(\tfrac12, \tfrac12, 0, 0\right)$.
+\end{exercise}
+\begin{solution}
+$4\cdot\tfrac14\cdot2 = 2$ bits, and $2\cdot\tfrac12\cdot1 = 1$ bit (outcomes of
+probability $0$ contribute nothing).
+\end{solution}
+
+\begin{exercise}
+A model predicts $\vq = (0.7, 0.2, 0.1)$. What is the cross-entropy loss if the
+true class is $1$? If it is $2$?
+\end{exercise}
+\begin{solution}
+$-\ln0.7 \approx 0.357$ and $-\ln0.2 \approx 1.609$.
+\end{solution}
+
+\begin{exercise}
+Compute $D_{\KL}(\vp \,\Vert\, \vq)$ in bits for $\vp = \left(\tfrac12, \tfrac12\right)$
+and $\vq = \left(\tfrac14, \tfrac34\right)$.
+\end{exercise}
+\begin{solution}
+$\tfrac12\log_2\tfrac{1/2}{1/4} + \tfrac12\log_2\tfrac{1/2}{3/4} = \tfrac12\cdot1 +
+\tfrac12\log_2\tfrac23 \approx 0.5 - 0.292 = 0.208$ bits.
+\end{solution}
+
+\begin{exercise}
+Use Gibbs' inequality with $\vq$ the uniform distribution on $K$ outcomes to show
+that $H(\vp) \le \log K$ for every distribution $\vp$ on $K$ outcomes.
+\end{exercise}
+\begin{solution}
+With $q_k = \tfrac1K$, $D_{\KL}(\vp \,\Vert\, \vq) = \sum_kp_k\log(Kp_k) = \log K
+- H(\vp)$, using $\sum_kp_k = 1$. Since this is at least $0$, $H(\vp) \le \log K$,
+with equality only for the uniform distribution.
+\end{solution}
+
+\begin{exercise}
+A language model has an average cross-entropy of $2.3$ nats per token on a test
+text. What is its perplexity?
+\end{exercise}
+\begin{solution}
+$e^{2.3} \approx 10$: on average it is as uncertain as a uniform choice among
+about $10$ tokens.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Matrix calculus}\label{sec:matrix-calculus}
+%----------------------------------------------------------------------
+
+Backpropagation needs derivatives of a scalar loss with respect to vectors and
+matrices. We follow one simple convention.
+
+\begin{notation}
+For a scalar $L$ and a vector $\vx \in \R^n$, $\pderiv{L}{\vx} = \nabla_{\vx}L$ is the
+vector of partial derivatives $\pderiv{L}{x_i}$ (\cref{sec:gradient}). For a matrix
+$\mW$, $\pderiv{L}{\mW}$ is the matrix with entries $\pderiv{L}{W_{ij}}$. In both
+cases, \emph{the derivative has the same shape as the variable}.
+\end{notation}
+
+The reliable method for finding such derivatives is to write everything in
+components, differentiate with respect to one entry, and reassemble the result
+into vectors and matrices.
+
+\begin{theorem}[Basic gradients]\label{thm:basic-gradients}
+For a constant vector $\va$, a constant matrix $\mA$ and a constant vector
+$\vb$:
+\begin{enumerate}
+  \item $\nabla_{\vx}(\va^\top\vx) = \va$;
+  \item $\nabla_{\vx}(\vx^\top\mA\vx) = (\mA + \mA^\top)\vx$, which equals
+    $2\mA\vx$ if $\mA$ is symmetric;
+  \item $\nabla_{\vx}\norm{\vx}^2 = 2\vx$;
+  \item $\nabla_{\vx}\norm{\mA\vx - \vb}^2 = 2\mA^\top(\mA\vx - \vb)$.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(1) $\va^\top\vx = \sum_ia_ix_i$, whose derivative with respect to $x_k$ is $a_k$.
+(2) $\vx^\top\mA\vx = \sum_i\sum_jx_iA_{ij}x_j$. The variable $x_k$ appears when
+$i = k$ and when $j = k$, so
+$\pderiv{}{x_k} = \sum_jA_{kj}x_j + \sum_ix_iA_{ik} = (\mA\vx)_k + (\mA^\top\vx)_k$.
+(3) is (2) with $\mA = \mI$. (4) follows from (3) and the chain rule: with
+$\vr = \mA\vx - \vb$, \cref{thm:linear-layer-gradients} below gives
+$\nabla_{\vx} = \mA^\top\nabla_{\vr}\norm{\vr}^2 = 2\mA^\top\vr$.
+\end{proof}
+
+Setting the gradient in (4) to zero gives $\mA^\top\mA\vx = \mA^\top\vb$, the normal
+equations of least squares (\cref{thm:normal-equations}), found this time with
+calculus instead of geometry.
+
+\begin{example}[Checking an identity]\label{ex:quadratic-gradient}
+Let $\mA = \left(\begin{smallmatrix} 1 & 2\\ 3 & 4\end{smallmatrix}\right)$ and
+$f(\vx) = \vx^\top\mA\vx = x_1^2 + 5x_1x_2 + 4x_2^2$. At $\vx = (1, 1)$ the formula
+gives $(\mA + \mA^\top)\vx = \left(\begin{smallmatrix} 2 & 5\\ 5 &
+8\end{smallmatrix}\right)\left(\begin{smallmatrix} 1\\ 1\end{smallmatrix}\right)
+= (7, 13)$. Directly: $\pderiv{f}{x_1} = 2x_1 + 5x_2 = 7$ and
+$\pderiv{f}{x_2} = 5x_1 + 8x_2 = 13$. \checkmark
+\end{example}
+
+\subsection{Gradients through a layer}
+
+The following two rules are all that backpropagation needs.
+
+\begin{theorem}[Gradients through a linear layer]\label{thm:linear-layer-gradients}
+Let $\vz = \mW\vx + \vb$, with $\mW$ an $m\times n$ matrix, and let $L$ be a scalar
+that depends on $\vz$, with gradient $\vdelta = \pderiv{L}{\vz} \in \R^m$. Then
+\[
+  \keyeq{\pderiv{L}{\mW} = \vdelta\,\vx^\top, \qquad
+  \pderiv{L}{\vx} = \mW^\top\vdelta, \qquad
+  \pderiv{L}{\vb} = \vdelta}
+\]
+\end{theorem}
+
+\begin{proof}
+In components, $z_i = \sum_jW_{ij}x_j + b_i$. The weight $W_{ij}$ appears only in
+$z_i$, with $\pderiv{z_i}{W_{ij}} = x_j$, so $\pderiv{L}{W_{ij}} = \delta_ix_j$:
+the matrix of these numbers is the outer product $\vdelta\vx^\top$
+(\cref{sec:transpose}). The input $x_j$ appears in every $z_i$, with
+$\pderiv{z_i}{x_j} = W_{ij}$, so by the multivariable chain rule
+$\pderiv{L}{x_j} = \sum_i\delta_iW_{ij} = (\mW^\top\vdelta)_j$. Finally,
+$\pderiv{z_i}{b_i} = 1$.
+\end{proof}
+
+\begin{intuition}[Reading the weight gradient]
+The weight $W_{ij}$ connects input $j$ to output $i$, and its gradient is
+$\delta_ix_j$: (how much the loss cares about output $i$) times (how active input
+$j$ was). A weight whose input was $0$ gets no gradient, since it had no
+influence on this example.
+\end{intuition}
+
+For the activation step we need a new product. The \term{Hadamard product} of two
+vectors of the same length multiplies them component by component:
+$\vu \odot \vv = (u_1v_1, \dots, u_nv_n)$.
+
+\begin{theorem}[Gradients through an activation]\label{thm:activation-gradients}
+If $\va = \varphi(\vz)$ componentwise and $L$ depends on $\va$, then
+\[
+  \keyeq{\pderiv{L}{\vz} = \pderiv{L}{\va} \odot \varphi'(\vz)}
+\]
+\end{theorem}
+
+\begin{proof}
+Each $a_i = \varphi(z_i)$ depends only on $z_i$, so
+$\pderiv{L}{z_i} = \pderiv{L}{a_i}\varphi'(z_i)$. (In matrix language, the Jacobian
+of $\va$ is diagonal, as in \cref{ex:layer-jacobian}.)
+\end{proof}
+
+\begin{remark}[Let the shapes guide you]
+Shapes catch most mistakes in matrix calculus. If $\mW$ is $m\times n$, then
+$\pderiv{L}{\mW}$ must be $m\times n$ too, and the only way to build such a matrix
+from $\vdelta \in \R^m$ and $\vx \in \R^n$ is $\vdelta\vx^\top$. Likewise
+$\pderiv{L}{\vx} \in \R^n$ can only be $\mW^\top\vdelta$. For a mini-batch stored
+as a matrix $\mX$ with one example per row, the forward pass is
+$\mZ = \mX\mW^\top + \vone\vb^\top$, and with $\mat{\Delta} = \pderiv{L}{\mZ}$ (one
+row per example) the gradients become $\pderiv{L}{\mW} = \mat{\Delta}^\top\mX$,
+the sum of the outer products of all the examples, and
+$\pderiv{L}{\mX} = \mat{\Delta}\mW$.
+\end{remark}
+
+\sectionexercises
+
+\begin{exercise}
+Find $\nabla_{\vx}\left(\vx^\top\vx + 3\va^\top\vx\right)$.
+\end{exercise}
+\begin{solution}
+$2\vx + 3\va$, by parts (3) and (1) of \cref{thm:basic-gradients}.
+\end{solution}
+
+\begin{exercise}
+Show that the gradient of the mean squared error
+$L(\vw) = \frac1n\norm{\mX\vw - \vy}^2$ is $\frac2n\mX^\top(\mX\vw - \vy)$.
+\end{exercise}
+\begin{solution}
+Apply part (4) of \cref{thm:basic-gradients} with $\mA = \mX$ and $\vb = \vy$,
+and multiply by the constant $\tfrac1n$.
+\end{solution}
+
+\begin{exercise}
+For a layer $\vz = \mW\vx + \vb$ with $\mW = \left(\begin{smallmatrix} 1 & 0 & 2\\
+0 & 1 & -1\end{smallmatrix}\right)$ and $\vx = (3, 0, 1)$, suppose
+$\vdelta = \pderiv{L}{\vz} = (1, -2)$. Compute $\pderiv{L}{\mW}$, $\pderiv{L}{\vx}$
+and $\pderiv{L}{\vb}$.
+\end{exercise}
+\begin{solution}
+$\pderiv{L}{\mW} = \vdelta\vx^\top = \left(\begin{smallmatrix} 3 & 0 & 1\\ -6 & 0 &
+-2\end{smallmatrix}\right)$; $\pderiv{L}{\vx} = \mW^\top\vdelta = (1, -2, 2 + 2) = (1,
+-2, 4)$; $\pderiv{L}{\vb} = (1, -2)$.
+\end{solution}
+
+\begin{exercise}
+A layer has a $128\times784$ weight matrix. What is the shape of the gradient of
+the loss with respect to it, and of the vector $\vdelta$?
+\end{exercise}
+\begin{solution}
+The gradient is also $128\times784$ ($100\,352$ numbers); $\vdelta$ has $128$
+components, one per neuron.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{The gradient of the cross-entropy loss}\label{sec:softmax-gradient}
+%----------------------------------------------------------------------
+
+We now differentiate the most important loss in deep learning: softmax followed by
+cross-entropy. The result is remarkably simple.
+
+\begin{theorem}[Gradient of softmax with cross-entropy]\label{thm:softmax-ce-gradient}
+Let $\vq = \softmax(\vz)$ and $L = -\ln q_c$, where $c$ is the correct class, and
+let $\vy$ be the one-hot vector of $c$. Then
+\[
+  \keyeq{\pderiv{L}{\vz} = \vq - \vy}
+\]
+\end{theorem}
+
+\begin{proof}
+By the definition of softmax,
+\[
+  L = -\ln\frac{e^{z_c}}{\sum_je^{z_j}} = -z_c + \ln\sum_je^{z_j} .
+\]
+The derivative of $-z_c$ with respect to $z_k$ is $-1$ if $k = c$ and $0$
+otherwise, that is, $-y_k$. By the chain rule, the derivative of
+$\ln\sum_je^{z_j}$ is $\frac{e^{z_k}}{\sum_je^{z_j}} = q_k$. Together,
+$\pderiv{L}{z_k} = q_k - y_k$.
+\end{proof}
+
+\begin{intuition}[Prediction minus truth]
+The gradient is simply ``what the model predicted minus what it should have
+predicted''. For the correct class, $q_c - 1 < 0$, so gradient descent raises its
+logit; every other logit is lowered in proportion to the probability it wrongly
+received. A perfect prediction gives a zero gradient, and the gradient can never
+be larger than $1$ in any component.
+\end{intuition}
+
+\begin{example}[One step on the logits]\label{ex:softmax-step}
+In \cref{ex:softmax}, $\vz = (2, 1, 0.1)$ and $\vq \approx (0.659, 0.242, 0.099)$.
+If the correct class is the first, the loss is $-\ln0.659 \approx 0.417$ and the
+gradient is
+\[
+  \vq - \vy \approx (-0.341,\ 0.242,\ 0.099).
+\]
+A gradient step of size $1$ on the logits gives $\vz \approx (2.341, 0.758,
+0.001)$, for which $q_1 \approx 0.768$ and the loss has dropped to $0.264$.
+\end{example}
+
+The same pattern holds for the other standard pairs of output and loss. For a
+sigmoid output $q = \sigma(z)$ with binary cross-entropy, the chain rule and
+$\sigma' = \sigma(1 - \sigma)$ (\cref{ex:sigmoid-derivative}) give
+\[
+  \pderiv{L}{z} = \left(-\frac yq + \frac{1 - y}{1 - q}\right)q(1 - q) = q - y ,
+\]
+and for a linear output $\hat y = z$ with the squared error $\frac12(\hat y - y)^2$,
+$\pderiv{L}{z} = \hat y - y$. In each case: prediction minus target. Combined with
+\cref{thm:linear-layer-gradients}, logistic regression ($z = \vw^\top\vx + b$) has
+the gradient
+\[
+  \nabla_{\vw}L = (q - y)\,\vx, \qquad \pderiv{L}{b} = q - y .
+\]
+
+\begin{remark}[Why not squared error for classification?]
+Suppose we used the squared error $\frac12(q - y)^2$ on a sigmoid output. Its
+gradient with respect to the logit is $(q - y)\,q(1 - q)$. When the model is
+confidently wrong, say $z = -5$ for an example with $y = 1$, we get
+$q = \sigma(-5) \approx 0.0067$ and a gradient of only about $-0.0066$, while the
+cross-entropy gives $q - y \approx -0.993$, about $150$ times larger. With squared
+error the factor $q(1 - q)$ silences exactly the examples that most need
+correcting; cross-entropy cancels it.
+\end{remark}
+
+\begin{pitfall}[Compute the loss from the logits]
+Never compute $\softmax(\vz)$ and then take its logarithm: a tiny probability can
+underflow to $0$, and $-\ln0 = \infty$. Use $-\ln q_c = -z_c + \ln\sum_je^{z_j}$ with
+the stable log-sum-exp of \cref{sec:softmax}. Deep learning libraries offer
+``cross-entropy with logits'' functions for exactly this reason.
+\end{pitfall}
+
+\sectionexercises
+
+\begin{exercise}
+The logits are $\vz = (0, 0, 0)$ and the correct class is $3$. Compute the
+probabilities, the loss and the gradient.
+\end{exercise}
+\begin{solution}
+$\vq = \left(\tfrac13, \tfrac13, \tfrac13\right)$, $L = \ln3 \approx 1.099$ and
+$\vq - \vy = \left(\tfrac13, \tfrac13, -\tfrac23\right)$.
+\end{solution}
+
+\begin{exercise}
+Show that the components of $\vq - \vy$ always add up to $0$. Explain this using
+the shift invariance of softmax.
+\end{exercise}
+\begin{solution}
+$\sum_k(q_k - y_k) = 1 - 1 = 0$. Adding the same constant to all logits does not
+change the loss, so the derivative of the loss in the direction $\vone =
+(1, \dots, 1)$, which is $\vone^\top(\vq - \vy)$, must be $0$.
+\end{solution}
+
+\begin{exercise}
+A binary classifier outputs the logit $z = 2$ for an example with label $y = 0$.
+Find $q$, the loss and $\pderiv{L}{z}$.
+\end{exercise}
+\begin{solution}
+$q = \sigma(2) \approx 0.881$, $L = -\ln(1 - 0.881) \approx 2.127$ and
+$\pderiv{L}{z} = q - y \approx 0.881$.
+\end{solution}
+
+\begin{exercise}
+Logistic regression has $\vw = (1, -1)$ and $b = 0$. For $\vx = (2, 1)$ and $y = 1$,
+compute the gradients of the cross-entropy loss with respect to $\vw$ and $b$.
+\end{exercise}
+\begin{solution}
+$z = 2 - 1 = 1$, $q = \sigma(1) \approx 0.731$, so $\nabla_{\vw}L = (q - 1)\vx \approx
+-0.269\,(2, 1) = (-0.538, -0.269)$ and $\pderiv{L}{b} \approx -0.269$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Backpropagation}\label{sec:backpropagation}
+%----------------------------------------------------------------------
+
+We now have everything needed to compute the gradient of the loss with respect to
+every weight of a network. Write $\vdelta^{(l)} = \pderiv{L}{\vz^{(l)}}$ for the
+gradient with respect to the pre-activations of layer $l$, sometimes called the
+\emph{error signal} of that layer.
+
+\begin{theorem}[The backpropagation equations]\label{thm:backprop}
+For the network of \cref{def:mlp} and a loss $L$ computed from its output:
+\begin{align*}
+  \vdelta^{(L)} &= \pderiv{L}{\vz^{(L)}}
+    &&\text{(for example $\vq - \vy$, by \cref{thm:softmax-ce-gradient})},\\
+  \vdelta^{(l)} &= \bigl(\mW^{(l+1)\top}\vdelta^{(l+1)}\bigr) \odot \varphi'\bigl(\vz^{(l)}\bigr)
+    &&\text{for } l = L - 1, \dots, 1,\\
+  \pderiv{L}{\mW^{(l)}} &= \vdelta^{(l)}\,\va^{(l-1)\top},
+  \qquad \pderiv{L}{\vb^{(l)}} = \vdelta^{(l)}
+    &&\text{for } l = 1, \dots, L .
+\end{align*}
+\end{theorem}
+
+\begin{proof}
+Layer $l + 1$ computes $\vz^{(l+1)} = \mW^{(l+1)}\va^{(l)} + \vb^{(l+1)}$, so by
+\cref{thm:linear-layer-gradients}, $\pderiv{L}{\va^{(l)}} = \mW^{(l+1)\top}\vdelta^{(l+1)}$;
+then $\va^{(l)} = \varphi(\vz^{(l)})$ and \cref{thm:activation-gradients} give the
+second equation. The weight and bias gradients follow from
+\cref{thm:linear-layer-gradients} applied to layer $l$, whose input is
+$\va^{(l-1)}$.
+\end{proof}
+
+\begin{algorithm}[Backpropagation]\label{alg:backprop}
+To compute the gradient of the loss for one example $(\vx, \vy)$:
+\begin{steps}
+  \item \textbf{Forward pass.} Set $\va^{(0)} = \vx$ and compute, for
+    $l = 1, \dots, L$, the vectors $\vz^{(l)}$ and $\va^{(l)}$, storing them all.
+    Compute the loss.
+  \item \textbf{Output layer.} Compute $\vdelta^{(L)} = \pderiv{L}{\vz^{(L)}}$.
+  \item \textbf{Backward pass.} For $l = L, L - 1, \dots, 1$: record the gradients
+    $\vdelta^{(l)}\va^{(l-1)\top}$ and $\vdelta^{(l)}$, and if $l > 1$ compute
+    $\vdelta^{(l-1)} = \bigl(\mW^{(l)\top}\vdelta^{(l)}\bigr) \odot
+    \varphi'\bigl(\vz^{(l-1)}\bigr)$.
+\end{steps}
+For a mini-batch, average the gradients of its examples (or use the matrix form
+of the remark in \cref{sec:matrix-calculus}).
+\end{algorithm}
+\index{backpropagation}
+
+\begin{example}[Backpropagation by hand]\label{ex:backprop}
+A network has $2$ inputs, a hidden layer of $2$ ReLU neurons and $1$ linear
+output, with
+\[
+  \mW^{(1)} = \begin{pmatrix} 1 & -1\\ 0.5 & 1\end{pmatrix},\quad
+  \vb^{(1)} = \begin{pmatrix} 0\\ -1\end{pmatrix},\quad
+  \mW^{(2)} = \begin{pmatrix} 2 & -1\end{pmatrix},\quad
+  b^{(2)} = 0.5 ,
+\]
+and the loss $L = \frac12(\hat y - y)^2$. Compute all gradients for the example
+$\vx = (1, 2)$, $y = 1$, and take one gradient descent step with $\eta = 0.1$.
+
+\sol \emph{Forward pass.}
+$\vz^{(1)} = (1 - 2 + 0,\ 0.5 + 2 - 1) = (-1, 1.5)$, so
+$\va^{(1)} = \ReLU(\vz^{(1)}) = (0, 1.5)$. Then
+$\hat y = z^{(2)} = 2\cdot0 - 1\cdot1.5 + 0.5 = -1$, and $L = \frac12(-1 - 1)^2 = 2$.
+
+\emph{Output layer.} $\delta^{(2)} = \hat y - y = -2$, so
+\[
+  \pderiv{L}{\mW^{(2)}} = \delta^{(2)}\va^{(1)\top} = (0,\ -3), \qquad
+  \pderiv{L}{b^{(2)}} = -2 .
+\]
+
+\emph{Hidden layer.} $\mW^{(2)\top}\delta^{(2)} = (-4, 2)$, and
+$\ReLU'(\vz^{(1)}) = (0, 1)$ because the first neuron is inactive. So
+$\vdelta^{(1)} = (-4, 2) \odot (0, 1) = (0, 2)$ and
+\[
+  \pderiv{L}{\mW^{(1)}} = \vdelta^{(1)}\vx^\top
+  = \begin{pmatrix} 0\\ 2\end{pmatrix}\begin{pmatrix} 1 & 2\end{pmatrix}
+  = \begin{pmatrix} 0 & 0\\ 2 & 4\end{pmatrix}, \qquad
+  \pderiv{L}{\vb^{(1)}} = (0, 2).
+\]
+
+\emph{Update.} Subtracting $0.1$ times each gradient gives
+$\mW^{(1)} = \left(\begin{smallmatrix} 1 & -1\\ 0.3 & 0.6\end{smallmatrix}\right)$,
+$\vb^{(1)} = (0, -1.2)$, $\mW^{(2)} = (2\ \ {-0.7})$ and $b^{(2)} = 0.7$. Running the
+forward pass again: $\vz^{(1)} = (-1, 0.3)$, $\va^{(1)} = (0, 0.3)$,
+$\hat y = -0.21 + 0.7 = 0.49$, and the loss has fallen from $2$ to
+$\frac12(0.49 - 1)^2 \approx 0.13$.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>={Stealth[length=2.2mm]},
+  neuron/.style={circle,draw,thick,minimum size=10mm,inner sep=0pt,font=\small},
+  fwd/.style={font=\small,text=PlotBlue},
+  bwd/.style={font=\small,text=PlotRed}]
+  \node[neuron,fill=MLdef!12] (x1) at (0,1.4) {$x_1$};
+  \node[neuron,fill=MLdef!12] (x2) at (0,-1.4) {$x_2$};
+  \node[neuron,fill=MLexample!14] (h1) at (4,1.4) {$h_1$};
+  \node[neuron,fill=MLexample!14] (h2) at (4,-1.4) {$h_2$};
+  \node[neuron,fill=MLintuition!22] (o) at (8,0) {$\hat y$};
+  \draw[->,thick,gray] (x1) -- node[pos=0.22,above,font=\scriptsize,text=black] {$1$} (h1);
+  \draw[->,thick,gray] (x2) -- node[pos=0.22,below,font=\scriptsize,text=black] {$1$} (h2);
+  \draw[->,thick,gray] (x1) -- node[pos=0.2,above right=-1pt,font=\scriptsize,text=black] {$0.5$} (h2);
+  \draw[->,thick,gray] (x2) -- node[pos=0.2,below right=-1pt,font=\scriptsize,text=black] {$-1$} (h1);
+  \draw[->,thick,gray] (h1) -- node[above,font=\scriptsize,text=black] {$2$} (o);
+  \draw[->,thick,gray] (h2) -- node[below,font=\scriptsize,text=black] {$-1$} (o);
+  \node[fwd,left=3pt] at (x1.west) {$1$};
+  \node[fwd,left=3pt] at (x2.west) {$2$};
+  \node[fwd,above=2pt,align=center] at (h1.north) {$z = -1$, $a = 0$};
+  \node[fwd,below=2pt,align=center] at (h2.south) {$z = 1.5$, $a = 1.5$};
+  \node[fwd,above=2pt] at (o.north) {$\hat y = -1$, $L = 2$};
+  \node[bwd,right=3pt] at (h1.east) {$\delta = 0$};
+  \node[bwd,right=3pt] at (h2.east) {$\delta = 2$};
+  \node[bwd,below=2pt] at (o.south) {$\delta = -2$};
+\end{tikzpicture}
+\caption{The network of \cref{ex:backprop}, with the weights in black, the
+  forward values in blue and the error signals $\delta = \pderiv{L}{z}$ in red.
+  The inactive neuron $h_1$ passes no gradient back.}
+\label{fig:backprop}
+\end{figure}
+
+\begin{intuition}[Why backpropagation is fast]
+The backward pass costs about as much as the forward pass: one multiplication by
+$\mW^{(l)\top}$ per layer, plus an outer product. So all the partial derivatives,
+for millions or billions of weights, cost only a few forward passes. Numerical
+differentiation (\cref{sec:numerical-derivatives}) would need a separate forward
+pass for every single weight. The price is memory: every $\vz^{(l)}$ and
+$\va^{(l)}$ of the forward pass must be stored until the backward pass uses it,
+which is why training needs much more memory than using a trained network.
+\end{intuition}
+
+\sectionexercises
+
+\begin{exercise}
+In \cref{ex:backprop}, what are the gradients if the target is $y = -1$ instead
+of $1$?
+\end{exercise}
+\begin{solution}
+Then $\hat y = y$, the loss is $0$, $\delta^{(2)} = 0$, and all gradients are $0$:
+a perfectly predicted example teaches the network nothing.
+\end{solution}
+
+\begin{exercise}
+Why is the first row of $\pderiv{L}{\mW^{(1)}}$ zero in \cref{ex:backprop}? What
+would happen if that neuron were inactive for every training example?
+\end{exercise}
+\begin{solution}
+The first hidden neuron has $z = -1 < 0$, so $\ReLU'(z) = 0$ and $\delta_1^{(1)} = 0$:
+its weights had no effect on the output for this input. If it were inactive for
+all examples, its weights would never change: a ``dead'' ReLU neuron.
+\end{solution}
+
+\begin{exercise}
+A network has one input, one hidden ReLU neuron and one linear output:
+$h = \ReLU(w_1x + b_1)$, $\hat y = w_2h + b_2$, with loss $\frac12(\hat y - y)^2$. For
+$x = 1$, $w_1 = 2$, $b_1 = -1$, $w_2 = 3$, $b_2 = 0$ and $y = 2$, compute the gradient
+with respect to all four parameters.
+\end{exercise}
+\begin{solution}
+Forward: $z_1 = 1$, $h = 1$, $\hat y = 3$, $L = \tfrac12$. Backward: $\delta_2 = \hat y -
+y = 1$, so $\pderiv{L}{w_2} = \delta_2h = 1$ and $\pderiv{L}{b_2} = 1$. Then
+$\delta_1 = w_2\delta_2\ReLU'(z_1) = 3$, so $\pderiv{L}{w_1} = \delta_1x = 3$ and
+$\pderiv{L}{b_1} = 3$.
+\end{solution}
+
+\begin{exercise}
+A network has layer sizes $3 \to 4 \to 2$. Give the shapes of $\vdelta^{(1)}$,
+$\vdelta^{(2)}$, $\pderiv{L}{\mW^{(1)}}$ and $\pderiv{L}{\mW^{(2)}}$.
+\end{exercise}
+\begin{solution}
+$\vdelta^{(1)} \in \R^4$ and $\vdelta^{(2)} \in \R^2$; $\pderiv{L}{\mW^{(1)}}$ is
+$4\times3$ and $\pderiv{L}{\mW^{(2)}}$ is $2\times4$, the shapes of the weight
+matrices.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Vanishing and exploding gradients}\label{sec:vanishing-gradients}
+%----------------------------------------------------------------------
+
+The backpropagation equations multiply the error signal by a matrix and by the
+activation derivatives once per layer. In a deep network this means long
+products, and long products of numbers tend to vanish or explode: in
+\cref{sec:exponential} we saw that $0.9^{100} \approx 0.000027$ and
+$1.1^{100} \approx 13\,781$.
+
+\begin{picturethis}[A chain of one-neuron layers]
+Imagine a network with a single neuron per layer, $z^{(l)} = w_la^{(l-1)}$ and
+$a^{(l)} = \varphi(z^{(l)})$. By the chain rule,
+\[
+  \pderiv{L}{a^{(0)}} = \pderiv{L}{a^{(L)}}\prod_{l=1}^L w_l\,\varphi'\bigl(z^{(l)}\bigr).
+\]
+If every factor $w_l\varphi'(z^{(l)})$ is about $c$, the gradient reaching the first
+layer is about $c^L$ times the gradient at the last (\cref{fig:vanishing}). With
+$c = 0.75$ and $50$ layers, it shrinks by a factor of about $10^{-6}$; with
+$c = 1.25$, it grows by a factor of $70\,000$.
+\end{picturethis}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,ymode=log,width=10cm,height=6.2cm,xmin=0,xmax=50,
+  ymin=1e-7,ymax=1e5,xlabel={number of layers $L$},ylabel={gradient factor $c^L$},
+  xlabel style={at={(ticklabel cs:0.5)},anchor=north},
+  ylabel style={at={(ticklabel cs:0.5)},anchor=south,rotate=90},clip=false]
+  \addplot[PlotRed,domain=0:50,samples=60]{1.25^x};
+  \addplot[PlotOrange,domain=0:50,samples=60]{1.05^x};
+  \addplot[gray,dashed,domain=0:50,samples=2]{1};
+  \addplot[PlotGreen,domain=0:50,samples=60]{0.95^x};
+  \addplot[PlotBlue,domain=0:50,samples=60]{0.75^x};
+  \node[font=\small,anchor=west,PlotRed] at (axis cs:50,70065) {$c = 1.25$};
+  \node[font=\small,anchor=west,PlotOrange] at (axis cs:50,11.47) {$c = 1.05$};
+  \node[font=\small,anchor=west,gray] at (axis cs:50,1) {$c = 1$};
+  \node[font=\small,anchor=west,PlotGreen] at (axis cs:50,0.077) {$c = 0.95$};
+  \node[font=\small,anchor=west,PlotBlue] at (axis cs:50,5.7e-7) {$c = 0.75$};
+\end{axis}
+\end{tikzpicture}
+\caption{If each layer multiplies the gradient by a factor $c$, the gradient
+  reaching the first of $L$ layers is multiplied by $c^L$ (logarithmic scale).
+  Only factors very close to $1$ keep it at a usable size.}
+\label{fig:vanishing}
+\end{figure}
+
+For full layers the factors are matrices, and their effect on the length of
+$\vdelta$ is governed by their singular values (\cref{sec:svd}), but the
+conclusion is the same: gradients either \term[vanishing gradients]{vanish},
+so that the early layers learn extremely slowly, or \term[exploding
+gradients]{explode}, so that training becomes unstable.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 1,horizontal sep=0.9cm},
+  mlplot,axis lines=left,width=5.2cm,height=4.2cm,xmin=-4,xmax=4,ymin=-0.1,ymax=1.2,
+  xtick={-4,-2,0,2,4},ytick={0,0.25,0.5,1},yticklabel style={/pgf/number format/fixed},
+  title style={font=\small}]
+  \nextgroupplot[title={sigmoid: $\sigma'(z)$}]
+    \addplot[PlotBlue,domain=-4:4,samples=100]{exp(-x)/(1+exp(-x))^2};
+  \nextgroupplot[title={$\tanh'(z)$}]
+    \addplot[PlotBlue,domain=-4:4,samples=100]{1-tanh(x)^2};
+  \nextgroupplot[title={$\ReLU'(z)$}]
+    \addplot[PlotBlue,domain=-4:0,samples=2]{0};
+    \addplot[PlotBlue,domain=0:4,samples=2]{1};
+    \addplot[only marks,mark=*,mark size=1.6pt,PlotBlue] coordinates {(0,0)};
+    \addplot[only marks,mark=o,mark size=1.6pt,PlotBlue,fill=white] coordinates {(0,1)};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Derivatives of three activation functions. The sigmoid's derivative
+  never exceeds $\frac14$; $\tanh'$ reaches $1$ at $0$; the ReLU passes gradients
+  through unchanged wherever the neuron is active.}
+\label{fig:activation-derivatives}
+\end{figure}
+
+\begin{example}[Why deep sigmoid networks were hard to train]\label{ex:sigmoid-vanishing}
+The derivative of the sigmoid is $\sigma(1 - \sigma) \le \frac14$, with the maximum at
+$z = 0$ (\cref{fig:activation-derivatives}). With weights of size about $1$, every
+sigmoid layer shrinks the gradient by a factor of at least $4$; after $10$ layers
+the factor is at most $\left(\frac14\right)^{10} \approx 10^{-6}$. The early layers of
+such a network barely learn, which is a main reason why deep networks were long
+considered untrainable.
+\end{example}
+
+\subsection{Remedies}
+
+Modern deep learning combines several defences, each built on mathematics from
+this book.
+\begin{itemize}
+  \item \textbf{ReLU-type activations.} $\ReLU'(z) = 1$ for active neurons, so
+    the activations do not shrink the gradient.
+  \item \textbf{Careful initialisation.} Choosing the variance of the initial
+    weights as $\frac1n$ or $\frac2n$ (Xavier or He initialisation,
+    \cref{sec:variance}) keeps the variances of activations and gradients roughly
+    constant from layer to layer, so that the factors start out close to $1$.
+  \item \textbf{Normalisation layers.} Batch and layer normalisation standardise
+    the activations inside the network (\cref{sec:variance}).
+  \item \textbf{Residual connections.} A residual block computes
+    $\va^{(l+1)} = \va^{(l)} + F(\va^{(l)})$, whose Jacobian is $\mI + \mat{J}_F$.
+    The identity term gives the gradient a direct path backwards that does not
+    shrink. Residual connections made networks with hundreds of layers trainable
+    and are part of every transformer.
+  \item \textbf{Gradient clipping.} Against exploding gradients: if
+    $\norm{\vg} > \tau$ for a threshold $\tau$, replace $\vg$ by
+    $\tau\,\vg/\norm{\vg}$, which keeps the direction but limits the length
+    (\cref{sec:vector-length}).
+\end{itemize}
+
+\sectionexercises
+
+\begin{exercise}
+Bound the factor by which $20$ sigmoid layers with weights of size $1$ can shrink a
+gradient.
+\end{exercise}
+\begin{solution}
+Each layer contributes a factor of at most $\tfrac14$, so the total is at most
+$\left(\tfrac14\right)^{20} \approx 9.1\times10^{-13}$.
+\end{solution}
+
+\begin{exercise}
+Each of $20$ blocks applies a function with derivative $f'(x) = -0.05$ (take it to
+be constant). Compare the derivative of the composition of the $20$ blocks with
+and without residual connections, $x \mapsto x + f(x)$.
+\end{exercise}
+\begin{solution}
+Without residual connections the derivative is $(-0.05)^{20} \approx 9.5\times
+10^{-27}$. With them each block has derivative $1 + f'(x) = 0.95$, and the
+composition has $0.95^{20} \approx 0.36$.
+\end{solution}
+
+\begin{exercise}
+Clip the gradient $\vg = (6, -8)$ to length at most $\tau = 5$.
+\end{exercise}
+\begin{solution}
+$\norm{\vg} = 10 > 5$, so $\vg \leftarrow 5\cdot\tfrac{(6, -8)}{10} = (3, -4)$.
+\end{solution}
+
+\begin{exercise}
+Why do $\tanh$ networks suffer less from vanishing gradients than sigmoid networks?
+\end{exercise}
+\begin{solution}
+$\tanh'(0) = 1$, whereas $\sigma'(0) = \tfrac14$: near zero, $\tanh$ passes gradients
+on almost unchanged, while every sigmoid layer divides them by at least $4$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Automatic differentiation}\label{sec:autodiff}
+%----------------------------------------------------------------------
+
+Nobody derives backpropagation formulas by hand for real networks. Libraries
+such as PyTorch, JAX and TensorFlow compute gradients by \term{automatic
+differentiation} (autodiff), which is neither symbolic differentiation
+(manipulating formulas, which grow out of control) nor numerical differentiation
+(which is inexact and slow, \cref{sec:numerical-derivatives}).
+
+The idea is simple. Every program, however complicated, is built from elementary
+operations ($+$, $\times$, $\exp$, $\ReLU$, matrix products, \dots), and the
+derivative of each elementary operation is known. During the forward pass the
+library records every operation in a computation graph (\cref{fig:computation-graph}),
+together with its local derivatives. The backward pass then visits the graph in
+reverse order and applies the chain rule, adding up the contributions of all
+paths, exactly as we did by hand in \cref{ex:computation-graph}.
+
+The following complete, working implementation of this idea takes about
+forty lines of Python. Each \texttt{Value} remembers the values it was computed
+from and the local derivative with respect to each of them.
+\begin{lstlisting}
+import math
+
+class Value:
+    """A number that remembers how it was computed."""
+
+    def __init__(self, data, parents=(), local_grads=()):
+        self.data = data                # value from the forward pass
+        self.grad = 0.0                 # d(output)/d(self)
+        self.parents = parents          # Values it was computed from
+        self.local_grads = local_grads  # d(self)/d(parent) for each
+
+    def __add__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
+        return Value(self.data + other.data, (self, other), (1.0, 1.0))
+
+    def __mul__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
+        return Value(self.data * other.data, (self, other),
+                     (other.data, self.data))
+
+    def relu(self):
+        return Value(max(self.data, 0.0), (self,),
+                     (1.0 if self.data > 0 else 0.0,))
+
+    def backward(self):
+        # List the nodes so that each comes after its parents.
+        order, seen = [], set()
+        def visit(v):
+            if id(v) not in seen:
+                seen.add(id(v))
+                for p in v.parents:
+                    visit(p)
+                order.append(v)
+        visit(self)
+        # Chain rule, from the output back towards the inputs.
+        self.grad = 1.0
+        for v in reversed(order):
+            for p, g in zip(v.parents, v.local_grads):
+                p.grad += v.grad * g
+
+x, y = Value(2.0), Value(3.0)
+f = (x + y) * (y + 1)
+f.backward()
+print(f.data, x.grad, y.grad)    # 20.0 4.0 9.0
+\end{lstlisting}
+The line \texttt{p.grad += v.grad * g} is the chain rule: the derivative of the
+output with respect to a parent receives, from each child, the child's gradient
+times the local derivative. The \texttt{+=} adds the contributions of different
+paths, which is why $y$, used twice, receives $4 + 5 = 9$. The output reproduces
+\cref{ex:computation-graph}. Real libraries work the same way, with vectors and
+matrices instead of single numbers:
+\par\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}
+import torch
+
+x = torch.tensor(2.0, requires_grad=True)
+y = torch.tensor(3.0, requires_grad=True)
+f = (x + y) * (y + 1)
+f.backward()
+print(x.grad, y.grad)            # tensor(4.) tensor(9.)
+\end{lstlisting}
+\end{minipage}\par
+
+\begin{remark}[Reverse mode and forward mode]
+What we have described is \emph{reverse-mode} automatic differentiation: one
+backward pass gives the derivatives of one output with respect to all inputs.
+That is exactly the situation in training, with one scalar loss and millions of
+parameters. \emph{Forward-mode} autodiff instead carries derivatives along with the
+values in the forward pass, giving the derivatives of all outputs with respect to
+one input per pass; it is efficient when there are few inputs and many outputs.
+\end{remark}
+
+\begin{mlnote}[Gradient checking]
+When you implement a new operation or a backward pass by hand, compare its
+gradients with the central differences
+\[
+  \frac{L(\theta + h) - L(\theta - h)}{2h}
+\]
+of \cref{sec:numerical-derivatives}, on a few random inputs. Relative differences of
+about $10^{-7}$ indicate a correct implementation; differences of $10^{-2}$ indicate a
+bug.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Using the \texttt{Value} class, the program \texttt{x = Value(2.0); f = x * x * x;
+f.backward()} computes $f = x^3$. Trace the backward pass and confirm that
+\texttt{x.grad} ends up as $12$.
+\end{exercise}
+\begin{solution}
+The forward pass creates $u = x\cdot x = 4$ (local derivatives $2$ and $2$) and
+$f = u\cdot x = 8$ (local derivatives $x = 2$ with respect to $u$ and $u = 4$ with
+respect to $x$). Backward: $f$ gets gradient $1$; $u$ gets $1\cdot2 = 2$ and $x$ gets
+$1\cdot4 = 4$; then $u$ passes $2\cdot2 = 4$ to $x$ twice. In total $4 + 4 + 4 = 12 =
+3x^2$.
+\end{solution}
+
+\begin{exercise}
+Describe how to add a $\tanh$ operation to the \texttt{Value} class.
+\end{exercise}
+\begin{solution}
+Compute $t = \tanh(\text{data})$ and return a new \texttt{Value} with data $t$, the
+single parent \texttt{self}, and local derivative $1 - t^2$, since
+$\tanh'(x) = 1 - \tanh^2(x)$.
+\end{solution}
+
+\begin{exercise}
+A model has $10^9$ parameters and one scalar loss. Roughly how many evaluations of
+the loss would numerical differentiation need to obtain the full gradient, and how
+many passes does reverse-mode autodiff need?
+\end{exercise}
+\begin{solution}
+Central differences need two evaluations per parameter: about $2\times10^9$
+evaluations. Reverse mode needs one forward and one backward pass, together
+costing a small multiple of a single evaluation.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{A glimpse of attention}\label{sec:attention}
+%----------------------------------------------------------------------
+
+The transformer architecture behind today's language models is built around one
+operation, \emph{attention}. A text is split into tokens, each represented by a
+vector; attention lets each token collect information from the others, weighting
+them by relevance. Mathematically it uses nothing beyond this book.
+
+\begin{definition}[Scaled dot-product attention]\label{def:attention}
+Given a \emph{query} vector $\vq \in \R^d$, \emph{key} vectors
+$\vk_1, \dots, \vk_n \in \R^d$ and \emph{value} vectors $\vv_1, \dots, \vv_n$,
+attention computes
+\[
+  s_j = \frac{\vq^\top\vk_j}{\sqrt d}, \qquad
+  (\alpha_1, \dots, \alpha_n) = \softmax(s_1, \dots, s_n), \qquad
+  \text{output} = \sum_{j=1}^n\alpha_j\vv_j .
+\]
+For many queries at once, stored as the rows of matrices $\mQ$, $\mK$ and
+$\mV$,
+\[
+  \keyeq{\operatorname{Attention}(\mQ, \mK, \mV)
+  = \softmax\!\left(\frac{\mQ\mK^\top}{\sqrt d}\right)\mV}
+\]
+with the softmax applied to each row.
+\end{definition}
+\index{attention}
+
+Read it piece by piece: the dot products $\vq^\top\vk_j$ measure how well each key
+matches the query (\cref{sec:dot-product}); softmax turns the scores into weights
+that are positive and add up to $1$; and the output is the weighted average of the
+values, that is, the expected value under the distribution $\alpha$
+(\cref{sec:expectation}). In a transformer, the queries, keys and values are
+computed from the token vectors by learned matrices, $\mQ = \mX\mW_Q$,
+$\mK = \mX\mW_K$ and $\mV = \mX\mW_V$.
+
+\begin{example}[Attention by hand]\label{ex:attention}
+Let $d = 2$, keys $\vk_1 = (1, 0)$, $\vk_2 = (0, 1)$, $\vk_3 = (1, 1)$, values equal
+to the keys, and the query $\vq = (1, 0)$. The scores are
+$\frac{1}{\sqrt2}(1, 0, 1) \approx (0.707, 0, 0.707)$, the weights are
+$\softmax(0.707, 0, 0.707) \approx (0.401, 0.198, 0.401)$, and the output is
+\[
+  0.401\,(1, 0) + 0.198\,(0, 1) + 0.401\,(1, 1) \approx (0.802, 0.599).
+\]
+The query attends mostly to the two keys that point in its direction.
+\end{example}
+
+\begin{intuition}[Why divide by $\sqrt d$?]
+If the components of $\vq$ and $\vk$ are independent with mean $0$ and variance $1$,
+then $\vq^\top\vk = \sum_{i=1}^dq_ik_i$ is a sum of $d$ independent terms of variance
+$1$, so it has variance $d$ (\cref{sec:variance}). For $d = 64$ the scores would
+have standard deviation $8$, and softmax of such large numbers is nearly one-hot,
+with almost zero gradients (\cref{sec:softmax-gradient}). Dividing by $\sqrt d$
+brings the variance back to $1$.
+\end{intuition}
+
+\sectionexercises
+
+\begin{exercise}
+Repeat \cref{ex:attention} with the query $\vq = (0, 1)$.
+\end{exercise}
+\begin{solution}
+Scores $\tfrac{1}{\sqrt2}(0, 1, 1) \approx (0, 0.707, 0.707)$, weights
+$\approx (0.198, 0.401, 0.401)$, output $\approx 0.198(1, 0) + 0.401(0, 1) + 0.401(1,
+1) = (0.599, 0.802)$.
+\end{solution}
+
+\begin{exercise}
+What is the output of attention if all the scores are equal? If one score is much
+larger than all the others?
+\end{exercise}
+\begin{solution}
+Equal scores give equal weights $\tfrac1n$, so the output is the plain average of
+the values. A dominant score gives a weight close to $1$ for that key, so the output
+is close to its value: attention then acts like a look-up.
+\end{solution}
+
+\begin{exercise}
+Queries and keys have $d = 256$ components, each with mean $0$ and variance $1$,
+independently. What is the standard deviation of $\vq^\top\vk$, and of the scaled
+score?
+\end{exercise}
+\begin{solution}
+The variance is $256$, so the standard deviation is $16$; after dividing by
+$\sqrt{256} = 16$ it is $1$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Putting it all together: training a network}\label{sec:training-loop}
+%----------------------------------------------------------------------
+
+We can now describe, and justify step by step, the complete procedure by which
+neural networks are trained.
+
+\begin{algorithm}[Training a neural network]\label{alg:training}
+To train a classifier:
+\begin{steps}
+  \item \textbf{Prepare the data.} Split it into training, validation and test
+    sets, and standardise the features using statistics of the training set
+    (\cref{sec:generalisation,sec:variance}).
+  \item \textbf{Initialise.} Draw the weights at random with variance $\frac2n$
+    or $\frac1n$; set the biases to $0$ (\cref{sec:variance}).
+  \item \textbf{Loop over epochs and mini-batches.} For each mini-batch: run the
+    forward pass and compute the average cross-entropy loss from the logits
+    (\cref{sec:softmax-gradient}); run the backward pass to get the gradients
+    (\cref{sec:backpropagation}); update the parameters with SGD, momentum or Adam,
+    possibly with weight decay and a learning-rate schedule
+    (\cref{ch:optimization,sec:map}).
+  \item \textbf{Monitor.} Track the training and validation losses; choose
+    hyperparameters and the stopping time on the validation set
+    (\cref{sec:generalisation}).
+  \item \textbf{Evaluate.} Measure the final model once on the test set, with
+    error bars (\cref{sec:clt}).
+\end{steps}
+\end{algorithm}
+
+The following program carries this out for a small problem: points inside the
+unit circle belong to class $1$ and points in a surrounding ring to class $0$
+(compare \cref{fig:circle-classes}). No straight line separates the classes, but a
+network with one hidden layer of $16$ ReLU neurons learns to. For brevity the
+program uses all $400$ training points in every step (full-batch gradient
+descent) and no validation set; every line corresponds to an equation of this
+chapter.
+\begin{lstlisting}
+import numpy as np
+
+rng = np.random.default_rng(0)
+
+# Data: class 1 inside the unit circle, class 0 in a ring around it.
+n = 400
+r = np.concatenate([rng.uniform(0, 1, n // 2),
+                    rng.uniform(1.5, 2.5, n // 2)])
+angle = rng.uniform(0, 2 * np.pi, n)
+X = np.column_stack([r * np.cos(angle), r * np.sin(angle)])
+y = np.concatenate([np.ones(n // 2), np.zeros(n // 2)])
+
+# One hidden layer of 16 ReLU units and one output logit.
+H = 16
+W1 = rng.normal(0, np.sqrt(2 / 2), (H, 2))   # He initialisation
+b1 = np.zeros(H)
+w2 = rng.normal(0, np.sqrt(1 / H), H)
+b2 = 0.0
+
+lr = 0.5
+for step in range(1, 501):
+    # Forward pass for all examples at once (one row each).
+    Z1 = X @ W1.T + b1              # pre-activations, n x H
+    A1 = np.maximum(Z1, 0)          # ReLU
+    z2 = A1 @ w2 + b2               # output logits, length n
+    # Binary cross-entropy, computed stably from the logits.
+    loss = np.mean(np.logaddexp(0, z2) - y * z2)
+
+    # Backward pass.
+    q = 1 / (1 + np.exp(-z2))       # predicted P(y = 1)
+    d2 = (q - y) / n                # dL/dz2
+    grad_w2 = A1.T @ d2
+    grad_b2 = d2.sum()
+    D1 = np.outer(d2, w2) * (Z1 > 0)    # dL/dZ1
+    grad_W1 = D1.T @ X
+    grad_b1 = D1.sum(axis=0)
+
+    # Gradient descent step.
+    W1 -= lr * grad_W1
+    b1 -= lr * grad_b1
+    w2 -= lr * grad_w2
+    b2 -= lr * grad_b2
+
+    if step in (1, 10, 50, 100, 500):
+        accuracy = np.mean((z2 > 0) == y)
+        print(f"step {step:3d}  loss {loss:.3f}  accuracy {accuracy:.3f}")
+\end{lstlisting}
+It prints:
+\par\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[language={},keywordstyle=\color{black}]
+step   1  loss 0.815  accuracy 0.552
+step  10  loss 0.445  accuracy 0.807
+step  50  loss 0.165  accuracy 1.000
+step 100  loss 0.073  accuracy 1.000
+step 500  loss 0.010  accuracy 1.000
+\end{lstlisting}
+\end{minipage}\par
+The loss falls steadily, and after $50$ steps every training point is classified
+correctly. On $1000$ new points from the same distribution the network is also
+right every time: it generalises, because the gap between the two classes leaves
+room for a decision boundary that is not tuned to individual training points
+(\cref{fig:training-result}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1,horizontal sep=1.8cm},height=6cm]
+  \nextgroupplot[mlplot,axis lines=box,width=6cm,xmin=-2.7,xmax=2.7,ymin=-2.7,ymax=2.7,
+    axis equal image,xtick={-2,0,2},ytick={-2,0,2},grid=none,
+    title={data and learned boundary},title style={font=\small}]
+    \addplot[only marks,mark=*,mark size=0.9pt,PlotBlue] coordinates {(0.19,0.61) (0.25,-0.10) (0.03,0.02) (0.02,0.00) (-0.36,0.73) (0.91,-0.05) (-0.06,0.60)
+      (0.35,-0.64) (0.25,0.48) (-0.80,-0.48) (0.79,-0.21) (-0.00,-0.00) (0.85,-0.10)
+      (-0.03,-0.02) (0.73,-0.08) (0.09,-0.15) (0.15,-0.85) (0.41,-0.35) (-0.20,-0.22)
+      (-0.26,0.33) (-0.03,-0.01) (0.02,0.12) (0.12,-0.66) (0.31,0.57) (-0.54,-0.29)
+      (-0.37,-0.09) (-0.47,-0.88) (0.06,-0.98) (0.53,0.44) (-0.46,-0.46) (-0.59,0.35)
+      (-0.29,-0.26) (-0.05,-0.13) (-0.62,-0.37) (-0.06,-0.52) (-0.31,-0.04) (-0.47,0.11)
+      (-0.20,0.87) (0.12,0.93) (-0.12,-0.34) (-0.19,-0.54) (0.11,0.30) (0.59,-0.10)
+      (-0.16,-0.30) (-0.38,-0.08) (0.48,-0.75) (-0.23,0.02) (-0.62,0.09) (-0.00,0.08)
+      (0.46,0.69) (-0.19,-0.76) (0.13,-0.20) (-0.38,-0.79) (-0.04,0.04) (-0.30,-0.15)
+      (-0.14,-0.06) (0.42,-0.17) (-0.61,0.52) (0.12,0.20) (0.04,-0.04) (0.32,-0.25)
+      (0.19,0.06) (0.03,0.09) (-0.38,-0.44) (0.07,-0.29) (-0.53,-0.42) (0.07,0.19) (0.70,0.63)
+      (-0.36,-0.01) (0.04,-0.10) (0.13,0.62) (0.83,0.42) (-0.42,-0.14) (0.34,0.89) (0.46,0.21)
+      (0.06,-0.42) (0.27,-0.56) (-0.80,0.59) (-0.26,0.91) (-0.08,0.45) (-0.49,0.58)
+      (-0.44,-0.23) (-0.52,-0.09) (-0.48,0.62) (-0.27,-0.32) (-0.33,-0.66) (-0.66,-0.25)
+      (-0.71,0.61) (-0.08,-0.08) (-0.61,-0.40) (-0.50,0.78) (-0.32,0.91) (-0.01,-0.00)
+      (-0.66,-0.56) (-0.75,-0.63) (-0.71,0.64) (-0.14,-0.06) (0.97,-0.09) (-0.80,0.39)
+      (0.45,-0.69) (0.42,0.23) (0.16,-0.16) (0.75,-0.29) (-0.07,0.92) (0.27,0.02) (-0.54,0.06)
+      (0.18,0.40) (0.92,-0.17) (0.03,-0.02) (0.71,-0.18) (-0.49,-0.37) (-0.03,-0.00)
+      (0.36,-0.62) (-0.01,-0.01) (0.01,0.76) (0.47,-0.21) (-0.86,0.34) (0.01,-0.07)
+      (-0.84,-0.00) (0.03,0.06) (-0.10,0.33) (-0.38,-0.19) (0.60,0.76) (0.56,0.05)
+      (-0.24,0.10) (0.02,-0.24) (-0.67,-0.58) (-0.10,0.20) (-0.03,-0.12) (-0.29,0.03)
+      (0.59,-0.00) (0.09,-0.55) (0.39,-0.71) (-0.03,0.56) (0.17,0.24) (0.13,0.39) (-0.75,0.34)
+      (-0.62,-0.05) (0.33,0.90) (0.07,-0.36) (0.37,-0.41) (-0.24,0.54) (-0.85,-0.04)
+      (-0.12,-0.08) (-0.07,-0.40) (0.55,0.73) (-0.01,0.04) (-0.10,-0.82) (-0.38,-0.17)
+      (0.67,-0.49) (-0.01,0.00) (-0.30,0.20) (-0.03,0.07) (0.08,0.65) (-0.16,-0.22)
+      (-0.06,0.70) (0.61,-0.72) (-0.02,0.13) (-0.40,-0.77) (-0.05,-0.02) (-0.26,-0.28)
+      (0.34,-0.26) (0.24,0.43) (0.57,0.79) (0.56,0.54) (0.27,0.14) (-0.26,-0.06) (0.44,0.74)
+      (0.31,-0.83) (0.51,0.07) (-0.24,0.24) (-0.98,0.17) (0.07,0.31) (-0.11,0.14) (0.15,0.87)
+      (-0.16,0.80) (0.60,-0.30) (-0.83,0.48) (-0.70,0.61) (-0.57,-0.48) (-0.44,-0.74)
+      (-0.13,-0.21) (0.12,0.07) (-0.58,-0.33) (-0.06,-0.71) (0.05,-0.16) (-0.34,-0.21)
+      (0.62,0.67) (0.49,0.28) (-0.26,0.52) (0.17,-0.09) (-0.52,0.09) (0.41,-0.32) (-0.09,0.02)
+      (0.03,-0.98) (-0.57,0.05) (-0.00,-0.01) (-0.32,0.70) (0.75,-0.62) (-0.06,0.59)};
+    \addplot[only marks,mark=*,mark size=0.9pt,PlotRed] coordinates {(1.82,0.07) (-0.30,-1.66) (-0.97,-1.95) (-0.94,-1.41) (-0.80,-1.92) (-1.80,-1.08)
+      (1.84,1.63) (-0.76,-1.37) (2.00,0.08) (0.92,2.05) (-1.47,0.80) (-1.36,1.31) (1.15,1.06)
+      (-2.00,0.99) (-1.13,-1.11) (-1.36,1.32) (-0.61,-2.29) (0.24,1.96) (1.49,1.90)
+      (-0.02,-2.27) (-1.18,-2.11) (-1.47,0.70) (1.03,1.19) (-0.81,-1.34) (-0.00,-2.37)
+      (1.10,1.83) (-0.74,-1.85) (-1.02,1.31) (1.87,-1.11) (0.02,-1.82) (-0.33,2.19)
+      (1.81,-0.74) (1.98,0.32) (0.91,2.10) (0.08,1.59) (-0.23,-2.07) (-1.67,-0.28)
+      (-2.25,0.51) (0.34,1.96) (0.10,-2.49) (1.25,1.13) (0.04,2.46) (0.80,-2.16) (-1.89,0.60)
+      (1.65,-1.62) (-1.69,-1.25) (0.53,-2.09) (0.93,2.23) (-0.63,1.43) (-1.67,1.63)
+      (-1.88,0.07) (-1.80,0.31) (1.10,-2.24) (1.06,2.02) (1.18,-1.60) (1.47,-1.23) (2.11,1.09)
+      (1.58,0.09) (-0.59,2.13) (-1.86,1.34) (2.26,-0.42) (1.64,0.79) (0.45,-2.25) (-1.70,0.27)
+      (1.28,1.36) (-1.28,1.43) (-1.50,1.39) (0.07,1.61) (-0.52,1.83) (-1.31,0.72) (2.18,-0.53)
+      (-2.27,0.60) (1.56,-0.51) (2.16,0.42) (2.12,0.94) (2.44,0.43) (-1.18,-2.02) (0.36,1.89)
+      (-2.20,-1.15) (0.70,-2.37) (-0.99,1.74) (0.06,2.25) (-0.37,-2.39) (-1.95,0.30)
+      (1.40,1.91) (1.88,1.15) (-0.14,-1.79) (1.45,-1.74) (1.60,-1.32) (-1.59,-0.10)
+      (1.08,1.55) (0.24,1.56) (-1.89,0.57) (1.15,-1.55) (-1.13,-1.56) (-0.32,2.06)
+      (0.06,-1.62) (-2.24,0.96) (2.17,-0.24) (-2.09,1.01) (1.25,-2.05) (2.07,0.19)
+      (-0.31,-1.51) (-1.78,1.32) (-2.07,0.01) (0.74,2.21) (1.84,-0.87) (0.72,2.20)
+      (-2.31,-0.94) (-1.52,-1.06) (1.05,-1.30) (-1.85,0.39) (1.08,-1.98) (-1.92,-0.29)
+      (2.01,-0.57) (-0.34,-1.59) (1.90,-1.17) (1.66,-0.63) (0.55,-1.60) (1.70,1.64)
+      (1.46,1.45) (-1.48,-1.32) (-0.32,2.38) (-1.19,1.05) (1.01,1.95) (0.14,-1.82)
+      (1.02,-1.33) (1.46,1.61) (-1.85,-0.20) (-1.45,1.12) (0.61,-2.37) (-1.66,0.37)
+      (-0.24,-2.00) (-1.39,-0.61) (1.65,-0.23) (-2.09,1.15) (2.28,-0.18) (-1.77,1.04)
+      (0.71,1.57) (0.41,-2.02) (-0.21,1.50) (-2.03,-0.89) (-1.35,-1.76) (0.67,2.04)
+      (2.06,0.45) (1.57,-0.13) (0.72,-1.59) (1.48,1.45) (1.09,-1.55) (-0.13,2.49) (0.04,2.42)
+      (0.23,-1.64) (0.10,-2.09) (1.25,-1.81) (1.07,1.24) (-0.03,-1.81) (-2.18,0.42)
+      (-1.10,2.13) (-0.18,-1.83) (0.98,-1.44) (-1.02,2.09) (1.17,1.72) (1.97,-0.10)
+      (1.53,-0.85) (-0.39,1.52) (0.60,-1.40) (1.76,1.11) (1.44,-0.88) (0.38,-2.45) (0.53,1.52)
+      (-0.55,1.87) (-1.56,-1.07) (-1.07,1.36) (-0.19,-2.24) (-1.79,-1.18) (0.59,2.15)
+      (-1.22,-1.01) (1.85,0.16) (1.54,1.30) (1.02,1.63) (-0.93,1.23) (1.69,0.13) (2.21,-1.04)
+      (0.11,1.66) (-0.30,2.33) (-1.65,1.64) (1.76,-0.69) (-1.17,1.58) (-2.11,0.97)
+      (-0.65,2.08) (2.31,-0.35) (-1.49,1.69) (1.90,1.10) (-1.32,-2.02) (-0.48,-2.27)
+      (-1.17,1.21) (0.54,2.18) (-1.34,0.86) (-1.79,0.72) (1.90,-0.06)};
+    \addplot[black,very thick] coordinates {(1.218,0.000) (1.216,0.064) (1.213,0.128) (1.211,0.192) (1.208,0.257) (1.206,0.323)
+      (1.203,0.391) (1.199,0.460) (1.177,0.524) (1.140,0.581) (1.104,0.638) (1.068,0.694)
+      (1.032,0.750) (0.996,0.807) (0.960,0.864) (0.922,0.922) (0.873,0.970) (0.810,1.001)
+      (0.749,1.031) (0.689,1.061) (0.630,1.090) (0.570,1.120) (0.510,1.145) (0.446,1.162)
+      (0.382,1.176) (0.319,1.191) (0.256,1.205) (0.193,1.220) (0.130,1.234) (0.065,1.243)
+      (0.000,1.245) (-0.065,1.247) (-0.131,1.249) (-0.198,1.251) (-0.266,1.253) (-0.331,1.235)
+      (-0.394,1.214) (-0.458,1.192) (-0.521,1.171) (-0.586,1.149) (-0.650,1.126)
+      (-0.698,1.075) (-0.745,1.026) (-0.791,0.977) (-0.836,0.928) (-0.880,0.880)
+      (-0.925,0.833) (-0.969,0.785) (-1.014,0.737) (-1.055,0.685) (-1.094,0.632)
+      (-1.124,0.573) (-1.144,0.509) (-1.163,0.447) (-1.183,0.384) (-1.198,0.321)
+      (-1.208,0.257) (-1.217,0.193) (-1.221,0.128) (-1.223,0.064) (-1.225,0.000)
+      (-1.227,-0.064) (-1.229,-0.129) (-1.231,-0.195) (-1.233,-0.262) (-1.236,-0.331)
+      (-1.236,-0.402) (-1.208,-0.464) (-1.172,-0.522) (-1.137,-0.579) (-1.101,-0.636)
+      (-1.067,-0.693) (-1.031,-0.749) (-0.996,-0.807) (-0.954,-0.859) (-0.909,-0.909)
+      (-0.861,-0.957) (-0.812,-1.003) (-0.763,-1.050) (-0.706,-1.087) (-0.641,-1.110)
+      (-0.577,-1.133) (-0.514,-1.155) (-0.452,-1.177) (-0.389,-1.196) (-0.320,-1.194)
+      (-0.253,-1.193) (-0.189,-1.191) (-0.125,-1.189) (-0.062,-1.188) (-0.000,-1.186)
+      (0.062,-1.185) (0.124,-1.183) (0.187,-1.180) (0.250,-1.178) (0.315,-1.176)
+      (0.381,-1.173) (0.446,-1.163) (0.511,-1.147) (0.574,-1.127) (0.637,-1.103)
+      (0.701,-1.080) (0.767,-1.055) (0.834,-1.030) (0.905,-1.005) (0.966,-0.966)
+      (1.021,-0.919) (1.071,-0.867) (1.117,-0.812) (1.164,-0.756) (1.188,-0.686)
+      (1.194,-0.609) (1.200,-0.534) (1.206,-0.463) (1.211,-0.393) (1.216,-0.326)
+      (1.221,-0.260) (1.225,-0.194) (1.223,-0.129) (1.220,-0.064) (1.218,0.000)};
+  \nextgroupplot[mlplot,axis lines=left,width=7cm,xmin=0,xmax=500,ymin=0.005,ymax=1,
+    ymode=log,xlabel={step},ylabel={training loss},
+    xlabel style={at={(ticklabel cs:0.5)},anchor=north},
+    ylabel style={at={(ticklabel cs:0.5)},anchor=south,rotate=90},
+    title={training loss},title style={font=\small}]
+    \addplot[PlotBlue,thick] coordinates {(1,0.8149) (2,0.6315) (3,0.5773) (4,0.5503) (5,0.5288) (6,0.5097) (7,0.4920) (8,0.4754)
+      (9,0.4595) (10,0.4445) (11,0.4302) (12,0.4166) (13,0.4037) (14,0.3914) (15,0.3796)
+      (16,0.3684) (17,0.3577) (18,0.3475) (19,0.3377) (20,0.3283) (25,0.2872) (30,0.2535)
+      (35,0.2255) (40,0.2019) (45,0.1819) (50,0.1647) (55,0.1497) (60,0.1367) (65,0.1252)
+      (70,0.1149) (75,0.1057) (80,0.0975) (85,0.0902) (90,0.0838) (95,0.0780) (100,0.0730)
+      (120,0.0578) (140,0.0477) (160,0.0405) (180,0.0351) (200,0.0308) (220,0.0275)
+      (240,0.0247) (260,0.0224) (280,0.0205) (300,0.0188) (320,0.0174) (340,0.0161)
+      (360,0.0150) (380,0.0141) (400,0.0132) (420,0.0124) (440,0.0117) (460,0.0111)
+      (480,0.0105) (500,0.0100)};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Left: the training data (blue: class $1$, red: class $0$) and the decision
+  boundary learned by the network, where its output probability is $\frac12$. As a
+  ReLU network computes a piecewise linear function, the boundary is a polygon.
+  Right: the training loss, on a logarithmic scale.}
+\label{fig:training-result}
+\end{figure}
+
+\begin{keytakeaways}[Where each idea came from]
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.47\linewidth}
+                >{\raggedright\arraybackslash}p{0.45\linewidth}@{}}
+\textbf{Ingredient} & \textbf{Mathematics}\\
+\hline
+layers $\mW\va + \vb$, shapes, outer products & linear algebra (\cref{ch:linalg1,ch:linalg2})\\
+activations, $e^x$, $\ln$, sigmoid & functions (\cref{ch:functions})\\
+backpropagation, autodiff & chain rule, gradients (\cref{ch:calculus,ch:multivariable})\\
+gradient descent, SGD, Adam & optimisation (\cref{ch:optimization})\\
+initialisation, normalisation, attention scaling & variance (\cref{ch:probability})\\
+softmax, cross-entropy, KL divergence & probability, likelihood (\cref{ch:probability,ch:statistics}, this chapter)\\
+validation, regularisation, error bars & statistics (\cref{ch:statistics})
+\end{tabular}
+\end{keytakeaways}
+
+\sectionexercises
+
+\begin{exercise}
+How many parameters does the network in the program have?
+\end{exercise}
+\begin{solution}
+$\mW_1$ has $16\times2 = 32$ entries, $\vb_1$ has $16$, $\vw_2$ has $16$, and $b_2$ is one
+number: $65$ parameters.
+\end{solution}
+
+\begin{exercise}
+In the program, why is \texttt{d2} divided by $n$?
+\end{exercise}
+\begin{solution}
+The loss is the \emph{mean} of the $n$ per-example losses, so the derivative of the
+loss with respect to the logit of example $i$ is $\tfrac1n(q_i - y_i)$.
+\end{solution}
+
+\begin{exercise}
+What would happen in the program if all the weights and biases were initialised
+to $0$?
+\end{exercise}
+\begin{solution}
+All hidden pre-activations would be $0$. The code uses $\ReLU'(0) = 0$, and
+together with the zero output weights this makes every gradient of $\mW_1$,
+$\vb_1$ and $\vw_2$ vanish: only $b_2$ would learn, and the network would
+predict the same probability everywhere. More generally, identical initial
+weights give identical neurons, which receive identical gradients and stay
+identical; random initialisation breaks this symmetry.
+\end{solution}
+
+\begin{exercise}
+What would you expect to happen if the learning rate were made much larger, say
+$100$?
+\end{exercise}
+\begin{solution}
+Steps would overshoot and the loss would oscillate or diverge instead of
+decreasing, as in \cref{sec:learning-rate}; with ReLU networks, large steps can
+also push many neurons into the inactive region permanently.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Chapter summary}\label{sec:ch11-summary}
+%----------------------------------------------------------------------
+
+\begin{keytakeaways}
+\begin{itemize}
+  \item A feed-forward network computes $\vz^{(l)} = \mW^{(l)}\va^{(l-1)} + \vb^{(l)}$,
+    $\va^{(l)} = \varphi(\vz^{(l)})$; without non-linear activations it collapses to
+    one linear map.
+  \item $\softmax(\vz)_k = e^{z_k}/\sum_je^{z_j}$ turns logits into probabilities; it is
+    shift invariant, so subtract $\max_jz_j$ before exponentiating.
+  \item Entropy: $H(\vp) = -\sum_kp_k\log p_k$. Cross-entropy: $H(\vp, \vq) =
+    -\sum_kp_k\log q_k$. KL divergence: $D_{\KL}(\vp\,\Vert\,\vq) = H(\vp, \vq) -
+    H(\vp) \ge 0$. The cross-entropy loss is the negative log-likelihood.
+  \item Matrix calculus: $\pderiv{L}{\mW} = \vdelta\vx^\top$, $\pderiv{L}{\vx} = \mW^\top\vdelta$
+    for $\vz = \mW\vx + \vb$; activations multiply by $\varphi'(\vz)$ componentwise.
+    Gradients have the shapes of the variables.
+  \item Softmax with cross-entropy has gradient $\vq - \vy$: prediction minus truth.
+  \item Backpropagation computes all gradients with one backward pass, using
+    the recursion
+    $\vdelta^{(l)} = \bigl(\mW^{(l+1)\top}\vdelta^{(l+1)}\bigr) \odot
+    \varphi'\bigl(\vz^{(l)}\bigr)$.
+  \item Products over many layers make gradients vanish or explode; ReLU, good
+    initialisation, normalisation, residual connections and clipping help.
+  \item Automatic differentiation records the computation and applies the chain
+    rule in reverse.
+  \item Attention: $\softmax(\mQ\mK^\top/\sqrt d)\mV$, a weighted average of values.
+\end{itemize}
+\end{keytakeaways}
+
+You have now seen the mathematical core of modern machine learning, from counting
+and fractions to backpropagation and attention. The last chapter suggests where
+to go from here.
