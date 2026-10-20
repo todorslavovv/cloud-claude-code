@@ -1,1 +1,1802 @@
+%======================================================================
+% Chapter 4: Vectors and Matrices (Linear Algebra I)
+%======================================================================
 \chapter{Vectors and Matrices (Linear Algebra I)}\label{ch:linalg1}
+
+\begin{motivation}
+Open the source code of any machine learning system and you will find the
+same two kinds of object everywhere: \emph{vectors} (lists of numbers) and
+\emph{matrices} (tables of numbers). A data point is a vector of features; a
+data set is a matrix with one row per data point; an image is a matrix of
+pixels; the weights of a neural network layer form a matrix; and the
+computation done by that layer is ``multiply the input vector by the weight
+matrix, add a bias vector, apply an activation function''. Graphics processing
+units (GPUs), the hardware on which modern AI runs, are essentially machines
+for multiplying matrices very fast.
+
+Linear algebra, the mathematics of vectors and matrices, therefore gives us
+two things at once: a compact \emph{notation} in which a single short formula
+describes millions of arithmetic operations, and a geometric \emph{picture} in
+which a matrix is a transformation that stretches, rotates and squashes space.
+This chapter covers the basics; \cref{ch:linalg2} covers the deeper ideas that
+machine learning relies on.
+\end{motivation}
+
+\begin{objectives}
+\begin{itemize}
+  \item represent data as vectors, and picture vectors as arrows;
+  \item add and scale vectors and form linear combinations;
+  \item compute lengths, distances, dot products and angles between vectors;
+  \item store data sets and images as matrices;
+  \item multiply a matrix by a vector and by another matrix, and explain both
+    operations in two complementary ways;
+  \item interpret a matrix as a linear transformation of space;
+  \item use the transpose, the identity matrix, inverses and $2\times2$ and
+    $3 \times 3$ determinants;
+  \item write a system of linear equations as $\mA\vx = \vb$ and solve it by
+    Gaussian elimination.
+\end{itemize}
+\end{objectives}
+
+%----------------------------------------------------------------------
+\section{Vectors}\label{sec:vectors}
+%----------------------------------------------------------------------
+
+\subsection{Two ways to see a vector}
+
+The word \emph{vector} is used for two ideas that turn out to be the same
+thing.
+
+\begin{itemize}
+  \item \textbf{A vector is an arrow.} In physics a vector is a quantity with a
+    size and a direction, such as a displacement (``$3$\,m east and $2$\,m
+    north'') or a velocity. We draw it as an arrow. Only its length and
+    direction matter, not where it is drawn: the three arrows in
+    \cref{fig:vector-arrow} all represent the same vector.
+  \item \textbf{A vector is a list of numbers.} In computer science and data
+    science a vector is an ordered list of numbers, such as the features of a
+    house: $(120, 3, 15)$ for $120$\,m$^2$, $3$ bedrooms and $15$ years of age.
+\end{itemize}
+
+The bridge between the two views is the coordinate system of
+\cref{ch:geometry}: the arrow that starts at the origin and ends at the point
+$(3, 2)$ corresponds to the list $(3, 2)$. The numbers say how far the arrow
+goes in each coordinate direction.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.75]
+  \draw[gray!22] (-0.5,-0.5) grid (7.5,5.5);
+  \draw[-{Stealth[length=2.5mm]},thick] (-0.5,0) -- (7.8,0) node[right] {$x_1$};
+  \draw[-{Stealth[length=2.5mm]},thick] (0,-0.5) -- (0,5.8) node[above] {$x_2$};
+  \draw[dashed,gray] (3,0) -- (3,2) -- (0,2);
+  \draw[vec,PlotBlue] (0,0) -- (3,2);
+  \node[PlotBlue,above left] at (1.5,1) {$\vv$};
+  \fill[PlotBlue] (3,2) circle (2.5pt);
+  \node[right,font=\small] at (3.05,1.8) {$(3,2)$};
+  \draw[vec,PlotBlue!55] (4,0.5) -- (7,2.5);
+  \draw[vec,PlotBlue!55] (2,3) -- (5,5);
+  \node[font=\small,below] at (1.5,0) {$3$};
+  \node[font=\small,left] at (0,1) {$2$};
+\end{tikzpicture}
+\caption{The vector $\vv = (3, 2)$ drawn as an arrow from the origin. The two
+  paler arrows have the same length and direction, so they represent the same
+  vector: ``$3$ to the right and $2$ up''.}
+\label{fig:vector-arrow}
+\end{figure}
+
+\begin{definition}[Vector]\label{def:vector}
+A \term{vector} in $\R^n$ is an ordered list of $n$ real numbers, called its
+\term[component of a vector]{components} (or entries). We write vectors as
+columns:
+\[
+  \vv = \begin{pmatrix} v_1 \\ v_2 \\ \vdots \\ v_n \end{pmatrix}.
+\]
+The number $n$ is the \emph{dimension} of the space $\R^n$. Two vectors are
+equal when all their components are equal.
+\end{definition}
+
+\begin{notation}
+Vectors are written in \textbf{bold} lower-case letters: $\vv$, $\vx$, $\vw$.
+Their components are written in ordinary italic with a subscript: $v_1$,
+$x_3$, $w_i$. Single numbers are called \term[scalar]{scalars}, to distinguish
+them from vectors, and are written in ordinary italic: $a$, $c$, $\lambda$.
+(On paper, where bold is hard to write, people often write $\vec v$ or
+underline the letter.) To save space we sometimes write a column vector on one
+line as $\vv = (v_1, \dots, v_n)$; it still means a column. The
+\term{zero vector} $\vzero = (0, \dots, 0)$ has every component equal to $0$.
+\end{notation}
+
+\begin{mlnote}[Everything is a vector]
+In machine learning, almost every object is stored as a vector.
+\begin{itemize}
+  \item \textbf{Tabular data:} a house is $\vx = (120, 3, 15, 2.5)$: size,
+    bedrooms, age and distance to the centre.
+  \item \textbf{Images:} a $28\times28$ grayscale image becomes a vector in
+    $\R^{784}$ by reading its pixels row by row (``flattening'').
+  \item \textbf{Words:} language models represent each word (or word piece) by
+    a learned vector called an \term{embedding}, typically with hundreds or
+    thousands of components.
+  \item \textbf{Categories:} a category out of $k$ possibilities is encoded as a
+    \term{one-hot vector} with a single $1$: with the categories cat, dog,
+    bird, ``dog'' is $(0, 1, 0)$.
+  \item \textbf{Model parameters:} all the weights of a model can be listed in
+    one long vector, usually called $\vtheta$ (``theta'').
+\end{itemize}
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Write a feature vector for a house of $120$\,m$^2$ with $3$ bedrooms, aged
+$15$ years and $2.5$\,km from the city centre. In which space $\R^n$ does it
+live?
+\end{exercise}
+\begin{solution}
+$\vx = (120, 3, 15, 2.5)$, written as a column; it lives in $\R^4$.
+\end{solution}
+
+\begin{exercise}
+Write the one-hot vectors for the categories red, green and blue (in that
+order). What is the sum of the entries of any one-hot vector?
+\end{exercise}
+\begin{solution}
+Red $= (1,0,0)$, green $= (0,1,0)$, blue $= (0,0,1)$. The entries of a one-hot
+vector always add up to $1$.
+\end{solution}
+
+\begin{exercise}
+Which vector is represented by the arrow from $P(1, 4)$ to $Q(5, 1)$? How long
+is the arrow?
+\end{exercise}
+\begin{solution}
+The displacement is $Q - P = (5 - 1, 1 - 4) = (4, -3)$. Its length is
+$\sqrt{16 + 9} = 5$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Adding and scaling vectors}\label{sec:vector-operations}
+%----------------------------------------------------------------------
+
+\subsection{Vector addition}
+
+Vectors of the same dimension are added component by component:
+\[
+  \vu + \vv = \begin{pmatrix} u_1 \\ \vdots \\ u_n \end{pmatrix}
+  + \begin{pmatrix} v_1 \\ \vdots \\ v_n \end{pmatrix}
+  = \begin{pmatrix} u_1 + v_1 \\ \vdots \\ u_n + v_n \end{pmatrix}.
+\]
+For example, $(3, 1) + (1, 2) = (4, 3)$. Geometrically, addition means
+``follow one arrow, then the other'': place the tail of $\vv$ at the tip of
+$\vu$; the sum goes from the tail of $\vu$ to the tip of $\vv$. Doing it in
+the other order gives the same result, and the two routes form a
+parallelogram (\cref{fig:vector-ops}, left). Vectors of different dimensions
+cannot be added.
+
+\subsection{Scalar multiplication}
+
+Multiplying a vector by a scalar multiplies every component:
+\[
+  c\,\vv = \begin{pmatrix} c\,v_1 \\ \vdots \\ c\,v_n \end{pmatrix}.
+\]
+Geometrically, $c\vv$ points along the same line as $\vv$ and is $\abs{c}$ times
+as long; if $c < 0$ it points the opposite way (\cref{fig:vector-ops},
+right). The vector $(-1)\vv$ is written $-\vv$, and subtraction is defined by
+$\vu - \vv = \vu + (-\vv)$, i.e.\ component by component. Geometrically,
+$\vu - \vv$ is the arrow from the tip of $\vv$ to the tip of $\vu$.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}{0.48\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.85]
+  \draw[gray!22] (-0.4,-0.4) grid (4.6,3.6);
+  \draw[-{Stealth[length=2mm]}] (-0.4,0) -- (4.8,0);
+  \draw[-{Stealth[length=2mm]}] (0,-0.4) -- (0,3.8);
+  \draw[vec,PlotBlue] (0,0) -- (3,1) node[midway,below right] {$\vu$};
+  \draw[vec,PlotRed] (0,0) -- (1,2) node[midway,above left] {$\vv$};
+  \draw[vec,PlotRed!55,dashed] (3,1) -- (4,3) node[midway,right] {$\vv$};
+  \draw[vec,PlotBlue!55,dashed] (1,2) -- (4,3) node[midway,above] {$\vu$};
+  \draw[vec,PlotGreen] (0,0) -- (4,3) node[pos=0.62,above left] {$\vu+\vv$};
+\end{tikzpicture}
+\caption{The parallelogram rule: $(3,1) + (1,2) = (4,3)$.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.75]
+  \draw[gray!22] (-2.4,-1.4) grid (4.4,2.4);
+  \draw[-{Stealth[length=2mm]}] (-2.4,0) -- (4.6,0);
+  \draw[-{Stealth[length=2mm]}] (0,-1.4) -- (0,2.6);
+  \draw[vec,PlotGreen!80!black] (0,0) -- (4,2) node[above] {$2\vv$};
+  \draw[vec,PlotBlue] (0,0) -- (2,1) node[below right] {$\vv$};
+  \draw[vec,PlotOrange] (0,0) -- (1,0.5) node[above left] {$\tfrac12\vv$};
+  \draw[vec,PlotRed] (0,0) -- (-2,-1) node[left] {$-\vv$};
+\end{tikzpicture}
+\caption{Scalar multiples of $\vv = (2,1)$.}
+\end{subfigure}
+\caption{The two basic vector operations.}
+\label{fig:vector-ops}
+\end{figure}
+
+These operations obey the same laws as ordinary arithmetic
+(\cref{thm:laws-arithmetic}): $\vu + \vv = \vv + \vu$,
+$(\vu + \vv) + \vw = \vu + (\vv + \vw)$, $\vv + \vzero = \vv$,
+$\vv + (-\vv) = \vzero$, $c(\vu + \vv) = c\vu + c\vv$, $(c + d)\vv = c\vv +
+d\vv$ and $c(d\vv) = (cd)\vv$. Any collection of objects with an addition and a
+scalar multiplication obeying these laws is called a \term{vector space}; $\R^n$
+is the main example.
+
+\subsection{Linear combinations}
+
+Combining the two operations gives the single most important construction in
+linear algebra.
+
+\begin{definition}[Linear combination]\label{def:linear-combination}
+A \term{linear combination} of vectors $\vv_1, \dots, \vv_k$ is any vector of
+the form
+\[
+  c_1\vv_1 + c_2\vv_2 + \dots + c_k\vv_k ,
+\]
+where $c_1, \dots, c_k$ are scalars, called the \emph{coefficients} or
+\emph{weights} of the combination.
+\end{definition}
+
+\begin{example}[A linear combination]\label{ex:linear-combination}
+Compute $2\vu - 3\vv$ for $\vu = (1, 0, 2)$ and $\vv = (2, -1, 1)$.
+
+\sol $2\vu = (2, 0, 4)$ and $3\vv = (6, -3, 3)$, so
+$2\vu - 3\vv = (2 - 6, 0 + 3, 4 - 3) = (-4, 3, 1)$.
+\end{example}
+
+The vectors $\ve_1 = (1, 0)$ and $\ve_2 = (0, 1)$ are special: every vector in
+$\R^2$ is a linear combination of them, in exactly one way:
+\[
+  \begin{pmatrix} 3 \\ 2 \end{pmatrix}
+  = 3\begin{pmatrix} 1 \\ 0 \end{pmatrix}
+  + 2\begin{pmatrix} 0 \\ 1 \end{pmatrix}
+  = 3\ve_1 + 2\ve_2 .
+\]
+In $\R^n$, the \term[standard basis]{standard basis vectors}
+$\ve_1, \dots, \ve_n$ have a $1$ in one position and $0$ elsewhere, and every
+vector is $\vv = v_1\ve_1 + \dots + v_n\ve_n$. The components of a vector are
+just the coefficients needed to build it from the standard basis.
+
+\begin{intuition}[Linear combinations are recipes]
+Think of $\vv_1, \dots, \vv_k$ as ingredients and of the coefficients as
+amounts. If one portion of food A provides $(10, 5, 30)$ grams of (protein,
+fat, carbohydrate) and one portion of food B provides $(20, 10, 5)$, then two
+portions of A and one of B provide $2(10, 5, 30) + (20, 10, 5) = (40, 20,
+65)$. Which nutrient totals can you reach by mixing A and B? That question,
+``which vectors are linear combinations of these?'', is the subject of
+\cref{ch:linalg2}.
+\end{intuition}
+
+\begin{mlnote}[Vector arithmetic in machine learning]
+Adding and scaling vectors is the bread and butter of machine learning code.
+\begin{itemize}
+  \item The \emph{mean} of data vectors $\vx_1, \dots, \vx_n$ is the linear
+    combination $\frac1n(\vx_1 + \dots + \vx_n)$, computed component by
+    component. It is the ``centre of mass'' of the data cloud.
+  \item Training updates all weights at once with a vector operation: gradient
+    descent replaces $\vtheta$ by $\vtheta - \eta\,\vg$, where $\vg$ is a vector
+    (the gradient, \cref{ch:multivariable}) and $\eta$ a small scalar
+    (\cref{ch:optimization}).
+  \item Word embeddings famously support analogies by vector arithmetic: the
+    vector $\text{king} - \text{man} + \text{woman}$ lies close to
+    $\text{queen}$.
+\end{itemize}
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Let $\vu = (2, -1, 3)$ and $\vv = (-1, 4, 0)$. Compute $\vu + \vv$,
+$\vu - \vv$, $3\vu$ and $2\vu - 3\vv$.
+\end{exercise}
+\begin{solution}
+$\vu + \vv = (1, 3, 3)$; $\vu - \vv = (3, -5, 3)$; $3\vu = (6, -3, 9)$;
+$2\vu - 3\vv = (4, -2, 6) - (-3, 12, 0) = (7, -14, 6)$.
+\end{solution}
+
+\begin{exercise}
+Find scalars $a$ and $b$ such that $a(1, 1) + b(1, -1) = (5, 1)$.
+\end{exercise}
+\begin{solution}
+Component by component: $a + b = 5$ and $a - b = 1$. Adding gives $2a = 6$, so
+$a = 3$ and $b = 2$. Check: $3(1,1) + 2(1,-1) = (5, 1)$.
+\end{solution}
+
+\begin{exercise}
+Compute the mean of the data vectors $(1, 2)$, $(3, 6)$ and $(5, 1)$.
+\end{exercise}
+\begin{solution}
+$\tfrac13\bigl((1,2) + (3,6) + (5,1)\bigr) = \tfrac13(9, 9) = (3, 3)$.
+\end{solution}
+
+\begin{exercise}
+A model has weights $\vtheta = (0.5, -1.2, 2.0)$. One step of gradient descent
+with learning rate $\eta = 0.1$ and gradient $\vg = (0.4, -0.6, 1.0)$ replaces
+$\vtheta$ by $\vtheta - \eta\vg$. Compute the new weights.
+\end{exercise}
+\begin{solution}
+$\eta\vg = (0.04, -0.06, 0.1)$, so the new weights are
+$(0.5 - 0.04, -1.2 + 0.06, 2.0 - 0.1) = (0.46, -1.14, 1.9)$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Length, distance and unit vectors}\label{sec:vector-length}
+%----------------------------------------------------------------------
+
+The length of the arrow $\vv = (3, 4)$ is the hypotenuse of a right triangle
+with legs $3$ and $4$, namely $5$. In general, by the Pythagorean theorem in
+$n$ dimensions (\cref{def:euclidean-distance}):
+
+\begin{definition}[Length (norm) of a vector]\label{def:norm}
+The \term{length}, or \term[norm!Euclidean]{Euclidean norm}, of
+$\vv \in \R^n$ is
+\[
+  \norm{\vv} = \sqrt{v_1^2 + v_2^2 + \dots + v_n^2}.
+\]
+The \emph{distance} between $\vu$ and $\vv$ is the length of their
+difference, $\norm{\vu - \vv}$.
+\end{definition}
+
+For example, $\norm{(1, -2, 2)} = \sqrt{1 + 4 + 4} = 3$. Lengths behave as
+expected under scaling: $\norm{c\vv} = \abs{c}\,\norm{\vv}$. (Doubling a vector
+doubles its length; reversing it does not change its length.)
+
+A vector of length $1$ is a \term{unit vector}. Any non-zero vector can be
+turned into a unit vector pointing in the same direction by dividing by its
+length, which is called \term[normalisation of a vector]{normalising} it:
+\[
+  \hat\vv = \frac{\vv}{\norm{\vv}} .
+\]
+For $\vv = (3, 4)$, $\hat\vv = (0.6, 0.8)$. A unit vector records a pure
+direction.
+
+\begin{theorem}[Triangle inequality]\label{thm:triangle-inequality}
+For all vectors $\vu, \vv \in \R^n$,
+\[
+  \norm{\vu + \vv} \le \norm{\vu} + \norm{\vv} .
+\]
+\end{theorem}
+
+In the parallelogram picture (\cref{fig:vector-ops}), $\vu$, $\vv$ and
+$\vu + \vv$ form a triangle, and the theorem says that one side of a triangle
+is never longer than the other two together. This is the inequality we met
+for numbers in \cref{prop:abs-properties}, now in its original geometric
+setting. Equality holds only when $\vu$ and $\vv$ point in the same direction.
+
+\begin{mlnote}
+Many systems normalise vectors before comparing them: search engines and
+retrieval systems store unit-length embeddings, so that only their directions
+matter. Lengths also measure the \emph{size} of things: the length of the
+weight vector is used to penalise overly large weights
+(\cref{ch:linalg2}), and the length of the gradient decides whether
+``gradient clipping'' is needed (\cref{ch:optimization}).
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Compute $\norm{(3, 4)}$, $\norm{(1, -2, 2)}$ and $\norm{(1, 1, 1, 1)}$.
+\end{exercise}
+\begin{solution}
+$5$; $3$; $\sqrt{4} = 2$.
+\end{solution}
+
+\begin{exercise}
+Find the unit vector pointing in the same direction as $(6, -8)$.
+\end{exercise}
+\begin{solution}
+$\norm{(6,-8)} = \sqrt{36 + 64} = 10$, so the unit vector is $(0.6, -0.8)$.
+\end{solution}
+
+\begin{exercise}
+Find the distance between $(1, 2, 3)$ and $(4, 6, 3)$.
+\end{exercise}
+\begin{solution}
+$\norm{(1,2,3) - (4,6,3)} = \norm{(-3, -4, 0)} = 5$.
+\end{solution}
+
+\begin{exercise}
+Check the triangle inequality for $\vu = (1, 0)$ and $\vv = (0, 1)$. Then find
+two non-zero vectors for which it holds with equality.
+\end{exercise}
+\begin{solution}
+$\norm{\vu + \vv} = \norm{(1,1)} = \sqrt2 \approx 1.41 \le 1 + 1 = 2$. Equality
+holds for vectors pointing the same way, e.g.\ $\vu = (1, 0)$, $\vv = (2, 0)$:
+$\norm{(3, 0)} = 3 = 1 + 2$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{The dot product}\label{sec:dot-product}
+%----------------------------------------------------------------------
+
+\begin{motivation}
+The dot product is the most important operation in this chapter. It multiplies
+two vectors and returns a single number. Algebraically it is a
+\emph{weighted sum}, which is exactly what an artificial neuron computes.
+Geometrically it measures how much two vectors \emph{point the same way},
+which is how machine learning measures similarity.
+\end{motivation}
+
+\begin{definition}[Dot product]\label{def:dot-product}
+The \term{dot product} (or \term{inner product}) of $\vu, \vv \in \R^n$ is the
+number
+\[
+  \keyeq{\vu \cdot \vv = u_1v_1 + u_2v_2 + \dots + u_nv_n
+  = \sum_{i=1}^{n} u_iv_i}
+\]
+\end{definition}
+
+\begin{example}[Computing a dot product]
+$(1, 2, 3)\cdot(4, -5, 6) = 1\cdot4 + 2\cdot(-5) + 3\cdot6 = 4 - 10 + 18 = 12$.
+\end{example}
+
+The dot product is commutative ($\vu\cdot\vv = \vv\cdot\vu$), distributes over
+addition ($\vu\cdot(\vv + \vw) = \vu\cdot\vv + \vu\cdot\vw$), and lets scalars
+move freely ($(c\vu)\cdot\vv = c(\vu\cdot\vv)$). Most importantly, the dot
+product of a vector with itself is its squared length:
+\[
+  \vv \cdot \vv = v_1^2 + \dots + v_n^2 = \norm{\vv}^2 .
+\]
+
+\subsection{The geometric meaning}
+
+\begin{theorem}[Geometric formula for the dot product]\label{thm:dot-geometric}
+If $\theta$ is the angle between the non-zero vectors $\vu$ and $\vv$, then
+\[
+  \keyeq{\vu\cdot\vv = \norm{\vu}\,\norm{\vv}\cos\theta}
+\]
+\end{theorem}
+
+\begin{proof}
+The vectors $\vu$, $\vv$ and $\vu - \vv$ form a triangle in which $\theta$ is
+the angle between the sides $\vu$ and $\vv$. By the law of cosines
+(\cref{thm:law-of-cosines}),
+\[
+  \norm{\vu - \vv}^2 = \norm{\vu}^2 + \norm{\vv}^2
+  - 2\norm{\vu}\,\norm{\vv}\cos\theta .
+\]
+On the other hand, expanding with the rules of the dot product,
+\[
+  \norm{\vu - \vv}^2 = (\vu - \vv)\cdot(\vu - \vv)
+  = \vu\cdot\vu - 2\,\vu\cdot\vv + \vv\cdot\vv
+  = \norm{\vu}^2 - 2\,\vu\cdot\vv + \norm{\vv}^2 .
+\]
+Comparing the two expressions gives $\vu\cdot\vv = \norm{\vu}\norm{\vv}\cos\theta$.
+\end{proof}
+
+Solving for the angle:
+\[
+  \cos\theta = \frac{\vu\cdot\vv}{\norm{\vu}\,\norm{\vv}} .
+\]
+
+\begin{example}[The angle between two vectors]\label{ex:angle-vectors}
+Find the angle between $\vu = (2, 1, -1)$ and $\vv = (1, 3, 2)$.
+
+\sol $\vu\cdot\vv = 2 + 3 - 2 = 3$, $\norm{\vu} = \sqrt{6}$ and
+$\norm{\vv} = \sqrt{14}$. So $\cos\theta = \frac{3}{\sqrt{84}} \approx 0.327$
+and $\theta = \arccos(0.327) \approx 70.9^\circ$.
+\end{example}
+
+\begin{intuition}[What the sign of the dot product tells you]
+Since lengths are positive, the sign of $\vu\cdot\vv$ is the sign of
+$\cos\theta$:
+\begin{itemize}
+  \item $\vu\cdot\vv > 0$: the angle is less than $90^\circ$; the vectors point
+    roughly the same way;
+  \item $\vu\cdot\vv = 0$: the angle is exactly $90^\circ$; the vectors are
+    perpendicular;
+  \item $\vu\cdot\vv < 0$: the angle is more than $90^\circ$; the vectors point
+    roughly in opposite directions.
+\end{itemize}
+\end{intuition}
+
+\begin{definition}[Orthogonal vectors]\label{def:orthogonal}
+Two vectors $\vu$ and $\vv$ are \term{orthogonal} (perpendicular), written
+$\vu \perp \vv$, if $\vu\cdot\vv = 0$.
+\end{definition}
+
+For example, $(1, 2)\cdot(-2, 1) = -2 + 2 = 0$, so these vectors are
+orthogonal. This is a remarkably cheap test for a right angle, and it works in
+any number of dimensions, where we cannot draw pictures.
+
+\subsection{Projections: the dot product as a shadow}
+
+If $\hat\vv$ is a unit vector, then $\vu\cdot\hat\vv = \norm{\vu}\cos\theta$.
+By the right-triangle definition of cosine, this is the length of the
+``shadow'' that $\vu$ casts on the line through $\hat\vv$ when light shines
+perpendicular to that line (\cref{fig:projection-shadow}). It is called the
+\term{scalar projection} of $\vu$ onto the direction $\hat\vv$; it is negative
+if the shadow falls backwards. So the dot product with a unit vector answers
+the question ``how far does $\vu$ go in the direction $\hat\vv$?''.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.1]
+  \coordinate (O) at (0,0);
+  \coordinate (U) at (2,3);
+  \coordinate (V) at (4,1);
+  \coordinate (F) at (2.588,0.647);
+  \draw[thick,gray!60] (-0.6,-0.15) -- (5,1.25);
+  \draw[vec,PlotRed] (O) -- (V) node[right] {$\vv$};
+  \draw[vec,PlotBlue] (O) -- (U) node[above] {$\vu$};
+  \draw[dashed,thick] (U) -- (F);
+  \draw[line width=3pt,PlotOrange,opacity=0.75] (O) -- (F);
+  \pic[draw,angle radius=0.7cm,"$\theta$",angle eccentricity=1.4] {angle=V--O--U};
+  \coordinate (F1) at ($(F)!0.22cm!(O)$);
+  \coordinate (F2) at ($(F)!0.22cm!(U)$);
+  \draw (F1) -- ($(F1)+(F2)-(F)$) -- (F2);
+  \draw[decorate,decoration={brace,amplitude=5pt,mirror},thick,PlotOrange]
+    ($(O)+(0.08,-0.32)$) -- ($(F)+(0.08,-0.32)$)
+    node[midway,below=7pt,font=\small] {$\norm{\vu}\cos\theta$};
+\end{tikzpicture}
+\caption{The scalar projection of $\vu$ onto the direction of $\vv$: the length
+  of the orange ``shadow'' is $\norm{\vu}\cos\theta = \vu\cdot\hat\vv$.}
+\label{fig:projection-shadow}
+\end{figure}
+
+\begin{theorem}[Cauchy--Schwarz inequality]\label{thm:cauchy-schwarz}
+For all $\vu, \vv \in \R^n$, $\ \abs{\vu\cdot\vv} \le \norm{\vu}\,\norm{\vv}$.
+\end{theorem}
+
+This follows at once from \cref{thm:dot-geometric}, because
+$\abs{\cos\theta} \le 1$. It guarantees that the ``cosine'' computed from the
+dot product always lies between $-1$ and $1$, even in a million dimensions.
+
+\subsection{The dot product in machine learning}
+
+\begin{mlnote}[Neurons, similarity and attention]
+Dot products are the workhorse of machine learning.
+\begin{itemize}
+  \item \textbf{Weighted sums.} A linear model, and a single artificial
+    neuron before its activation, compute
+    \[
+      z = w_1x_1 + \dots + w_dx_d + b = \vw\cdot\vx + b .
+    \]
+    Each weight says how much its feature counts.
+  \item \textbf{Cosine similarity.} The \term{cosine similarity}
+    $\frac{\vu\cdot\vv}{\norm{\vu}\norm{\vv}}$ compares directions while
+    ignoring lengths. Take the made-up three-dimensional ``embeddings''
+    \[
+      \text{cat} = (0.9, 0.8, 0.1), \quad \text{dog} = (0.8, 0.9, 0.2),
+      \quad \text{car} = (0.1, 0.2, 0.9).
+    \]
+    The similarity of cat and dog is
+    $\frac{1.46}{1.208 \times 1.221} \approx 0.99$, while that of cat and car
+    is $\frac{0.34}{1.208 \times 0.927} \approx 0.30$.
+  \item \textbf{Attention.} In a transformer, each word produces a ``query''
+    vector $\vq$ and a ``key'' vector $\vk$, and the relevance of word $j$ to
+    word $i$ is measured by the dot product $\vq_i \cdot \vk_j$. Attention is,
+    at heart, a large table of dot products.
+\end{itemize}
+\end{mlnote}
+
+\begin{proposition}[The weight vector is perpendicular to the decision boundary]
+\label{prop:normal-vector}
+Let $\vw \neq \vzero$. The vector $\vw$ is perpendicular to the decision
+boundary $\{\vx : \vw\cdot\vx + b = 0\}$ of a linear classifier.
+\end{proposition}
+
+\begin{proof}
+Take any two points $\vx$ and $\vx'$ on the boundary. Then
+$\vw\cdot\vx + b = 0$ and $\vw\cdot\vx' + b = 0$; subtracting,
+$\vw\cdot(\vx - \vx') = 0$. So $\vw$ is orthogonal to every direction
+$\vx - \vx'$ that lies within the boundary.
+\end{proof}
+
+This explains the picture of \cref{fig:two-classes}: there
+$\vw = (1, 1)$, which points from the region of class A straight across the
+boundary into the region of class B. The quantity $\vw\cdot\vx + b$ increases
+fastest in the direction of $\vw$.
+
+\sectionexercises
+
+\begin{exercise}
+Compute $(2, -1, 3)\cdot(4, 0, -2)$ and $(1, 1, 1, 1)\cdot(1, -1, 1, -1)$. Are
+either of these pairs orthogonal?
+\end{exercise}
+\begin{solution}
+$8 + 0 - 6 = 2$ (not orthogonal) and $1 - 1 + 1 - 1 = 0$ (orthogonal).
+\end{solution}
+
+\begin{exercise}
+Find the angle between (a) $(1, 1)$ and $(-1, 0)$; (b) $(1, 2, 2)$ and
+$(2, -2, 1)$.
+\end{exercise}
+\begin{solution}
+(a) $\cos\theta = \tfrac{-1}{\sqrt2\cdot1} = -\tfrac{1}{\sqrt2}$, so
+$\theta = 135^\circ$. (b) The dot product is $2 - 4 + 2 = 0$, so
+$\theta = 90^\circ$.
+\end{solution}
+
+\begin{exercise}
+For which value of $k$ is $(k, 2)$ orthogonal to $(3, -6)$?
+\end{exercise}
+\begin{solution}
+$3k - 12 = 0$, so $k = 4$.
+\end{solution}
+
+\begin{exercise}
+Using the made-up embeddings in the box above, compute the cosine similarity of
+``dog'' and ``car''. Which pair of the three words is least similar?
+\end{exercise}
+\begin{solution}
+$\text{dog}\cdot\text{car} = 0.08 + 0.18 + 0.18 = 0.44$, and
+$\norm{\text{dog}} \approx 1.221$, $\norm{\text{car}} \approx 0.927$, so the
+similarity is $\tfrac{0.44}{1.132} \approx 0.39$. The least similar pair is
+cat and car ($\approx 0.30$), and the most similar is cat and dog
+($\approx 0.99$).
+\end{solution}
+
+\begin{exercise}
+For the line $3x_1 + 4x_2 - 12 = 0$, give a vector perpendicular to it. Then
+find the point of the line closest to the origin, and its distance from the
+origin. \emph{Hint:} the closest point lies in the direction of the
+perpendicular vector from the origin, so it has the form $t(3, 4)$.
+\end{exercise}
+\begin{solution}
+$\vw = (3, 4)$ is perpendicular to the line (\cref{prop:normal-vector}).
+Substituting $(3t, 4t)$ into the equation: $9t + 16t = 12$, so $t = 0.48$ and
+the closest point is $(1.44, 1.92)$. Its distance from the origin is
+$0.48 \times \norm{(3,4)} = 0.48 \times 5 = 2.4$. (In general the distance
+from the origin to $\vw\cdot\vx + b = 0$ is $\abs{b}/\norm{\vw}$.)
+\end{solution}
+
+\begin{exercise}
+A neuron has weights $\vw = (0.5, -1, 2)$, bias $b = 0.1$ and a sigmoid
+activation. Compute its output for the input $\vx = (2, 1, 0.5)$.
+\end{exercise}
+\begin{solution}
+$z = \vw\cdot\vx + b = 1 - 1 + 1 + 0.1 = 1.1$, and the output is
+$\sigma(1.1) = \tfrac{1}{1 + e^{-1.1}} \approx \tfrac{1}{1.333} \approx 0.750$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Matrices}\label{sec:matrices}
+%----------------------------------------------------------------------
+
+\begin{definition}[Matrix]\label{def:matrix}
+A \term{matrix} is a rectangular array of numbers. A matrix with $m$ rows and
+$n$ columns is called an \emph{$m\times n$ matrix} (read ``$m$ by $n$''), and
+the set of all such matrices is written $\R^{m\times n}$. The entry in row $i$
+and column $j$ of a matrix $\mA$ is written $a_{ij}$ (or $A_{ij}$):
+\[
+  \mA = \begin{pmatrix}
+    a_{11} & a_{12} & \cdots & a_{1n}\\
+    a_{21} & a_{22} & \cdots & a_{2n}\\
+    \vdots & \vdots & \ddots & \vdots\\
+    a_{m1} & a_{m2} & \cdots & a_{mn}
+  \end{pmatrix}.
+\]
+\end{definition}
+
+\begin{notation}
+Matrices are written in bold upper-case letters: $\mA$, $\mW$, $\mX$. The
+size is always ``rows $\times$ columns'', and the first index of an entry is
+always the row. A vector in $\R^n$ is an $n \times 1$ matrix (a single
+column). A matrix can be viewed as a list of columns or as a stack of rows;
+both views will be useful.
+\end{notation}
+
+For example,
+\[
+  \mA = \begin{pmatrix} 3 & 0 & -1\\ 2 & 5 & 4 \end{pmatrix}
+\]
+is a $2\times3$ matrix with $a_{13} = -1$ and $a_{22} = 5$. Its second row is
+$(2, 5, 4)$ and its third column is $(-1, 4)$.
+
+\begin{mlnote}[Data sets and images are matrices]
+A data set of $n$ examples with $d$ features each is stored as an $n\times d$
+\term{data matrix} $\mX$: one row per example, one column per feature. For
+three houses with features (size, bedrooms),
+\[
+  \mX = \begin{pmatrix} 100 & 3\\ 80 & 2\\ 120 & 4 \end{pmatrix}.
+\]
+A grayscale image is a matrix of pixel intensities. A colour image is three
+such matrices (red, green, blue) stacked together; arrays with more than two
+indices like this are called \term[tensor]{tensors}, which is where the
+software library TensorFlow gets its name.
+\end{mlnote}
+
+\subsection{Special matrices}
+
+\begin{itemize}
+  \item A \emph{square} matrix has as many rows as columns.
+  \item The \term{zero matrix} $\mZero$ has all entries equal to $0$.
+  \item A \term{diagonal matrix} is square with zeros everywhere off the main
+    diagonal (the entries $a_{11}, a_{22}, \dots$), for example
+    $\left(\begin{smallmatrix} 2 & 0\\ 0 & -1\end{smallmatrix}\right)$.
+  \item The \term{identity matrix} $\mI$ (or $\mI_n$) is the diagonal matrix
+    with all diagonal entries equal to $1$.
+  \item A square matrix is \term[symmetric matrix]{symmetric} if
+    $a_{ij} = a_{ji}$ for all $i, j$, i.e.\ it is a mirror image of itself
+    across the main diagonal, like
+    $\left(\begin{smallmatrix} 1 & 2\\ 2 & 3\end{smallmatrix}\right)$.
+  \item A square matrix is \emph{upper triangular} if all entries below the
+    main diagonal are zero.
+\end{itemize}
+
+\subsection{Adding and scaling matrices}
+
+Matrices of the same size are added, and multiplied by scalars, entry by
+entry, exactly like vectors:
+\[
+  \begin{pmatrix} 1 & 2\\ 3 & 4\end{pmatrix}
+  + 2\begin{pmatrix} 0 & 1\\ 1 & 0\end{pmatrix}
+  = \begin{pmatrix} 1 & 4\\ 5 & 4\end{pmatrix}.
+\]
+
+\sectionexercises
+
+\begin{exercise}
+For $\mA = \left(\begin{smallmatrix} 3 & 0 & -1\\ 2 & 5 & 4\end{smallmatrix}\right)$,
+give the size of $\mA$, the entries $a_{21}$ and $a_{13}$, the first row and
+the second column.
+\end{exercise}
+\begin{solution}
+$2\times3$; $a_{21} = 2$; $a_{13} = -1$; first row $(3, 0, -1)$; second
+column $(0, 5)$.
+\end{solution}
+
+\begin{exercise}
+Which of these matrices are symmetric?
+$\left(\begin{smallmatrix} 1 & 2\\ 2 & 3\end{smallmatrix}\right)$,
+$\left(\begin{smallmatrix} 0 & 1\\ -1 & 0\end{smallmatrix}\right)$,
+$\left(\begin{smallmatrix} 4 & 0 & 0\\ 0 & 5 & 0\\ 0 & 0 & 6\end{smallmatrix}\right)$.
+\end{exercise}
+\begin{solution}
+The first and the third (every diagonal matrix is symmetric). The second is
+not: $a_{12} = 1$ but $a_{21} = -1$.
+\end{solution}
+
+\begin{exercise}
+Compute $2\mA - \mB$ for
+$\mA = \left(\begin{smallmatrix} 1 & 2\\ 3 & 4\end{smallmatrix}\right)$ and
+$\mB = \left(\begin{smallmatrix} 0 & 1\\ 1 & 0\end{smallmatrix}\right)$.
+\end{exercise}
+\begin{solution}
+$\left(\begin{smallmatrix} 2 & 4\\ 6 & 8\end{smallmatrix}\right) -
+\left(\begin{smallmatrix} 0 & 1\\ 1 & 0\end{smallmatrix}\right) =
+\left(\begin{smallmatrix} 2 & 3\\ 5 & 8\end{smallmatrix}\right)$.
+\end{solution}
+
+\begin{exercise}
+A data set consists of $500$ grayscale images of $28\times28$ pixels. Each
+image is flattened into a row of the data matrix. What is the size of the
+data matrix?
+\end{exercise}
+\begin{solution}
+Each image has $28 \times 28 = 784$ pixels, so the data matrix is
+$500 \times 784$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Multiplying a matrix by a vector}\label{sec:matrix-vector}
+%----------------------------------------------------------------------
+
+\begin{definition}[Matrix--vector product]\label{def:matrix-vector}
+Let $\mA$ be an $m\times n$ matrix and $\vx \in \R^n$. The product $\mA\vx$ is
+the vector in $\R^m$ whose $i$-th component is the dot product of the $i$-th
+row of $\mA$ with $\vx$:
+\[
+  (\mA\vx)_i = a_{i1}x_1 + a_{i2}x_2 + \dots + a_{in}x_n
+  = \sum_{j=1}^{n} a_{ij}x_j .
+\]
+\end{definition}
+
+The number of columns of $\mA$ must equal the number of components of $\vx$;
+the result has as many components as $\mA$ has rows:
+\[
+  \underbrace{\mA}_{m\times n}\;\underbrace{\vx}_{n\times 1}
+  = \underbrace{\mA\vx}_{m\times1}.
+\]
+
+\begin{example}[Two ways to compute $\mA\vx$]\label{ex:matrix-vector}
+Compute $\mA\vx$ for
+$\mA = \left(\begin{smallmatrix} 2 & 1\\ -1 & 3\\ 0 & 4\end{smallmatrix}\right)$
+and $\vx = (3, 2)$.
+
+\sol \emph{Row view} (dot products of the rows with $\vx$):
+\[
+  \begin{pmatrix} 2 & 1\\ -1 & 3\\ 0 & 4\end{pmatrix}
+  \begin{pmatrix} 3\\ 2\end{pmatrix}
+  = \begin{pmatrix} 2\cdot3 + 1\cdot2\\ -1\cdot3 + 3\cdot2\\ 0\cdot3 + 4\cdot2
+    \end{pmatrix}
+  = \begin{pmatrix} 8\\ 3\\ 8\end{pmatrix}.
+\]
+\emph{Column view} (a linear combination of the columns, with the entries of
+$\vx$ as coefficients):
+\[
+  3\begin{pmatrix} 2\\ -1\\ 0\end{pmatrix}
+  + 2\begin{pmatrix} 1\\ 3\\ 4\end{pmatrix}
+  = \begin{pmatrix} 6\\ -3\\ 0\end{pmatrix}
+  + \begin{pmatrix} 2\\ 6\\ 8\end{pmatrix}
+  = \begin{pmatrix} 8\\ 3\\ 8\end{pmatrix}.
+\]
+\end{example}
+
+\begin{intuition}[Rows and columns]
+Both views give the same answer, but they tell different stories.
+\begin{itemize}
+  \item \textbf{Row view:} $\mA\vx$ is a list of $m$ dot products, one for
+    each row. If each row is the weight vector of a neuron, $\mA\vx$ computes
+    all the neurons of a layer at once.
+  \item \textbf{Column view:} $\mA\vx$ is a linear combination of the columns
+    of $\mA$, mixed in the amounts given by $\vx$. So the possible outputs
+    $\mA\vx$ are exactly the linear combinations of the columns, a fact that
+    will be central in \cref{ch:linalg2}.
+\end{itemize}
+\end{intuition}
+
+Matrix--vector multiplication is \emph{linear}: for all vectors $\vu, \vv$ and
+scalars $c$,
+\[
+  \mA(\vu + \vv) = \mA\vu + \mA\vv, \qquad \mA(c\vu) = c\,\mA\vu ,
+\]
+which follows directly from the distributive law.
+
+\begin{mlnote}[Predictions for a whole data set, and a neural network layer]
+For a linear model $\hat y = \vw\cdot\vx + b$, the predictions for all $n$
+examples at once are $\hat\vy = \mX\vw + b$, where $\mX$ is the data matrix
+and $b$ is added to every component. With the house data above,
+$\vw = (2000, 10\,000)$ and $b = 20\,000$:
+\[
+  \hat\vy = \begin{pmatrix} 100 & 3\\ 80 & 2\\ 120 & 4 \end{pmatrix}
+  \begin{pmatrix} 2000\\ 10\,000 \end{pmatrix} + 20\,000
+  = \begin{pmatrix} 250\,000\\ 200\,000\\ 300\,000 \end{pmatrix}.
+\]
+A \term[layer (neural network)]{layer} of a neural network with weight matrix
+$\mW$ (one row per neuron), bias vector $\vb$ and activation $f$ computes
+\[
+  \keyeq{\vh = f(\mW\vx + \vb)}
+\]
+where $f$ is applied to each component separately. For example, with
+$\mW = \left(\begin{smallmatrix} 1 & -1 & 2\\ 0 & -2 & 1\end{smallmatrix}\right)$,
+$\vb = (0.5, -1)$, $\vx = (1, 2, 3)$ and $f = \ReLU$: $\mW\vx + \vb =
+(5 + 0.5, -1 - 1) = (5.5, -2)$, and $\vh = (5.5, 0)$.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Compute
+$\left(\begin{smallmatrix} 1 & 2 & 0\\ 0 & 1 & -1\end{smallmatrix}\right)
+\left(\begin{smallmatrix} 1\\ 2\\ 3\end{smallmatrix}\right)$.
+\end{exercise}
+\begin{solution}
+$(1 + 4 + 0,\ 0 + 2 - 3) = (5, -1)$.
+\end{solution}
+
+\begin{exercise}
+Compute $\left(\begin{smallmatrix} 2 & 1\\ 1 & 3\end{smallmatrix}\right)
+\left(\begin{smallmatrix} 1\\ -1\end{smallmatrix}\right)$ using the row view and
+again using the column view.
+\end{exercise}
+\begin{solution}
+Rows: $(2 - 1,\ 1 - 3) = (1, -2)$. Columns: $1\cdot(2, 1) + (-1)\cdot(1, 3) =
+(2 - 1, 1 - 3) = (1, -2)$.
+\end{solution}
+
+\begin{exercise}
+Let $\mA$ be a $3\times2$ matrix, $\vx \in \R^3$ and $\vy \in \R^2$. Which of
+$\mA\vx$ and $\mA\vy$ is defined, and in which space does it live?
+\end{exercise}
+\begin{solution}
+$\mA\vy$ is defined (the number of columns of $\mA$, $2$, matches the length of
+$\vy$) and lies in $\R^3$. $\mA\vx$ is not defined.
+\end{solution}
+
+\begin{exercise}
+A linear model has weights $\vw = (2, -1)$ and bias $b = 0.5$. Compute its
+predictions for the data matrix
+$\mX = \left(\begin{smallmatrix} 1 & 2\\ 3 & 0\\ -1 & 1\end{smallmatrix}\right)$.
+\end{exercise}
+\begin{solution}
+$\mX\vw = (2 - 2,\ 6 - 0,\ -2 - 1) = (0, 6, -3)$; adding $b$ gives
+$\hat\vy = (0.5, 6.5, -2.5)$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Matrices as linear transformations}\label{sec:linear-transformations}
+%----------------------------------------------------------------------
+
+A matrix $\mA$ of size $m\times n$ turns each vector $\vx\in\R^n$ into a vector
+$\mA\vx \in \R^m$, so it defines a function $\vx \mapsto \mA\vx$. Thinking of
+matrices as functions that move points around, rather than as tables of
+numbers, is the key to understanding them.
+
+\begin{definition}[Linear transformation]\label{def:linear-transformation}
+A function $T\colon \R^n \to \R^m$ is a \term{linear transformation} (or
+\emph{linear map}) if for all vectors $\vu, \vv$ and scalars $c$,
+\[
+  T(\vu + \vv) = T(\vu) + T(\vv) \qquad\text{and}\qquad T(c\vu) = c\,T(\vu).
+\]
+\end{definition}
+
+Every matrix defines a linear transformation, as we just saw. Remarkably, the
+converse is also true, and the proof tells us how to find the matrix.
+
+\begin{theorem}[The columns of a matrix are the images of the basis vectors]
+\label{thm:columns-images}
+For any matrix $\mA$, the $j$-th column of $\mA$ is $\mA\ve_j$. Consequently,
+every linear transformation $T\colon\R^n\to\R^m$ is given by a matrix, namely
+the matrix whose columns are $T(\ve_1), \dots, T(\ve_n)$.
+\end{theorem}
+
+\begin{proof}
+By the column view, $\mA\ve_j$ is the combination of columns with coefficient
+$1$ for column $j$ and $0$ for all others, which is column $j$ itself. Now let
+$T$ be linear and let $\mA$ have columns $T(\ve_1), \dots, T(\ve_n)$. Every
+$\vx$ is $x_1\ve_1 + \dots + x_n\ve_n$, so by linearity
+$T(\vx) = x_1T(\ve_1) + \dots + x_nT(\ve_n)$, which by the column view is
+$\mA\vx$.
+\end{proof}
+
+\begin{intuition}[Watch where the basis vectors go]
+To understand what a $2\times2$ matrix does, look at its two columns: they show
+where $\ve_1 = (1, 0)$ and $\ve_2 = (0, 1)$ end up. Everything else follows,
+because every vector is a combination of $\ve_1$ and $\ve_2$ and linearity
+preserves combinations. The unit square spanned by $\ve_1$ and $\ve_2$ becomes
+the parallelogram spanned by the two columns. Grid lines stay straight,
+parallel and evenly spaced, and the origin stays put. \Cref{fig:transformations}
+shows a gallery.
+\end{intuition}
+
+\begin{figure}[htbp]
+\centering
+\newcommand{\MLtransformpanel}[5]{%
+  \begin{tikzpicture}[scale=0.62]
+    \draw[gray!22] (-1.5,-1.5) grid (2.5,2.5);
+    \draw[-{Stealth[length=1.5mm]},gray] (-1.5,0) -- (2.7,0);
+    \draw[-{Stealth[length=1.5mm]},gray] (0,-1.5) -- (0,2.7);
+    \draw[dashed,thick,gray] (0,0) rectangle (1,1);
+    \fill[MLdef!20] (0,0) -- (#1,#3) -- ({#1+#2},{#3+#4}) -- (#2,#4) -- cycle;
+    \draw[MLdef,thick] (0,0) -- (#1,#3) -- ({#1+#2},{#3+#4}) -- (#2,#4) -- cycle;
+    \draw[-{Stealth[length=2mm]},very thick,PlotRed] (0,0) -- (#1,#3);
+    \draw[-{Stealth[length=2mm]},very thick,PlotBlue] (0,0) -- (#2,#4);
+    \node[font=\footnotesize,align=center,anchor=north] at (0.5,-1.6) {#5};
+  \end{tikzpicture}}
+\MLtransformpanel{1.5}{0}{0}{0.5}{scaling\\$\left(\begin{smallmatrix}1.5&0\\0&0.5\end{smallmatrix}\right)$}\hfill
+\MLtransformpanel{0.866}{-0.5}{0.5}{0.866}{rotation by $30^\circ$\\$\left(\begin{smallmatrix}0.87&-0.5\\0.5&0.87\end{smallmatrix}\right)$}\hfill
+\MLtransformpanel{1}{1}{0}{1}{shear\\$\left(\begin{smallmatrix}1&1\\0&1\end{smallmatrix}\right)$}
+
+\medskip
+\MLtransformpanel{-1}{0}{0}{1}{reflection\\$\left(\begin{smallmatrix}-1&0\\0&1\end{smallmatrix}\right)$}\hfill
+\MLtransformpanel{1}{0}{0}{0.02}{projection onto $x_1$-axis\\$\left(\begin{smallmatrix}1&0\\0&0\end{smallmatrix}\right)$}\hfill
+\MLtransformpanel{2}{-0.5}{1}{1.5}{general\\$\left(\begin{smallmatrix}2&-0.5\\1&1.5\end{smallmatrix}\right)$}
+\caption{What $2\times2$ matrices do to the unit square (dashed). The red
+  arrow is the image of $\ve_1$ (the first column), the blue arrow the image of
+  $\ve_2$ (the second column), and the shaded parallelogram is the image of the
+  unit square. The projection squashes the square flat onto the $x_1$-axis.}
+\label{fig:transformations}
+\end{figure}
+
+\begin{example}[Finding the matrix of a transformation]
+Find the matrix that rotates the plane anticlockwise by $90^\circ$, and apply
+it to $(2, 1)$.
+
+\sol Rotating by $90^\circ$ sends $\ve_1 = (1, 0)$ to $(0, 1)$ and
+$\ve_2 = (0, 1)$ to $(-1, 0)$. These are the columns:
+\[
+  \mR = \begin{pmatrix} 0 & -1\\ 1 & 0\end{pmatrix},
+  \qquad
+  \mR\begin{pmatrix} 2\\ 1\end{pmatrix} = \begin{pmatrix} -1\\ 2\end{pmatrix},
+\]
+matching the rotation formula of \cref{thm:rotation}. In general, rotation by
+$\alpha$ is given by the \term{rotation matrix}
+\[
+  \mR_\alpha = \begin{pmatrix} \cos\alpha & -\sin\alpha\\
+  \sin\alpha & \cos\alpha\end{pmatrix}.
+\]
+\end{example}
+
+\begin{remark}[Linear versus affine]
+A linear transformation always sends $\vzero$ to $\vzero$, because
+$T(\vzero) = T(0\cdot\vzero) = 0\cdot T(\vzero) = \vzero$. So a
+\emph{translation} $\vx \mapsto \vx + \vb$ with $\vb \neq \vzero$ is not linear.
+Maps of the form $\vx \mapsto \mA\vx + \vb$ are called \term[affine
+map]{affine}: a linear transformation followed by a shift. A neural network
+layer before its activation function is affine; in machine learning this
+distinction is usually blurred and both are called ``linear''.
+\end{remark}
+
+\begin{mlnote}[A neural network transforms space]
+Each layer of a neural network applies an affine map (which can rotate,
+stretch, shear and squash the data cloud) followed by a non-linear activation
+(which bends it). Layer after layer, a network can move tangled-up classes of
+data into positions where a simple linear boundary separates them. This
+geometric picture of ``deforming space until the classes separate'' is one of
+the best ways to think about what deep networks do.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Find the $2\times2$ matrix that (a) reflects every point in the line $x_2 =
+x_1$; (b) doubles every vector; (c) rotates by $180^\circ$.
+\end{exercise}
+\begin{solution}
+(a) $\ve_1 \mapsto (0,1)$ and $\ve_2 \mapsto (1, 0)$, so
+$\left(\begin{smallmatrix} 0 & 1\\ 1 & 0\end{smallmatrix}\right)$, which swaps
+the two coordinates. (b) $2\mI = \left(\begin{smallmatrix} 2 & 0\\ 0 &
+2\end{smallmatrix}\right)$. (c) $\left(\begin{smallmatrix} -1 & 0\\ 0 &
+-1\end{smallmatrix}\right)$, i.e.\ $-\mI$; this also equals $\mR_{180^\circ}$.
+\end{solution}
+
+\begin{exercise}
+Is $T(x_1, x_2) = (x_1 + 1, x_2)$ a linear transformation? Is
+$S(x_1, x_2) = (x_2, 3x_1)$? If so, give its matrix.
+\end{exercise}
+\begin{solution}
+$T$ is not linear, since $T(\vzero) = (1, 0) \neq \vzero$ (it is a
+translation). $S$ is linear, with matrix $\left(\begin{smallmatrix} 0 & 1\\ 3 &
+0\end{smallmatrix}\right)$ (columns $S(\ve_1) = (0, 3)$ and
+$S(\ve_2) = (1, 0)$).
+\end{solution}
+
+\begin{exercise}
+A linear transformation sends $\ve_1$ to $(2, 1)$ and $\ve_2$ to $(-1, 3)$.
+Write down its matrix and find the image of $(4, 2)$.
+\end{exercise}
+\begin{solution}
+$\mA = \left(\begin{smallmatrix} 2 & -1\\ 1 & 3\end{smallmatrix}\right)$ and
+$\mA(4, 2) = 4(2, 1) + 2(-1, 3) = (6, 10)$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Matrix multiplication}\label{sec:matrix-multiplication}
+%----------------------------------------------------------------------
+
+\subsection{Composing transformations}
+
+What happens if we apply one linear transformation and then another? First
+$\vx \mapsto \mB\vx$, then $\mA$ applied to the result: $\vx \mapsto
+\mA(\mB\vx)$. A composition of linear maps is linear, so by
+\cref{thm:columns-images} it is given by a single matrix. We define the
+\emph{product} $\mA\mB$ to be exactly that matrix, so that
+\[
+  (\mA\mB)\vx = \mA(\mB\vx) \quad\text{for every } \vx .
+\]
+Its $j$-th column is the image of $\ve_j$, namely $\mA(\mB\ve_j) = \mA\vb_j$,
+where $\vb_j$ is the $j$-th column of $\mB$.
+
+\begin{definition}[Matrix product]\label{def:matrix-product}
+Let $\mA$ be $m\times n$ and $\mB$ be $n\times p$, with columns
+$\vb_1, \dots, \vb_p$. Their \term[matrix multiplication]{product} is the
+$m\times p$ matrix
+\[
+  \mA\mB = \begin{pmatrix} \mA\vb_1 & \mA\vb_2 & \cdots & \mA\vb_p\end{pmatrix},
+\]
+whose $(i, j)$ entry is the dot product of row $i$ of $\mA$ with column $j$ of
+$\mB$:
+\[
+  (\mA\mB)_{ij} = \sum_{k=1}^{n} a_{ik}b_{kj} .
+\]
+\end{definition}
+
+\begin{pitfall}[Shapes must match]
+$\mA\mB$ is defined only when the number of \emph{columns} of $\mA$ equals the
+number of \emph{rows} of $\mB$:
+\[
+  \underbrace{\mA}_{m\times \boxed{n}}\;\underbrace{\mB}_{\boxed{n}\times p}
+  = \underbrace{\mA\mB}_{m\times p}.
+\]
+The inner sizes must agree and the outer sizes give the size of the result.
+Checking shapes like this catches a large fraction of bugs in machine learning
+code, where ``shape mismatch'' is the most common error message of all.
+\end{pitfall}
+
+\begin{example}[Matrix multiplication is not commutative]\label{ex:not-commutative}
+Let $\mA = \left(\begin{smallmatrix} 1 & 2\\ 3 & 4\end{smallmatrix}\right)$ and
+$\mB = \left(\begin{smallmatrix} 2 & 0\\ 1 & 3\end{smallmatrix}\right)$. Compute
+$\mA\mB$ and $\mB\mA$.
+
+\sol Each entry is ``row of the left matrix $\cdot$ column of the right
+matrix'':
+\[
+  \mA\mB = \begin{pmatrix} 1\cdot2 + 2\cdot1 & 1\cdot0 + 2\cdot3\\
+  3\cdot2 + 4\cdot1 & 3\cdot0 + 4\cdot3\end{pmatrix}
+  = \begin{pmatrix} 4 & 6\\ 10 & 12\end{pmatrix},
+  \qquad
+  \mB\mA = \begin{pmatrix} 2 & 4\\ 10 & 14\end{pmatrix}.
+\]
+So $\mA\mB \neq \mB\mA$.
+\end{example}
+
+\begin{intuition}[Why order matters]
+$\mA\mB$ means ``first $\mB$, then $\mA$'' (read right to left, like
+$f(g(x))$). Doing things in a different order usually gives a different
+result: rotating a picture and then stretching it horizontally is not the same
+as stretching it horizontally and then rotating it. Putting on socks and then
+shoes is not the same as shoes and then socks.
+\end{intuition}
+
+\begin{theorem}[Rules of matrix multiplication]\label{thm:matrix-mult-rules}
+Whenever the products are defined:
+\begin{enumerate}
+  \item $(\mA\mB)\mC = \mA(\mB\mC)$ (associative);
+  \item $\mA(\mB + \mC) = \mA\mB + \mA\mC$ and $(\mA + \mB)\mC = \mA\mC + \mB\mC$
+    (distributive);
+  \item $(c\mA)\mB = c(\mA\mB) = \mA(c\mB)$;
+  \item $\mA\mI = \mI\mA = \mA$ (the identity does nothing);
+  \item but in general $\mA\mB \neq \mB\mA$.
+\end{enumerate}
+\end{theorem}
+
+Associativity is clear from the composition picture: applying $\mC$, then
+$\mB$, then $\mA$ is the same process however we group it. We write $\mA^2$
+for $\mA\mA$, $\mA^3$ for $\mA\mA\mA$, and so on.
+
+\begin{pitfall}[Familiar rules that fail for matrices]
+Besides commutativity, another rule of ordinary numbers fails: $\mA\mB = \mZero$
+does \emph{not} imply that $\mA = \mZero$ or $\mB = \mZero$. For example,
+\[
+  \begin{pmatrix} 0 & 1\\ 0 & 0\end{pmatrix}
+  \begin{pmatrix} 0 & 1\\ 0 & 0\end{pmatrix}
+  = \begin{pmatrix} 0 & 0\\ 0 & 0\end{pmatrix}.
+\]
+Also, $(\mA + \mB)^2 = \mA^2 + \mA\mB + \mB\mA + \mB^2$, which equals
+$\mA^2 + 2\mA\mB + \mB^2$ only if $\mA\mB = \mB\mA$.
+\end{pitfall}
+
+\begin{mlnote}[Why neural networks need non-linear activations]
+Two layers without an activation function in between compute
+$\mW_2(\mW_1\vx) = (\mW_2\mW_1)\vx$: a single linear map with matrix
+$\mW_2\mW_1$. However many linear layers we stack, the result collapses into
+one linear layer, so depth would add nothing. This is the many-input version of
+\cref{prop:compose-linear}, and it is why every layer of a neural network ends
+with a non-linear activation function.
+
+Matrix products also make computation efficient. To push a whole batch of
+inputs (the rows of $\mX$) through a layer at once, compute $\mX\mW^\top$ (the
+transpose $\top$ is explained in the next section): one big matrix product
+instead of many small ones, which is exactly what GPUs are good at. Multiplying
+an $m\times n$ by an $n\times p$ matrix takes $mnp$ multiplications, which is
+why the size of these matrices dominates the cost of training large models.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Compute $\mA\mB$ and $\mB\mA$ for
+$\mA = \left(\begin{smallmatrix} 1 & 0\\ 2 & 1\end{smallmatrix}\right)$ and
+$\mB = \left(\begin{smallmatrix} 3 & 1\\ 0 & 2\end{smallmatrix}\right)$.
+\end{exercise}
+\begin{solution}
+$\mA\mB = \left(\begin{smallmatrix} 3 & 1\\ 6 & 4\end{smallmatrix}\right)$ and
+$\mB\mA = \left(\begin{smallmatrix} 5 & 1\\ 4 & 2\end{smallmatrix}\right)$.
+\end{solution}
+
+\begin{exercise}
+Let $\mA$ be $2\times3$, $\mB$ be $3\times4$ and $\mC$ be $4\times2$. Which of
+the products $\mA\mB$, $\mB\mC$, $\mC\mA$, $\mA\mC$, $\mA\mB\mC$ are defined, and
+what are their sizes?
+\end{exercise}
+\begin{solution}
+$\mA\mB$: $2\times4$. $\mB\mC$: $3\times2$. $\mC\mA$: $4\times3$. $\mA\mC$: not
+defined ($3 \neq 4$). $\mA\mB\mC$: $2\times2$.
+\end{solution}
+
+\begin{exercise}
+Two linear layers have weight matrices
+$\mW_1 = \left(\begin{smallmatrix} 1 & 2\\ 0 & 1\end{smallmatrix}\right)$ and
+$\mW_2 = \begin{pmatrix} 1 & -1\end{pmatrix}$ (a $1\times2$ matrix). Find the
+single matrix $\mW_2\mW_1$ that does the same job, and check that both give the
+same output for $\vx = (1, 1)$.
+\end{exercise}
+\begin{solution}
+$\mW_2\mW_1 = \begin{pmatrix} 1\cdot1 + (-1)\cdot0 & 1\cdot2 + (-1)\cdot1
+\end{pmatrix} = \begin{pmatrix} 1 & 1\end{pmatrix}$. Step by step:
+$\mW_1\vx = (3, 1)$ and $\mW_2(3, 1) = 3 - 1 = 2$. In one go:
+$(1, 1)\cdot(1, 1) = 2$. They agree.
+\end{solution}
+
+\begin{exercise}
+\textbf{(Angle addition formulas.)} Rotating by $\beta$ and then by $\alpha$ is
+the same as rotating by $\alpha + \beta$, so $\mR_\alpha\mR_\beta =
+\mR_{\alpha + \beta}$. Multiply out $\mR_\alpha\mR_\beta$ and compare entries to
+derive the formulas of \cref{thm:angle-addition}.
+\end{exercise}
+\begin{solution}
+\[
+  \mR_\alpha\mR_\beta =
+  \begin{pmatrix} \cos\alpha\cos\beta - \sin\alpha\sin\beta &
+    -\cos\alpha\sin\beta - \sin\alpha\cos\beta\\
+    \sin\alpha\cos\beta + \cos\alpha\sin\beta &
+    -\sin\alpha\sin\beta + \cos\alpha\cos\beta\end{pmatrix},
+\]
+while $\mR_{\alpha+\beta}$ has first column
+$(\cos(\alpha+\beta), \sin(\alpha+\beta))$. Comparing the first columns gives
+$\cos(\alpha+\beta) = \cos\alpha\cos\beta - \sin\alpha\sin\beta$ and
+$\sin(\alpha+\beta) = \sin\alpha\cos\beta + \cos\alpha\sin\beta$.
+\end{solution}
+
+\begin{exercise}
+Show that $\left(\begin{smallmatrix} 1 & 1\\ 0 & 1\end{smallmatrix}\right)^2 =
+\left(\begin{smallmatrix} 1 & 2\\ 0 & 1\end{smallmatrix}\right)$, and explain the
+result geometrically.
+\end{exercise}
+\begin{solution}
+Row by column: $\left(\begin{smallmatrix} 1\cdot1 + 1\cdot0 & 1\cdot1 +
+1\cdot1\\ 0 & 1\end{smallmatrix}\right) = \left(\begin{smallmatrix} 1 & 2\\ 0 &
+1\end{smallmatrix}\right)$. Geometrically, the matrix is a horizontal shear
+that moves each point sideways by its height; doing it twice moves each point
+sideways by twice its height.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{The transpose}\label{sec:transpose}
+%----------------------------------------------------------------------
+
+\begin{definition}[Transpose]\label{def:transpose}
+The \term{transpose} of an $m\times n$ matrix $\mA$ is the $n\times m$ matrix
+$\mA^\top$ obtained by turning rows into columns: $(\mA^\top)_{ij} = a_{ji}$.
+\end{definition}
+
+For example,
+\[
+  \begin{pmatrix} 1 & 2 & 3\\ 4 & 5 & 6\end{pmatrix}^{\!\top}
+  = \begin{pmatrix} 1 & 4\\ 2 & 5\\ 3 & 6\end{pmatrix}.
+\]
+A matrix is symmetric exactly when $\mA^\top = \mA$. The transpose of a column
+vector is a \emph{row vector}, and this gives a very common way of writing dot
+products as matrix products:
+\[
+  \vu^\top\vv = \begin{pmatrix} u_1 & \cdots & u_n\end{pmatrix}
+  \begin{pmatrix} v_1\\ \vdots\\ v_n\end{pmatrix} = \vu\cdot\vv .
+\]
+(Strictly, $\vu^\top\vv$ is a $1\times1$ matrix, which we identify with a
+number.) Machine learning papers write $\vw^\top\vx$ far more often than
+$\vw\cdot\vx$.
+
+\begin{theorem}[Rules for transposes]\label{thm:transpose-rules}
+$(\mA^\top)^\top = \mA$, $\ (\mA + \mB)^\top = \mA^\top + \mB^\top$,
+$\ (c\mA)^\top = c\mA^\top$, and
+\[
+  (\mA\mB)^\top = \mB^\top\mA^\top .
+\]
+\end{theorem}
+
+The order reverses in the last rule; you can check it by comparing shapes: if
+$\mA$ is $m\times n$ and $\mB$ is $n\times p$, then $(\mA\mB)^\top$ is
+$p\times m$, and of the two candidates only $\mB^\top\mA^\top$ ($p\times n$
+times $n\times m$) has the right shape.
+
+\begin{proposition}\label{prop:ata-symmetric}
+For any matrix $\mA$, the matrix $\mA^\top\mA$ is square and symmetric. Its
+$(i,j)$ entry is the dot product of columns $i$ and $j$ of $\mA$.
+\end{proposition}
+
+\begin{proof}
+$(\mA^\top\mA)^\top = \mA^\top(\mA^\top)^\top = \mA^\top\mA$. The entry formula
+follows from ``row $i$ of $\mA^\top$ (which is column $i$ of $\mA$) times column
+$j$ of $\mA$''.
+\end{proof}
+
+\subsection{The outer product}
+
+Multiplying a column by a row gives a whole matrix. For $\vu \in \R^m$ and
+$\vv \in \R^n$, the \term{outer product} $\vu\vv^\top$ is the $m\times n$ matrix
+with entries $u_iv_j$:
+\[
+  \begin{pmatrix} 1\\ 2\end{pmatrix}\begin{pmatrix} 3 & -1 & 0\end{pmatrix}
+  = \begin{pmatrix} 3 & -1 & 0\\ 6 & -2 & 0\end{pmatrix}.
+\]
+Every row is a multiple of $\vv^\top$ and every column is a multiple of $\vu$.
+Compare the \emph{inner} product $\vu^\top\vv$ (a number) with the \emph{outer}
+product $\vu\vv^\top$ (a matrix).
+
+\begin{mlnote}
+The matrices $\mX^\top\mX$ (a $d\times d$ matrix of dot products between
+feature columns) and $\mX\mX^\top$ (an $n\times n$ matrix of dot products
+between examples) appear everywhere: in the formula for linear regression
+(\cref{ch:linalg2}), in covariance matrices (\cref{ch:probability}) and in
+kernel methods. Outer products appear in backpropagation: the gradient of a
+loss with respect to a weight matrix is an outer product of two vectors
+(\cref{ch:dl}).
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Write down $\mA^\top$ for
+$\mA = \left(\begin{smallmatrix} 2 & 0 & -1\\ 1 & 3 & 5\end{smallmatrix}\right)$,
+and compute $\mA\mA^\top$.
+\end{exercise}
+\begin{solution}
+$\mA^\top = \left(\begin{smallmatrix} 2 & 1\\ 0 & 3\\ -1 & 5\end{smallmatrix}\right)$
+and $\mA\mA^\top = \left(\begin{smallmatrix} 4 + 0 + 1 & 2 + 0 - 5\\ 2 + 0 - 5
+& 1 + 9 + 25\end{smallmatrix}\right) = \left(\begin{smallmatrix} 5 & -3\\ -3 &
+35\end{smallmatrix}\right)$, which is symmetric, as it should be.
+\end{solution}
+
+\begin{exercise}
+Using \cref{ex:not-commutative}, verify that $(\mA\mB)^\top = \mB^\top\mA^\top$.
+\end{exercise}
+\begin{solution}
+$(\mA\mB)^\top = \left(\begin{smallmatrix} 4 & 10\\ 6 & 12\end{smallmatrix}\right)$.
+And $\mB^\top\mA^\top = \left(\begin{smallmatrix} 2 & 1\\ 0 &
+3\end{smallmatrix}\right)\left(\begin{smallmatrix} 1 & 3\\ 2 &
+4\end{smallmatrix}\right) = \left(\begin{smallmatrix} 4 & 10\\ 6 &
+12\end{smallmatrix}\right)$. They agree.
+\end{solution}
+
+\begin{exercise}
+For $\vu = (1, 2)$ and $\vv = (3, -1)$, compute $\vu^\top\vv$, $\vu\vv^\top$
+and $\vv\vu^\top$.
+\end{exercise}
+\begin{solution}
+$\vu^\top\vv = 3 - 2 = 1$. $\vu\vv^\top = \left(\begin{smallmatrix} 3 & -1\\ 6 &
+-2\end{smallmatrix}\right)$ and $\vv\vu^\top = \left(\begin{smallmatrix} 3 & 6\\
+-1 & -2\end{smallmatrix}\right) = (\vu\vv^\top)^\top$.
+\end{solution}
+
+\begin{exercise}
+$\mX$ is an $n\times d$ data matrix. What are the sizes of $\mX^\top\mX$ and
+$\mX\mX^\top$? For a data set of a million examples with $100$ features, which
+of the two is cheaper to store?
+\end{exercise}
+\begin{solution}
+$\mX^\top\mX$ is $d\times d$ and $\mX\mX^\top$ is $n\times n$. With
+$n = 10^6$ and $d = 100$, $\mX^\top\mX$ has $10^4$ entries while $\mX\mX^\top$
+has $10^{12}$, so $\mX^\top\mX$ is vastly cheaper.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Inverses and determinants}\label{sec:inverses}
+%----------------------------------------------------------------------
+
+\subsection{The inverse of a matrix}
+
+The identity matrix $\mI$ is the transformation that does nothing:
+$\mI\vx = \vx$. A transformation can be undone if there is another
+transformation that brings every point back to where it started.
+
+\begin{definition}[Inverse matrix]\label{def:inverse-matrix}
+A square matrix $\mA$ is \term[invertible matrix]{invertible} if there is a
+matrix $\mA^{-1}$, its \term[inverse matrix]{inverse}, such that
+\[
+  \mA^{-1}\mA = \mA\mA^{-1} = \mI .
+\]
+A square matrix that has no inverse is called \term[singular
+matrix]{singular}.
+\end{definition}
+
+Some inverses are obvious from the geometry: the inverse of a rotation by
+$\alpha$ is the rotation by $-\alpha$, and the inverse of the scaling
+$\left(\begin{smallmatrix} 2 & 0\\ 0 & 0.5\end{smallmatrix}\right)$ is
+$\left(\begin{smallmatrix} 0.5 & 0\\ 0 & 2\end{smallmatrix}\right)$. For
+$2\times 2$ matrices there is a formula.
+
+\begin{theorem}[Inverse of a $2\times2$ matrix]\label{thm:inverse-2x2}
+The matrix $\mA = \left(\begin{smallmatrix} a & b\\ c & d\end{smallmatrix}\right)$
+is invertible if and only if $ad - bc \neq 0$, and then
+\[
+  \mA^{-1} = \frac{1}{ad - bc}\begin{pmatrix} d & -b\\ -c & a\end{pmatrix}.
+\]
+\end{theorem}
+
+(Swap the diagonal entries, change the signs of the off-diagonal entries,
+divide by $ad - bc$.) You can check the formula by multiplying: the product
+with $\mA$ is $\frac{1}{ad - bc}\left(\begin{smallmatrix} ad - bc & 0\\ 0 & ad -
+bc\end{smallmatrix}\right) = \mI$.
+
+\begin{example}[Inverting a matrix]\label{ex:inverse-2x2}
+Find the inverse of $\mA = \left(\begin{smallmatrix} 2 & 1\\ 5 &
+3\end{smallmatrix}\right)$.
+
+\sol $ad - bc = 6 - 5 = 1$, so
+$\mA^{-1} = \left(\begin{smallmatrix} 3 & -1\\ -5 & 2\end{smallmatrix}\right)$.
+\emph{Check:} $\mA\mA^{-1} = \left(\begin{smallmatrix} 6 - 5 & -2 + 2\\ 15 - 15
+& -5 + 6\end{smallmatrix}\right) = \mI$. \checkmark
+\end{example}
+
+\subsection{The determinant}
+
+The number $ad - bc$ deserves a name and an interpretation.
+
+\begin{definition}[Determinant of a $2\times2$ matrix]\label{def:determinant}
+The \term{determinant} of $\mA = \left(\begin{smallmatrix} a & b\\ c &
+d\end{smallmatrix}\right)$ is $\det\mA = ad - bc$.
+\end{definition}
+
+\begin{intuition}[The determinant measures change of area]
+The matrix $\mA$ turns the unit square (area $1$) into the parallelogram
+spanned by its columns $(a, c)$ and $(b, d)$, and the area of that
+parallelogram is $\abs{ad - bc}$ (\cref{fig:determinant}). Because the
+transformation is linear, \emph{every} region gets its area multiplied by the
+same factor $\abs{\det\mA}$. The sign records orientation: a negative
+determinant means the transformation flips the plane over, like a mirror.
+\begin{itemize}
+  \item Scaling $\left(\begin{smallmatrix} 2 & 0\\ 0 & 3\end{smallmatrix}\right)$:
+    $\det = 6$, areas grow sixfold.
+  \item Any rotation: $\det = \cos^2\alpha + \sin^2\alpha = 1$; areas are
+    unchanged. A shear also has $\det = 1$.
+  \item Reflection $\left(\begin{smallmatrix} -1 & 0\\ 0 & 1\end{smallmatrix}\right)$:
+    $\det = -1$; areas unchanged, orientation flipped.
+  \item Projection $\left(\begin{smallmatrix} 1 & 0\\ 0 & 0\end{smallmatrix}\right)$:
+    $\det = 0$; the plane is squashed onto a line, and areas become $0$.
+\end{itemize}
+\end{intuition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.0]
+  \draw[gray!22] (-0.5,-0.5) grid (3.5,2.5);
+  \draw[-{Stealth[length=2mm]}] (-0.5,0) -- (3.7,0) node[right] {$x_1$};
+  \draw[-{Stealth[length=2mm]}] (0,-0.5) -- (0,2.7) node[above] {$x_2$};
+  \fill[gray!25] (0,0) rectangle (1,1);
+  \node[font=\scriptsize] at (0.5,0.5) {area $1$};
+  \fill[MLdef!25,opacity=0.85] (0,0) -- (2,0.5) -- (3,2) -- (1,1.5) -- cycle;
+  \draw[MLdef,thick] (0,0) -- (2,0.5) -- (3,2) -- (1,1.5) -- cycle;
+  \draw[-{Stealth[length=2mm]},very thick,PlotRed] (0,0) -- (2,0.5) node[right,font=\small] {$(2, 0.5)$};
+  \draw[-{Stealth[length=2mm]},very thick,PlotBlue] (0,0) -- (1,1.5) node[above left,font=\small] {$(1, 1.5)$};
+  \node[font=\small] at (1.75,1.0) {area $2.5$};
+\end{tikzpicture}
+\caption{The matrix $\left(\begin{smallmatrix} 2 & 1\\ 0.5 &
+  1.5\end{smallmatrix}\right)$ maps the unit square to the parallelogram
+  spanned by its columns. Its determinant $2\times1.5 - 1\times0.5 = 2.5$ is
+  the area of the parallelogram.}
+\label{fig:determinant}
+\end{figure}
+
+This picture explains when a matrix is invertible. If $\det\mA = 0$, the
+transformation squashes the plane onto a line (or a point). Many different
+points land on the same image, so there is no way to undo it: $\mA$ is
+singular. For example, the columns of
+$\left(\begin{smallmatrix} 1 & 2\\ 2 & 4\end{smallmatrix}\right)$ are parallel
+($(2, 4) = 2(1, 2)$), its determinant is $4 - 4 = 0$, and it squashes the
+whole plane onto the line through $(1, 2)$.
+
+\subsection{Determinants of larger matrices}
+
+Determinants exist for square matrices of every size, with the same meaning:
+for a $3\times3$ matrix, $\abs{\det\mA}$ is the factor by which volumes are
+multiplied. A $3 \times 3$ determinant can be computed by \emph{expansion
+along the first row}:
+\[
+  \det\begin{pmatrix} a & b & c\\ d & e & f\\ g & h & i\end{pmatrix}
+  = a\det\begin{pmatrix} e & f\\ h & i\end{pmatrix}
+  - b\det\begin{pmatrix} d & f\\ g & i\end{pmatrix}
+  + c\det\begin{pmatrix} d & e\\ g & h\end{pmatrix}.
+\]
+Each entry of the first row multiplies the determinant of the $2\times2$
+matrix left after deleting that entry's row and column, with alternating signs
+$+, -, +$. For example,
+\[
+  \det\begin{pmatrix} 2 & 0 & 1\\ 1 & 3 & 2\\ 1 & 1 & 2\end{pmatrix}
+  = 2(6 - 2) - 0(2 - 2) + 1(1 - 3) = 8 - 0 - 2 = 6 .
+\]
+For triangular matrices the determinant is simply the product of the diagonal
+entries. In practice, computers calculate determinants by elimination
+(\cref{sec:linear-systems}), never by expansion, which becomes impossibly slow
+for large matrices.
+
+\begin{theorem}[Properties of determinants and inverses]\label{thm:det-properties}
+For square matrices $\mA$ and $\mB$ of the same size:
+\begin{enumerate}
+  \item $\mA$ is invertible if and only if $\det\mA \neq 0$;
+  \item $\det(\mA\mB) = \det(\mA)\det(\mB)$ and $\det(\mA^\top) = \det\mA$;
+  \item if $\mA$ is invertible, $\det(\mA^{-1}) = 1/\det\mA$;
+  \item if $\mA$ and $\mB$ are invertible, $(\mA\mB)^{-1} = \mB^{-1}\mA^{-1}$
+    and $(\mA^\top)^{-1} = (\mA^{-1})^\top$.
+\end{enumerate}
+\end{theorem}
+
+The rule $\det(\mA\mB) = \det\mA\det\mB$ is the area picture again: scaling
+areas by $\det\mB$ and then by $\det\mA$ scales them by the product. And to
+undo ``first $\mB$, then $\mA$'' you must first undo $\mA$ and then undo
+$\mB$, hence the reversed order in $(\mA\mB)^{-1} = \mB^{-1}\mA^{-1}$.
+
+\begin{pitfall}[There is no matrix division]
+We never write $\frac{\mA}{\mB}$, because $\mA\mB^{-1}$ and $\mB^{-1}\mA$ are
+generally different. Only square matrices can have inverses, and many square
+matrices (those with determinant $0$) do not. Finally, even when an inverse
+exists, computing it explicitly is slow and can be numerically inaccurate; to
+solve $\mA\vx = \vb$, software uses elimination instead
+(\cref{sec:linear-systems}).
+\end{pitfall}
+
+\begin{mlnote}
+Determinants appear in the formula for the multivariate Gaussian distribution
+(\cref{ch:probability}), where $\det$ of a covariance matrix measures the
+volume of a data cloud. They are also central to \emph{normalising flows}, a
+family of generative models that transform simple random noise into complex
+data with invertible maps and must keep track of how volumes change.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Find the determinant and the inverse of
+$\left(\begin{smallmatrix} 4 & 7\\ 2 & 6\end{smallmatrix}\right)$, and check
+your answer.
+\end{exercise}
+\begin{solution}
+$\det = 24 - 14 = 10$, so the inverse is
+$\tfrac{1}{10}\left(\begin{smallmatrix} 6 & -7\\ -2 & 4\end{smallmatrix}\right)
+= \left(\begin{smallmatrix} 0.6 & -0.7\\ -0.2 & 0.4\end{smallmatrix}\right)$.
+Check: $\left(\begin{smallmatrix} 4 & 7\\ 2 & 6\end{smallmatrix}\right)
+\left(\begin{smallmatrix} 0.6 & -0.7\\ -0.2 & 0.4\end{smallmatrix}\right) =
+\left(\begin{smallmatrix} 2.4 - 1.4 & -2.8 + 2.8\\ 1.2 - 1.2 & -1.4 +
+2.4\end{smallmatrix}\right) = \mI$.
+\end{solution}
+
+\begin{exercise}
+For which value of $k$ is $\left(\begin{smallmatrix} k & 2\\ 3 &
+6\end{smallmatrix}\right)$ singular? What does it do to the plane for that
+value?
+\end{exercise}
+\begin{solution}
+$\det = 6k - 6 = 0$ when $k = 1$. Then both columns, $(1, 3)$ and $(2, 6)$, lie
+on the line through $(1, 3)$, and the matrix squashes the whole plane onto that
+line.
+\end{solution}
+
+\begin{exercise}
+Compute $\det\left(\begin{smallmatrix} 1 & 2 & 3\\ 0 & 4 & 5\\ 0 & 0 &
+6\end{smallmatrix}\right)$ by expansion along the first row, and compare with
+the product of the diagonal entries.
+\end{exercise}
+\begin{solution}
+$1\cdot(24 - 0) - 2\cdot(0 - 0) + 3\cdot(0 - 0) = 24$, which equals
+$1\cdot4\cdot6$, as expected for a triangular matrix.
+\end{solution}
+
+\begin{exercise}
+Let $\mA$ and $\mB$ be $2\times2$ matrices with $\det\mA = 3$ and
+$\det\mB = -2$. Find $\det(\mA\mB)$, $\det(\mA^{-1})$ and $\det(2\mA)$.
+\end{exercise}
+\begin{solution}
+$\det(\mA\mB) = 3 \times (-2) = -6$. $\det(\mA^{-1}) = \tfrac13$. For $2\mA$:
+the extra factor $2$ doubles lengths in both directions, which multiplies
+areas by $4$, so $\det(2\mA) = 4\times3 = 12$. (In general, for an $n\times n$
+matrix, $\det(c\mA) = c^n\det\mA$.)
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Systems of linear equations}\label{sec:linear-systems}
+%----------------------------------------------------------------------
+
+\subsection{From equations to matrices}
+
+In \cref{sec:equations} we solved two equations in two unknowns. With matrices,
+any number of linear equations in any number of unknowns can be written as a
+single equation. The system
+\[
+  \begin{cases}
+    \phantom{2}x_1 + 2x_2 + \phantom{3}x_3 = 8\\
+    2x_1 - \phantom{2}x_2 + 3x_3 = 9\\
+    3x_1 + \phantom{2}x_2 - \phantom{3}x_3 = 2
+  \end{cases}
+  \qquad\text{is}\qquad
+  \underbrace{\begin{pmatrix} 1 & 2 & 1\\ 2 & -1 & 3\\ 3 & 1 & -1\end{pmatrix}}_{\mA}
+  \underbrace{\begin{pmatrix} x_1\\ x_2\\ x_3\end{pmatrix}}_{\vx}
+  = \underbrace{\begin{pmatrix} 8\\ 9\\ 2\end{pmatrix}}_{\vb},
+\]
+because each row of $\mA\vx$ is the left side of one equation. The matrix
+$\mA$ holds the coefficients, $\vx$ the unknowns and $\vb$ the right-hand
+sides.
+
+\subsection{Two pictures of a linear system}
+
+\textbf{Row picture.} With two unknowns, each equation describes a line in the
+plane, and a solution is a point on all the lines at once. Two lines can meet
+in exactly one point, be parallel and never meet, or coincide
+(\cref{fig:systems}). So a linear system has either exactly one solution, no
+solution, or infinitely many solutions; it can never have exactly two. The
+same holds in any dimension, where each equation describes a plane or a
+hyperplane.
+
+\textbf{Column picture.} By the column view, $\mA\vx = \vb$ asks: \emph{which
+linear combination of the columns of $\mA$ produces $\vb$?} The unknowns are
+the amounts of each column in the recipe.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 1,horizontal sep=0.9cm},
+  mlplot,width=5.2cm,height=5cm,xmin=-0.5,xmax=4,ymin=-0.5,ymax=4,
+  xtick={0,...,3},ytick={0,...,3},title style={font=\small,align=center}]
+  \nextgroupplot[title={one solution\\$x+y=3$, $x-y=1$}]
+    \addplot[PlotBlue,domain=-0.5:4]{3-x};
+    \addplot[PlotRed,domain=-0.5:4]{x-1};
+    \addplot[only marks,mark=*,mark size=2pt] coordinates {(2,1)};
+  \nextgroupplot[title={no solution\\$x+y=3$, $x+y=1$}]
+    \addplot[PlotBlue,domain=-0.5:4]{3-x};
+    \addplot[PlotRed,domain=-0.5:4]{1-x};
+  \nextgroupplot[title={infinitely many\\$x+y=3$, $2x+2y=6$}]
+    \addplot[PlotBlue,line width=3pt,opacity=0.4,domain=-0.5:4]{3-x};
+    \addplot[PlotRed,dashed,domain=-0.5:4]{3-x};
+\end{groupplot}
+\end{tikzpicture}
+\caption{The row picture of three systems of two equations in two unknowns:
+  lines that cross once, parallel lines, and two equations describing the same
+  line.}
+\label{fig:systems}
+\end{figure}
+
+\subsection{Gaussian elimination}
+
+The standard method for solving linear systems, by hand or by computer, is
+\term{Gaussian elimination}. It is the elimination method of
+\cref{sec:equations}, organised systematically. We work with the
+\term{augmented matrix} $[\mA \mid \vb]$, which records the system without the
+variable names, and apply \term[elementary row operation]{elementary row
+operations}, none of which changes the solutions:
+\begin{enumerate}[label=(\roman*)]
+  \item swap two rows;
+  \item multiply a row by a non-zero number;
+  \item add a multiple of one row to another row.
+\end{enumerate}
+The goal is a \emph{triangular} (``row echelon'') form in which each equation
+has fewer unknowns than the one above it; the last equation is then solved
+first and the others by \emph{back substitution}.
+
+\begin{example}[Gaussian elimination]\label{ex:gaussian-elimination}
+Solve the $3\times3$ system above.
+
+\sol Start with the augmented matrix and eliminate $x_1$ from rows 2 and 3:
+\[
+  \left(\begin{array}{rrr|r} 1 & 2 & 1 & 8\\ 2 & -1 & 3 & 9\\ 3 & 1 & -1 & 2
+  \end{array}\right)
+  \xrightarrow[\;R_3 - 3R_1\;]{\;R_2 - 2R_1\;}
+  \left(\begin{array}{rrr|r} 1 & 2 & 1 & 8\\ 0 & -5 & 1 & -7\\ 0 & -5 & -4 & -22
+  \end{array}\right).
+\]
+Now eliminate $x_2$ from row 3:
+\[
+  \xrightarrow{\;R_3 - R_2\;}
+  \left(\begin{array}{rrr|r} 1 & 2 & 1 & 8\\ 0 & -5 & 1 & -7\\ 0 & 0 & -5 & -15
+  \end{array}\right).
+\]
+Back substitution: the last row says $-5x_3 = -15$, so $x_3 = 3$. The second
+row says $-5x_2 + x_3 = -7$, so $-5x_2 = -10$ and $x_2 = 2$. The first row says
+$x_1 + 2x_2 + x_3 = 8$, so $x_1 = 8 - 4 - 3 = 1$. The solution is
+$\vx = (1, 2, 3)$.
+
+\emph{Check} in the original equations: $1 + 4 + 3 = 8$, $2 - 2 + 9 = 9$,
+$3 + 2 - 3 = 2$. \checkmark
+\end{example}
+
+If elimination produces a row $(0\ 0\ \cdots\ 0 \mid c)$ with $c \neq 0$, that
+row says $0 = c$, and the system has no solution. If it produces a row of
+zeros $(0\ \cdots\ 0 \mid 0)$, one equation was redundant, and there may be
+infinitely many solutions.
+
+\subsection{Solutions, inverses and determinants}
+
+For a square system $\mA\vx = \vb$, the three cases are decided by the
+determinant:
+
+\begin{theorem}[Square systems]\label{thm:square-systems}
+If $\mA$ is square and $\det\mA \neq 0$, then $\mA\vx = \vb$ has exactly one
+solution for every $\vb$, namely $\vx = \mA^{-1}\vb$. If $\det\mA = 0$, the
+system has either no solution or infinitely many, depending on $\vb$.
+\end{theorem}
+
+Indeed, multiplying $\mA\vx = \vb$ on the left by $\mA^{-1}$ gives
+$\mA^{-1}\mA\vx = \mA^{-1}\vb$, i.e.\ $\vx = \mA^{-1}\vb$. This is a useful
+formula for thinking, even though (as noted above) software finds $\vx$ by
+elimination rather than by computing $\mA^{-1}$.
+
+\begin{mlnote}[More equations than unknowns]
+In machine learning, systems are rarely square. Fitting a linear model
+$\hat\vy = \mX\vw$ to $n$ data points with $d$ features gives $n$ equations
+$\mX\vw = \vy$ in $d$ unknowns, and usually $n$ is much larger than $d$. Such
+an \emph{overdetermined} system typically has no exact solution, because no
+line passes exactly through a noisy cloud of points. Instead we look for the
+$\vw$ that makes $\mX\vw$ as close as possible to $\vy$. This
+\emph{least-squares} solution satisfies the square system
+\[
+  \mX^\top\mX\,\vw = \mX^\top\vy ,
+\]
+called the \emph{normal equations}, which we derive geometrically in
+\cref{ch:linalg2} and with calculus in \cref{ch:optimization}.
+\end{mlnote}
+
+\begin{remark}[Linear algebra in code]
+In Python, the NumPy library provides all the operations of this chapter. Note
+that \texttt{@} is matrix multiplication, while \texttt{*} multiplies entry by
+entry.
+\par\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}
+import numpy as np
+
+A = np.array([[2, 1],
+              [-1, 3],
+              [0, 4]])         # a 3 x 2 matrix
+x = np.array([3, 2])           # a vector in R^2
+print(A @ x)                   # [8 3 8]
+print(A.T)                     # the 2 x 3 transpose
+
+B = np.array([[1, 2],
+              [3, 4]])
+print(np.linalg.det(B))        # -2.0 (up to rounding)
+print(np.linalg.solve(B, np.array([5, 6])))   # [-4.   4.5]
+\end{lstlisting}
+\end{minipage}
+\end{remark}
+
+\sectionexercises
+
+\begin{exercise}
+Write the system $2x - y = 1$, $x + 3y = 11$ in the form $\mA\vx = \vb$ and
+solve it using the inverse of $\mA$.
+\end{exercise}
+\begin{solution}
+$\mA = \left(\begin{smallmatrix} 2 & -1\\ 1 & 3\end{smallmatrix}\right)$,
+$\vb = (1, 11)$. $\det\mA = 6 + 1 = 7$, so
+$\mA^{-1} = \tfrac17\left(\begin{smallmatrix} 3 & 1\\ -1 &
+2\end{smallmatrix}\right)$ and $\vx = \tfrac17(3 + 11, -1 + 22) = \tfrac17(14,
+21) = (2, 3)$. Check: $4 - 3 = 1$ and $2 + 9 = 11$.
+\end{solution}
+
+\begin{exercise}
+Solve by Gaussian elimination:
+$x_1 + x_2 + x_3 = 6$, $\ 2x_1 + x_2 - x_3 = 1$, $\ x_1 - x_2 + 2x_3 = 5$.
+\end{exercise}
+\begin{solution}
+$R_2 - 2R_1$ gives $(0, -1, -3 \mid -11)$; $R_3 - R_1$ gives
+$(0, -2, 1 \mid -1)$. Then $R_3 - 2R_2$ gives $(0, 0, 7 \mid 21)$, so
+$x_3 = 3$. From $-x_2 - 3x_3 = -11$: $x_2 = 2$. From the first equation:
+$x_1 = 6 - 2 - 3 = 1$. Solution $(1, 2, 3)$.
+\end{solution}
+
+\begin{exercise}
+How many solutions does each system have? (a) $x + 2y = 4$, $2x + 4y = 8$;
+(b) $x + 2y = 4$, $2x + 4y = 5$; (c) $x + 2y = 4$, $x - y = 1$.
+\end{exercise}
+\begin{solution}
+(a) Infinitely many: the second equation is twice the first (the same line).
+(b) None: doubling the first gives $2x + 4y = 8 \neq 5$ (parallel lines).
+(c) Exactly one: subtracting gives $3y = 3$, so $y = 1$ and $x = 2$.
+\end{solution}
+
+\begin{exercise}
+We try to fit a line $y = w_1x + w_0$ exactly through the three points
+$(1, 2)$, $(2, 3)$ and $(3, 5)$. Write the three equations in matrix form and
+show that they have no solution.
+\end{exercise}
+\begin{solution}
+$\left(\begin{smallmatrix} 1 & 1\\ 2 & 1\\ 3 & 1\end{smallmatrix}\right)
+\left(\begin{smallmatrix} w_1\\ w_0\end{smallmatrix}\right) =
+\left(\begin{smallmatrix} 2\\ 3\\ 5\end{smallmatrix}\right)$. The first two
+equations, $w_1 + w_0 = 2$ and $2w_1 + w_0 = 3$, force $w_1 = 1$ and $w_0 = 1$;
+but then the third gives $3 + 1 = 4 \neq 5$. The points do not lie on a line,
+so the system has no solution; \cref{ch:linalg2} finds the best approximate
+one.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Chapter summary}\label{sec:ch4-summary}
+%----------------------------------------------------------------------
+
+\begin{keytakeaways}
+\begin{itemize}
+  \item A vector is both an arrow and a list of numbers. Vectors are added and
+    scaled component by component; linear combinations
+    $c_1\vv_1 + \dots + c_k\vv_k$ are the central construction.
+  \item $\norm{\vv} = \sqrt{\vv\cdot\vv}$ is the length; $\vv/\norm{\vv}$ is a unit
+    vector; $\norm{\vu - \vv}$ is a distance.
+  \item The dot product $\vu\cdot\vv = \vu^\top\vv = \sum_i u_iv_i =
+    \norm{\vu}\norm{\vv}\cos\theta$ is a weighted sum and a measure of
+    alignment; $\vu\cdot\vv = 0$ means orthogonal. Cosine similarity and
+    neurons are dot products.
+  \item An $m\times n$ matrix maps $\R^n$ to $\R^m$. $\mA\vx$ is a list of dot
+    products (rows) and a combination of columns. The columns are the images
+    of the standard basis vectors.
+  \item $\mA\mB$ means ``first $\mB$, then $\mA$''; entries are row $\cdot$
+    column; shapes must match; $\mA\mB \neq \mB\mA$ in general. Stacked linear
+    layers collapse into one.
+  \item $(\mA\mB)^\top = \mB^\top\mA^\top$; $\mA^\top\mA$ is symmetric.
+  \item $\det\mA$ is the factor by which areas (volumes) change;
+    $\mA^{-1}$ exists exactly when $\det\mA \neq 0$.
+  \item $\mA\vx = \vb$ has one, none or infinitely many solutions, found by
+    Gaussian elimination. Machine learning systems are usually overdetermined
+    and are solved by least squares.
+\end{itemize}
+\end{keytakeaways}
