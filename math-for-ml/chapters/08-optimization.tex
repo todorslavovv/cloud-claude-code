@@ -1,1 +1,1112 @@
+%======================================================================
+% Chapter 8: Optimization
+%======================================================================
 \chapter{Optimization}\label{ch:optimization}
+
+\begin{motivation}
+Almost every machine learning method can be summarised in one sentence:
+\emph{choose the parameters that minimise a loss}. Linear regression, logistic
+regression, support vector machines, neural networks and large language models
+all fit this pattern; they differ in the model, the loss and the data, but the
+training is an \emph{optimisation problem}. This chapter puts the calculus of
+\cref{ch:calculus,ch:multivariable} to work. We learn when a problem can be
+solved with a formula, and, since most cannot, how to solve it iteratively with
+\emph{gradient descent} and its descendants (stochastic gradient descent,
+momentum, Adam), which train essentially every neural network in use today.
+We also learn why the learning rate matters so much, why \emph{convex}
+problems are easy, and how to handle constraints.
+\end{motivation}
+
+\begin{objectives}
+\begin{itemize}
+  \item formulate optimisation problems and read the $\min$ and $\argmin$
+    notation;
+  \item solve small problems analytically, including least squares and ridge
+    regression;
+  \item run gradient descent by hand and in code;
+  \item explain how the learning rate and the curvature determine whether and
+    how fast gradient descent converges;
+  \item recognise convex sets and functions and explain why convexity matters;
+  \item describe stochastic and mini-batch gradient descent;
+  \item describe momentum, RMSProp and Adam;
+  \item apply Newton's method;
+  \item solve equality-constrained problems with Lagrange multipliers.
+\end{itemize}
+\end{objectives}
+
+%----------------------------------------------------------------------
+\section{Optimisation problems}\label{sec:optimisation-problems}
+%----------------------------------------------------------------------
+
+An \term{optimisation problem} asks for the input that makes a function as
+small (or as large) as possible:
+\[
+  \text{minimise } f(\vx) \quad\text{over } \vx \in \R^n
+  \qquad (\text{possibly subject to constraints on } \vx).
+\]
+The function $f$ is the \term{objective function} (also called the cost or, in
+machine learning, the loss), and $\vx$ contains the \emph{decision variables}.
+Maximising $f$ is the same as minimising $-f$, so we can always talk about
+minimisation.
+
+\begin{notation}
+$\min_{\vx} f(\vx)$ denotes the smallest \emph{value} of $f$, while
+$\argmin_{\vx} f(\vx)$ (``the argument of the minimum'') denotes the
+\emph{input} at which it is attained, the \term{minimiser}, often written
+$\vx^*$. For example, for $f(x) = (x - 3)^2 + 1$:
+\[
+  \min_x f(x) = 1, \qquad \argmin_x f(x) = 3 .
+\]
+\end{notation}
+
+\subsection{Training as optimisation}
+
+\begin{definition}[Empirical risk minimisation]\label{def:erm}
+Given training data $(\vx_1, y_1)$, \dots, $(\vx_n, y_n)$, a model
+$\hat y = f(\vx; \vtheta)$ with parameters $\vtheta$, and a
+\term{loss function} $\ell(\hat y, y)$ that measures how bad a prediction is,
+training means solving
+\[
+  \keyeq{\min_{\vtheta}\; L(\vtheta) = \frac1n\sum_{i=1}^{n}
+  \ell\bigl(f(\vx_i; \vtheta),\, y_i\bigr)}
+\]
+The average loss $L$ over the training set is called the \term{empirical risk}.
+\end{definition}
+
+Typical choices of $\ell$ are the squared error $(\hat y - y)^2$ for predicting
+numbers, the absolute error $\abs{\hat y - y}$, and the cross-entropy for
+predicting classes (\cref{ch:dl}). Often a regularisation term such as
+$\lambda\norm{\vtheta}^2$ is added (\cref{sec:norms}).
+
+\sectionexercises
+
+\begin{exercise}
+Give $\min$ and $\argmin$ of $f(x) = (x + 2)^2 + 1$. Write the problem of
+maximising $g(x) = -(x - 1)^2 + 4$ as a minimisation problem, and solve it.
+\end{exercise}
+\begin{solution}
+$\min f = 1$ and $\argmin f = -2$. Maximising $g$ is minimising
+$-g(x) = (x - 1)^2 - 4$, whose minimiser is $x = 1$; so the maximum of $g$ is
+$g(1) = 4$.
+\end{solution}
+
+\begin{exercise}
+For the data $(x, y) = (1, 1), (2, 2), (3, 2)$ and the model $\hat y = wx$, write
+the empirical risk with the absolute-error loss, and evaluate it at $w = 0.5$
+and $w = 1$.
+\end{exercise}
+\begin{solution}
+$L(w) = \tfrac13\left(\abs{1 - w} + \abs{2 - 2w} + \abs{2 - 3w}\right)$.
+$L(0.5) = \tfrac13(0.5 + 1 + 0.5) \approx 0.667$ and
+$L(1) = \tfrac13(0 + 0 + 1) \approx 0.333$, so $w = 1$ is better.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Solving with a formula}\label{sec:analytic-optimisation}
+%----------------------------------------------------------------------
+
+When the objective is differentiable, every interior minimiser satisfies
+$\nabla f(\vx^*) = \vzero$ (\cref{sec:gradient}). Sometimes these equations can
+be solved exactly, and the Hessian then confirms that we have a minimum.
+
+\subsection{Least squares by calculus}
+
+Linear regression with data matrix $\mX$ (one row per example, including a
+column of ones for the intercept) and targets $\vy$ minimises the sum of
+squared errors
+\[
+  L(\vw) = \norm{\mX\vw - \vy}^2 = (\mX\vw - \vy)^\top(\mX\vw - \vy)
+  = \vw^\top\mX^\top\mX\vw - 2\vy^\top\mX\vw + \vy^\top\vy .
+\]
+Using the gradients of \cref{ex:vector-gradients,ex:hessians} (the first term is a
+quadratic form with symmetric matrix $\mX^\top\mX$, the second is linear in
+$\vw$):
+\[
+  \nabla L(\vw) = 2\mX^\top\mX\vw - 2\mX^\top\vy = 2\mX^\top(\mX\vw - \vy),
+  \qquad \mH = 2\mX^\top\mX .
+\]
+Setting the gradient to zero gives the normal equations
+$\mX^\top\mX\vw = \mX^\top\vy$, exactly as the geometry of projections did in
+\cref{sec:projections}. The Hessian $2\mX^\top\mX$ is positive semidefinite
+(\cref{prop:ata-psd}), so any solution is a global minimum.
+
+\subsection{Ridge regression}
+
+Adding the penalty $\lambda\norm{\vw}^2$ with $\lambda > 0$ gives
+$L(\vw) = \norm{\mX\vw - \vy}^2 + \lambda\norm{\vw}^2$, with gradient
+$2\mX^\top(\mX\vw - \vy) + 2\lambda\vw$. Setting it to zero:
+\[
+  (\mX^\top\mX + \lambda\mI)\,\vw = \mX^\top\vy .
+\]
+The matrix $\mX^\top\mX + \lambda\mI$ has all eigenvalues at least $\lambda > 0$,
+so it is always invertible, even when features are collinear: ridge
+regularisation also cures the numerical problems of \cref{sec:independence}.
+
+\begin{example}[Least squares and ridge in one dimension]\label{ex:ridge-1d}
+Fit $\hat y = wx$ (no intercept) to the data $(1, 2)$, $(2, 3)$, $(3, 5)$, with
+and without the ridge penalty $\lambda = 1$.
+
+\sol Here $\mX^\top\mX = \sum x_i^2 = 14$ and $\mX^\top\vy = \sum x_iy_i = 23$. Least
+squares: $w = \frac{23}{14} \approx 1.643$. Ridge: $w = \frac{23}{14 + 1}
+\approx 1.533$. The penalty shrinks the weight towards zero.
+\end{example}
+
+\begin{remark}[When formulas run out]
+Closed-form solutions exist for linear regression and a few other problems,
+but not for logistic regression, and certainly not for neural networks, whose
+equations $\nabla L = \vzero$ are hopelessly complicated. Even when a formula
+exists, solving a linear system with millions of unknowns may be too slow. In
+these cases we optimise \emph{iteratively}: start somewhere and improve step by
+step.
+\end{remark}
+
+\sectionexercises
+
+\begin{exercise}
+Minimise $f(x, y) = (x - 1)^2 + 2(y + 3)^2 + 5$.
+\end{exercise}
+\begin{solution}
+$\nabla f = (2(x - 1), 4(y + 3)) = \vzero$ at $(1, -3)$; the Hessian
+$\diag(2, 4)$ is positive definite. The minimum value is $5$.
+\end{solution}
+
+\begin{exercise}
+For the model $\hat y = wx$ and data $(x_i, y_i)$, show by differentiating
+$L(w) = \sum_i(y_i - wx_i)^2$ that the least-squares weight is
+$w = \frac{\sum_ix_iy_i}{\sum_ix_i^2}$.
+\end{exercise}
+\begin{solution}
+$L'(w) = \sum_i 2(y_i - wx_i)(-x_i) = -2\left(\sum_ix_iy_i - w\sum_ix_i^2\right)$.
+Setting it to zero gives the formula, and $L''(w) = 2\sum_ix_i^2 > 0$ (unless
+all $x_i = 0$), so it is a minimum.
+\end{solution}
+
+\begin{exercise}
+Show that, for the one-dimensional ridge problem
+$\min_w \sum_i(y_i - wx_i)^2 + \lambda w^2$, the solution is
+$w = \frac{\sum_ix_iy_i}{\sum_ix_i^2 + \lambda}$. What happens as
+$\lambda\to\infty$?
+\end{exercise}
+\begin{solution}
+The derivative is $-2\sum_ix_i(y_i - wx_i) + 2\lambda w$; setting it to zero
+gives $w\left(\sum_ix_i^2 + \lambda\right) = \sum_ix_iy_i$. As
+$\lambda\to\infty$ the denominator grows without bound and $w \to 0$: a very
+strong penalty forces the weight to zero.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Gradient descent}\label{sec:gradient-descent}
+%----------------------------------------------------------------------
+
+\begin{picturethis}
+You are standing on a mountainside in thick fog and want to reach the valley.
+You cannot see where the valley is, but you can feel the slope under your feet.
+A sensible strategy: take a step in the steepest downhill direction, feel the
+slope again, take another step, and repeat. That is gradient descent. The
+gradient tells you the steepest uphill direction (\cref{thm:gradient-geometry}),
+so you step the opposite way.
+\end{picturethis}
+
+\begin{algorithm}[Gradient descent]\label{alg:gradient-descent}
+To minimise a differentiable function $L(\vtheta)$:
+\begin{steps}
+  \item Choose a starting point $\vtheta_0$ and a \term{learning rate} (step size)
+    $\eta > 0$.
+  \item For $k = 0, 1, 2, \dots$, update
+    \[
+      \keyeq{\vtheta_{k+1} = \vtheta_k - \eta\,\nabla L(\vtheta_k)}
+    \]
+  \item Stop when the gradient is very small, when $L$ stops improving, or after
+    a fixed number of steps.
+\end{steps}
+\end{algorithm}
+
+By the first-order Taylor approximation (\cref{sec:taylor-multi}), each step
+changes the loss by about $-\eta\norm{\nabla L}^2$, which is negative: for a small
+enough learning rate, every step goes downhill. As the minimum is approached the
+gradient shrinks, so the steps automatically become shorter.
+
+\begin{example}[Gradient descent in one dimension]\label{ex:gd-1d}
+Minimise $f(x) = (x - 3)^2$ by gradient descent with $x_0 = 0$ and $\eta = 0.1$.
+
+\sol $f'(x) = 2(x - 3)$, so the update is $x_{k+1} = x_k - 0.2(x_k - 3)$.
+\begin{center}
+\begin{tabular}{c|ccccccc}
+$k$ & $0$ & $1$ & $2$ & $3$ & $4$ & $5$ & $10$\\
+\hline
+$x_k$ & $0$ & $0.6$ & $1.08$ & $1.464$ & $1.771$ & $2.017$ & $2.678$
+\end{tabular}
+\end{center}
+Subtracting $3$ from both sides of the update gives
+$x_{k+1} - 3 = 0.8(x_k - 3)$: the distance to the minimiser shrinks by the factor
+$0.8$ at every step, so $x_k = 3 - 3\cdot0.8^k \to 3$.
+\end{example}
+
+\begin{example}[Gradient descent for linear regression]\label{ex:gd-regression}
+Run gradient descent on the mean squared error of \cref{ex:regression-gradient}
+(data $(1, 2)$, $(2, 3)$, $(3, 5)$, model $\hat y = wx + b$), starting from
+$(w, b) = (0, 0)$ with $\eta = 0.05$.
+
+\sol The gradient is $\nabla L = -\frac23\mX^\top(\vy - \mX\vtheta)$. At the start
+it is $(-15.33, -6.67)$ (\cref{ex:regression-gradient}), so the first step gives
+$\vtheta_1 = (0, 0) - 0.05(-15.33, -6.67) = (0.767, 0.333)$. Continuing:
+\begin{center}
+\begin{tabular}{c|cccccc}
+step $k$ & $0$ & $1$ & $2$ & $3$ & $100$ & $500$\\
+\hline
+$w_k$ & $0$ & $0.767$ & $1.109$ & $1.262$ & $1.464$ & $1.500$\\
+$b_k$ & $0$ & $0.333$ & $0.480$ & $0.544$ & $0.415$ & $0.334$\\
+loss & $12.67$ & $2.57$ & $0.561$ & $0.164$ & $0.0565$ & $0.0556$
+\end{tabular}
+\end{center}
+The loss drops quickly at first and then creeps towards its minimum $\frac{1}{18}
+\approx 0.0556$, reached at the least-squares solution $(1.5, \frac13)$ of
+\cref{ex:least-squares}.
+\end{example}
+
+\begin{remark}[Gradient descent in code]
+The whole of \cref{ex:gd-regression} takes a few lines of Python:
+\par\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}
+import numpy as np
+
+X = np.array([[1, 1], [2, 1], [3, 1]], dtype=float)  # x and ones
+y = np.array([2, 3, 5], dtype=float)
+theta = np.zeros(2)                  # parameters (w, b)
+eta = 0.05                           # learning rate
+
+for step in range(500):
+    residuals = y - X @ theta
+    grad = -2 / len(y) * X.T @ residuals   # gradient of the MSE
+    theta = theta - eta * grad             # gradient descent update
+
+print(theta)                         # approximately [1.5, 0.333]
+\end{lstlisting}
+\end{minipage}\par
+Training a neural network has exactly the same structure; only the computation
+of the gradient is more involved (\cref{ch:dl}).
+\end{remark}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.92]
+  \foreach \c in {1,4,9,16,27.25}
+    \draw[MLdef!55] (0,0) ellipse ({sqrt(\c)} and {sqrt(\c/5)});
+  \draw[-{Stealth[length=2mm]},gray] (-5.6,0) -- (5.6,0) node[right] {$\theta_1$};
+  \draw[-{Stealth[length=2mm]},gray] (0,-2.5) -- (0,2.6) node[above] {$\theta_2$};
+  \draw[PlotBlue,thick,-{Stealth[length=1.8mm]}] (-4.000,1.500) -- (-3.600,0.750) -- (-3.240,0.375)
+    -- (-2.916,0.188) -- (-2.624,0.094) -- (-2.362,0.047) -- (-2.126,0.023) -- (-1.913,0.012)
+    -- (-1.722,0.006) -- (-1.550,0.003) -- (-1.395,0.001) -- (-1.255,0.001) -- (-1.130,0.000)
+    -- (-1.017,0.000) -- (-0.915,0.000) -- (-0.824,0.000);
+  \draw[PlotRed,thick,-{Stealth[length=1.8mm]}] (-4.000,1.500) -- (-2.560,-1.200) -- (-1.638,0.960)
+    -- (-1.049,-0.768) -- (-0.671,0.614) -- (-0.429,-0.492) -- (-0.275,0.393) -- (-0.176,-0.315)
+    -- (-0.113,0.252) -- (-0.072,-0.201) -- (-0.046,0.161) -- (-0.030,-0.129);
+  \foreach \p in {(-4.000,1.500),(-3.600,0.750),(-3.240,0.375),(-2.916,0.188),(-2.624,0.094),
+                  (-2.362,0.047),(-2.126,0.023),(-1.913,0.012),(-1.722,0.006),(-1.550,0.003)}
+    \fill[PlotBlue] \p circle (1.4pt);
+  \foreach \p in {(-2.560,-1.200),(-1.638,0.960),(-1.049,-0.768),(-0.671,0.614),(-0.429,-0.492)}
+    \fill[PlotRed] \p circle (1.4pt);
+  \fill (0,0) circle (1.8pt);
+  \node[PlotBlue,font=\small,anchor=south west] at (-3.0,0.55) {$\eta = 0.05$};
+  \node[PlotRed,font=\small,anchor=north] at (-1.55,-1.15) {$\eta = 0.18$};
+  \node[font=\small,anchor=south west] at (-4.0,1.5) {start};
+\end{tikzpicture}
+\caption{Gradient descent on $f(\vtheta) = \theta_1^2 + 5\theta_2^2$ (contours
+  in grey-blue) from $(-4, 1.5)$, $15$ steps each. With $\eta = 0.05$ (blue) the
+  path is smooth but crawls along the flat $\theta_1$-direction. With
+  $\eta = 0.18$ (red) it makes faster progress along $\theta_1$ but zig-zags
+  across the steep $\theta_2$-direction.}
+\label{fig:gd-paths}
+\end{figure}
+
+\sectionexercises
+
+\begin{exercise}
+Run three steps of gradient descent on $f(x) = x^2 - 4x$ starting from $x_0 = 0$
+with $\eta = 0.25$. Where is it heading?
+\end{exercise}
+\begin{solution}
+$f'(x) = 2x - 4$. $x_1 = 0 - 0.25(-4) = 1$; $x_2 = 1 - 0.25(-2) = 1.5$;
+$x_3 = 1.5 - 0.25(-1) = 1.75$. It approaches the minimiser $x = 2$, halving the
+distance at each step.
+\end{solution}
+
+\begin{exercise}
+Run two steps of gradient descent on $f(x, y) = x^2 + 2y^2$ from $(2, 1)$ with
+$\eta = 0.1$, and compute $f$ after each step.
+\end{exercise}
+\begin{solution}
+$\nabla f = (2x, 4y)$. Step 1: $\nabla f(2,1) = (4, 4)$, new point $(1.6, 0.6)$,
+$f = 2.56 + 0.72 = 3.28$ (down from $6$). Step 2: $\nabla f = (3.2, 2.4)$, new
+point $(1.28, 0.36)$, $f = 1.6384 + 0.2592 \approx 1.90$.
+\end{solution}
+
+\begin{exercise}
+In \cref{ex:gd-1d}, how many steps are needed before $x_k$ is within $0.01$ of
+the minimiser?
+\end{exercise}
+\begin{solution}
+We need $3\cdot0.8^k < 0.01$, i.e.\ $0.8^k < \tfrac{1}{300}$, i.e.\
+$k > \tfrac{\ln300}{\ln1.25} \approx 25.6$. So $26$ steps.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{The learning rate}\label{sec:learning-rate}
+%----------------------------------------------------------------------
+
+The learning rate is the single most important setting (\emph{hyperparameter})
+of gradient-based training. \Cref{fig:learning-rates} shows the four things that
+can happen on the simplest possible function, $f(x) = x^2$, for which the update
+is $x_{k+1} = x_k - 2\eta x_k = (1 - 2\eta)x_k$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=4 by 1,horizontal sep=0.35cm},
+  mlplot,width=4.3cm,height=4.3cm,xmin=-2.6,xmax=2.6,ymin=-0.3,ymax=6,
+  xtick={-2,0,2},ytick=\empty,title style={font=\small,align=center}]
+  \nextgroupplot[title={$\eta = 0.1$\\too small: slow}]
+    \addplot[gray,domain=-2.5:2.5,samples=60]{x^2};
+    \addplot[PlotBlue,thick,mark=*,mark size=1.4pt] coordinates
+      {(1.5,2.25) (1.2,1.44) (0.96,0.9216) (0.768,0.5898) (0.6144,0.3775) (0.4915,0.2416)};
+  \nextgroupplot[title={$\eta = 0.45$\\good: fast}]
+    \addplot[gray,domain=-2.5:2.5,samples=60]{x^2};
+    \addplot[PlotGreen,thick,mark=*,mark size=1.4pt] coordinates
+      {(1.5,2.25) (0.15,0.0225) (0.015,0.0002)};
+  \nextgroupplot[title={$\eta = 0.9$\\oscillating}]
+    \addplot[gray,domain=-2.5:2.5,samples=60]{x^2};
+    \addplot[PlotOrange,thick,mark=*,mark size=1.4pt] coordinates
+      {(1.5,2.25) (-1.2,1.44) (0.96,0.9216) (-0.768,0.5898) (0.6144,0.3775) (-0.4915,0.2416)};
+  \nextgroupplot[title={$\eta = 1.05$\\too large: diverging}]
+    \addplot[gray,domain=-2.5:2.5,samples=60]{x^2};
+    \addplot[PlotRed,thick,mark=*,mark size=1.4pt] coordinates
+      {(1.5,2.25) (-1.65,2.7225) (1.815,3.2942) (-1.9965,3.986) (2.1962,4.8233) (-2.4158,5.8361)};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Gradient descent on $f(x) = x^2$ from $x_0 = 1.5$ with four learning
+  rates. The update multiplies $x$ by $1 - 2\eta$, which is $0.8$, $0.1$, $-0.8$ and
+  $-1.1$ respectively.}
+\label{fig:learning-rates}
+\end{figure}
+
+\subsection{What the curvature allows}
+
+For a one-dimensional quadratic $f(x) = \frac a2x^2$ with $a > 0$ (curvature
+$f'' = a$), the update is $x_{k+1} = (1 - \eta a)\,x_k$. The iterates converge to
+the minimum exactly when $\abs{1 - \eta a} < 1$, i.e.
+\[
+  \keyeq{0 < \eta < \frac{2}{a}}
+\]
+The fastest choice is $\eta = 1/a$, which jumps to the minimum in one step;
+with $\frac1a < \eta < \frac2a$ the iterates overshoot and oscillate but still
+converge; with $\eta > \frac2a$ they diverge. Steep (highly curved) functions
+need small learning rates.
+
+In several dimensions, near a minimum the loss is approximately a quadratic
+$\frac12\vh^\top\mH\vh$ (\cref{sec:taylor-multi}). Along each eigenvector of the
+Hessian, gradient descent behaves like the one-dimensional case with $a$
+replaced by the corresponding eigenvalue $\lambda_i$. Stability requires
+$\eta < 2/\lambda_{\max}$, but progress along the flattest direction proceeds
+only by the factor $1 - \eta\lambda_{\min}$ per step. When the
+\term{condition number} $\kappa = \lambda_{\max}/\lambda_{\min}$ is large, no
+single learning rate is good for all directions: a small one crawls along the
+flat directions, and a large one zig-zags across the steep ones
+(\cref{fig:gd-paths}, where $\kappa = 10/2 = 5$).
+
+\begin{mlnote}[Choosing and scheduling the learning rate]
+In practice the curvature is unknown, so learning rates are found by
+experiment: try values on a logarithmic grid such as $10^{-1}, 3\times10^{-2},
+10^{-2}, \dots$, and watch the training curve. A loss that explodes or
+oscillates wildly means the rate is too large; a loss that decreases
+painfully slowly means it is too small. Most training runs also change the
+learning rate over time, following a \term{learning-rate schedule}
+(\cref{fig:schedules}): large steps early to make fast progress, small steps
+later to settle into a minimum. Common schedules are step decay (divide by a
+factor every few epochs), exponential decay, and cosine decay, often preceded
+by a short \emph{warm-up} in which the rate grows from zero.
+\end{mlnote}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=10cm,height=5cm,xmin=0,xmax=100,ymin=0,ymax=0.11,
+  xlabel={epoch},ylabel={learning rate $\eta$},
+  xlabel style={anchor=north,at={(axis description cs:0.5,-0.1)}},
+  ylabel style={anchor=south,rotate=90,at={(axis description cs:-0.12,0.5)}},
+  yticklabel style={/pgf/number format/fixed},
+  legend style={font=\small,at={(0.98,0.97)},anchor=north east,draw=gray!40},
+  legend cell align=left]
+  \addplot[PlotBlue,domain=0:100,samples=401]{0.1*0.5^(floor(x/30))};
+  \addlegendentry{step decay}
+  \addplot[PlotRed,domain=0:100,samples=100]{0.1*0.97^x};
+  \addlegendentry{exponential}
+  \addplot[PlotGreen,domain=0:100,samples=100]{0.05*(1+cos(deg(pi*x/100)))};
+  \addlegendentry{cosine}
+\end{axis}
+\end{tikzpicture}
+\caption{Three learning-rate schedules starting at $\eta = 0.1$: halving every
+  $30$ epochs, multiplying by $0.97$ every epoch, and a cosine curve that reaches
+  zero after $100$ epochs.}
+\label{fig:schedules}
+\end{figure}
+
+\sectionexercises
+
+\begin{exercise}
+For $f(x) = 5x^2$, which learning rates make gradient descent converge? Which
+learning rate reaches the minimum in a single step?
+\end{exercise}
+\begin{solution}
+$f'' = 10$, so we need $0 < \eta < 0.2$. The update is
+$x_{k+1} = (1 - 10\eta)x_k$; with $\eta = 0.1$ the factor is $0$, so one step
+lands exactly on the minimiser $0$.
+\end{solution}
+
+\begin{exercise}
+For $f(x, y) = x^2 + 50y^2$, what is the largest learning rate for which
+gradient descent converges? With $\eta = 0.019$, by what factor does the
+$x$-coordinate shrink per step? What does this say about badly conditioned
+problems?
+\end{exercise}
+\begin{solution}
+The Hessian is $\diag(2, 100)$, so we need $\eta < \tfrac{2}{100} = 0.02$. With
+$\eta = 0.019$ the $x$-coordinate is multiplied by $1 - 0.019\cdot2 = 0.962$ per
+step, so it takes about $60$ steps just to halve it. The condition number is
+$50$: the steep direction forces a small learning rate, which makes progress
+along the flat direction very slow.
+\end{solution}
+
+\begin{exercise}
+A learning rate starts at $0.1$ and is halved every $30$ epochs. What is it at
+epoch $75$? For the cosine schedule $\eta_t = 0.05\left(1 + \cos\frac{\pi t}{100}
+\right)$, what is it at $t = 50$ and $t = 100$?
+\end{exercise}
+\begin{solution}
+Epoch $75$ is after two halvings: $0.1\times0.25 = 0.025$. Cosine:
+$\eta_{50} = 0.05(1 + \cos\tfrac\pi2) = 0.05$ and
+$\eta_{100} = 0.05(1 + \cos\pi) = 0$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Convexity}\label{sec:convexity}
+%----------------------------------------------------------------------
+
+\begin{motivation}
+Gradient descent only sees the local slope, so in general it can get stuck in
+a local minimum (\cref{fig:local-global}). For a special and important class of
+functions this cannot happen: for \emph{convex} functions, every local minimum
+is a global minimum. Many classical machine learning problems are convex,
+which is why they can be solved reliably.
+\end{motivation}
+
+\begin{definition}[Convex set]\label{def:convex-set}
+A set $C$ is \term[convex set]{convex} if for any two points $\vx, \vy \in C$,
+the whole line segment between them lies in $C$: $\lambda\vx + (1 - \lambda)\vy
+\in C$ for all $\lambda \in [0, 1]$.
+\end{definition}
+
+Discs, squares, half-planes, lines and the unit balls of all norms
+(\cref{fig:unit-balls}) are convex. A crescent moon, a doughnut or an L-shape is
+not (\cref{fig:convex-sets}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.9]
+  \fill[MLdef!15,draw=MLdef,thick] (0,0) ellipse (1.6 and 1.0);
+  \fill (-0.9,-0.4) circle (1.5pt);
+  \fill (1.0,0.5) circle (1.5pt);
+  \draw[thick,PlotGreen!70!black] (-0.9,-0.4) -- (1.0,0.5);
+  \node[font=\small] at (0,-1.4) {convex};
+  \begin{scope}[xshift=4cm,yshift=-1.1cm]
+    \fill[MLdef!15,draw=MLdef,thick]
+      (0,0) -- (2.4,0) -- (2.4,0.9) -- (0.9,0.9) -- (0.9,2.2) -- (0,2.2) -- cycle;
+    \fill (0.4,1.9) circle (1.5pt);
+    \fill (2.1,0.4) circle (1.5pt);
+    \draw[thick,PlotRed] (0.4,1.9) -- (2.1,0.4);
+    \node[font=\small] at (1.2,-0.3) {not convex};
+  \end{scope}
+\end{tikzpicture}
+\caption{A convex set contains the segment between any two of its points. The
+  L-shaped set is not convex: the red segment between two of its points leaves
+  the set.}
+\label{fig:convex-sets}
+\end{figure}
+
+\begin{definition}[Convex function]\label{def:convex-function}
+A function $f$ is \term[convex function]{convex} if, for all $\vx, \vy$ and all
+$\lambda \in [0, 1]$,
+\[
+  f\bigl(\lambda\vx + (1 - \lambda)\vy\bigr) \le \lambda f(\vx) + (1 - \lambda)f(\vy).
+\]
+Geometrically: the chord between any two points of the graph lies on or above
+the graph (\cref{fig:convex-function}).
+\end{definition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1,horizontal sep=1.2cm},
+  mlplot,width=6.2cm,height=4.8cm,xtick=\empty,ytick=\empty,
+  title style={font=\small}]
+  \nextgroupplot[title={convex},xmin=-2.2,xmax=2.2,ymin=-0.5,ymax=4.6]
+    \addplot[PlotBlue,very thick,domain=-2.1:2.1,samples=60]{x^2};
+    \addplot[PlotRed,thick,mark=*,mark size=1.6pt] coordinates {(-1.5,2.25) (1.8,3.24)};
+  \nextgroupplot[title={not convex},xmin=-0.2,xmax=6.5,ymin=-1.6,ymax=1.6]
+    \addplot[PlotBlue,very thick,domain=0:6.3,samples=80]{sin(deg(x))};
+    \addplot[PlotRed,thick,mark=*,mark size=1.6pt] coordinates {(0.6,0.5646) (2.6,0.5155)};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Left: for the convex function $x^2$, every chord (red) lies above the
+  graph. Right: for $\sin x$, the chord shown lies below the graph, so $\sin x$ is
+  not convex.}
+\label{fig:convex-function}
+\end{figure}
+
+\begin{theorem}[Tests for convexity]\label{thm:convexity-tests}
+For a twice-differentiable function $f$:
+\begin{enumerate}
+  \item in one variable, $f$ is convex if and only if $f''(x) \ge 0$ everywhere;
+  \item in several variables, $f$ is convex if and only if its Hessian is
+    positive semidefinite everywhere;
+  \item equivalently, $f$ is convex if and only if it lies above all its tangent
+    lines (planes): $f(\vy) \ge f(\vx) + \nabla f(\vx)^\top(\vy - \vx)$.
+\end{enumerate}
+\end{theorem}
+
+\begin{example}[Convex and non-convex functions]
+\emph{Convex:} $x^2$, $e^x$, $-\ln x$ (for $x > 0$), $\abs{x}$, $\ReLU(x)$, every
+norm $\norm{\vx}$, every linear function, and every positive semidefinite
+quadratic form. Sums of convex functions, and maxima of convex functions, are
+convex. Therefore the least-squares loss, the ridge loss and the lasso loss are
+all convex. \emph{Not convex:} $x^3$, $\sin x$, $-x^2$, and the losses of neural
+networks with hidden layers.
+\end{example}
+
+\begin{theorem}[Local minima of convex functions are global]\label{thm:convex-global}
+If $f$ is convex, every local minimum is a global minimum. If $f$ is
+\emph{strictly} convex (the inequality in \cref{def:convex-function} is strict for
+$\vx \neq \vy$ and $0 < \lambda < 1$), there is at most one minimiser.
+\end{theorem}
+
+\begin{proof}[Why]
+Suppose $\vx$ is a local minimum but some $\vy$ has $f(\vy) < f(\vx)$. Points
+$\vz = \lambda\vx + (1 - \lambda)\vy$ on the segment, with $\lambda$ close to
+$1$, are arbitrarily close to $\vx$, and by convexity
+$f(\vz) \le \lambda f(\vx) + (1 - \lambda)f(\vy) < f(\vx)$. So there are points
+arbitrarily close to $\vx$ with smaller values, contradicting that $\vx$ is a
+local minimum.
+\end{proof}
+
+\begin{mlnote}[Convex and non-convex learning]
+For convex problems (linear and ridge regression, logistic regression, support
+vector machines), gradient descent with a suitable learning rate converges to a
+global minimum, and the answer does not depend on where we start. Neural network
+losses are not convex: they have many local minima and saddle points, and
+different starting points lead to different solutions. It is one of the
+surprises of deep learning that gradient descent nevertheless works so well on
+these problems; understanding why is an active research area.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Which of these functions are convex on all of $\R$? $x^4$, $-x^2$, $e^{-x}$,
+$x^3$, $\abs{x - 2}$, $\max(0, x)$.
+\end{exercise}
+\begin{solution}
+$x^4$: yes ($f'' = 12x^2 \ge 0$). $-x^2$: no (it is concave). $e^{-x}$: yes
+($f'' = e^{-x} > 0$). $x^3$: no ($f'' = 6x < 0$ for $x < 0$). $\abs{x - 2}$: yes
+(a shifted norm). $\max(0, x)$: yes (a maximum of two linear functions).
+\end{solution}
+
+\begin{exercise}
+Show that $f(x, y) = x^2 + xy + y^2$ is convex.
+\end{exercise}
+\begin{solution}
+Its Hessian is $\left(\begin{smallmatrix} 2 & 1\\ 1 & 2\end{smallmatrix}\right)$,
+with eigenvalues $3$ and $1$, so it is positive definite everywhere; by
+\cref{thm:convexity-tests} $f$ is (strictly) convex.
+\end{solution}
+
+\begin{exercise}
+Is the set $\{x \in \R : \abs{x} \ge 1\}$ convex? Is $\{x \in \R : \abs{x} \le
+1\}$?
+\end{exercise}
+\begin{solution}
+The first is not: it contains $-1$ and $1$ but not $0$, which lies between them.
+The second, the interval $[-1, 1]$, is convex.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Stochastic gradient descent}\label{sec:sgd}
+%----------------------------------------------------------------------
+
+The empirical risk is an average over the training set,
+$L(\vtheta) = \frac1n\sum_{i=1}^n\ell_i(\vtheta)$, where $\ell_i$ is the loss on
+example $i$. Its gradient is therefore also an average,
+\[
+  \nabla L(\vtheta) = \frac1n\sum_{i=1}^n\nabla\ell_i(\vtheta),
+\]
+and computing it requires a pass over \emph{all} $n$ examples. With millions of
+training examples, one exact gradient step is very expensive.
+
+\begin{intuition}[Estimating the gradient from a sample]
+To estimate the average height of a country's population you do not measure
+everyone; a random sample of a few hundred people gives a good estimate. In the
+same way, the average of the gradients over a small random
+\term{mini-batch} of examples is a good, cheap estimate of the full gradient.
+It is noisy, but on average it points in the right direction (in the language
+of \cref{ch:probability}, it is an \emph{unbiased estimate}).
+\end{intuition}
+
+\begin{algorithm}[Mini-batch stochastic gradient descent]\label{alg:sgd}
+To minimise $L(\vtheta) = \frac1n\sum_i\ell_i(\vtheta)$:
+\begin{steps}
+  \item Choose $\vtheta_0$, a learning rate $\eta$ and a batch size $b$.
+  \item Repeat for each \term{epoch} (a full pass over the data): shuffle the
+    examples randomly and split them into mini-batches of $b$ examples.
+  \item For each mini-batch $B$, update
+    $\vtheta \leftarrow \vtheta - \eta\cdot\frac1b\sum_{i\in B}\nabla\ell_i(\vtheta)$.
+\end{steps}
+\end{algorithm}
+
+With $b = 1$ this is \term{stochastic gradient descent} (SGD) in its purest form;
+with $b = n$ it is ordinary (``full-batch'') gradient descent. Typical batch
+sizes in deep learning range from tens to thousands of examples.
+
+\begin{example}[SGD for the mean]\label{ex:sgd-mean}
+The mean of the data $1, 3, 5, 7$ minimises
+$L(c) = \frac14\sum_i(c - y_i)^2$, whose minimiser is $4$. The loss on a single
+example is $(c - y_i)^2$, with gradient $2(c - y_i)$. Run SGD with $b = 1$,
+$\eta = 0.1$, $c_0 = 0$, visiting the examples in the order $5, 1, 7, 3, 5, 7$.
+
+\sol $c_1 = 0 - 0.2(0 - 5) = 1$; $c_2 = 1 - 0.2(1 - 1) = 1$;
+$c_3 = 1 - 0.2(1 - 7) = 2.2$; $c_4 = 2.2 - 0.2(2.2 - 3) = 2.36$;
+$c_5 = 2.36 - 0.2(2.36 - 5) = 2.888$; $c_6 = 2.888 - 0.2(2.888 - 7) \approx
+3.710$. Each step pulls $c$ towards the current example rather than towards the
+mean, so the path is erratic, but it drifts towards $4$. With a constant
+learning rate it keeps jiggling around $4$; a decreasing learning rate lets it
+settle.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.92]
+  \foreach \c in {1,4,9,16,27.25}
+    \draw[MLdef!55] (0,0) ellipse ({sqrt(\c)} and {sqrt(\c/5)});
+  \draw[-{Stealth[length=2mm]},gray] (-5.6,0) -- (5.6,0) node[right] {$\theta_1$};
+  \draw[-{Stealth[length=2mm]},gray] (0,-2.5) -- (0,2.6) node[above] {$\theta_2$};
+  \draw[PlotRed,thick] (-4.000,1.500) -- (-3.855,1.069) -- (-3.522,0.606) -- (-3.113,0.330)
+    -- (-2.549,0.194) -- (-2.186,-0.318) -- (-1.996,-0.115) -- (-1.761,0.026) -- (-1.453,0.062)
+    -- (-1.368,0.061) -- (-1.351,0.055) -- (-1.219,-0.166) -- (-1.165,-0.020) -- (-1.026,-0.077)
+    -- (-1.165,-0.005) -- (-1.018,-0.128) -- (-0.805,-0.027) -- (-0.835,-0.086) -- (-0.763,-0.127)
+    -- (-0.333,-0.191) -- (-0.180,0.113) -- (-0.197,-0.031) -- (-0.121,0.119) -- (-0.112,0.066)
+    -- (-0.277,-0.060) -- (-0.273,-0.169) -- (-0.220,0.031) -- (-0.271,-0.057) -- (-0.217,0.069)
+    -- (-0.224,0.346) -- (-0.288,0.112) -- (-0.054,0.048) -- (0.071,-0.071) -- (0.319,0.079)
+    -- (0.198,-0.105) -- (0.448,0.010) -- (0.362,0.081) -- (0.127,0.189) -- (0.070,0.226)
+    -- (-0.113,0.116) -- (-0.055,0.273);
+  \draw[PlotBlue,thick,dashed] (-4.000,1.500) -- (-3.600,0.750) -- (-3.240,0.375)
+    -- (-2.916,0.188) -- (-2.624,0.094) -- (-2.362,0.047) -- (-2.126,0.023) -- (-1.913,0.012)
+    -- (-1.722,0.006) -- (-1.550,0.003) -- (-1.395,0.001) -- (-1.255,0.001) -- (-1.130,0.000);
+  \fill (0,0) circle (1.8pt);
+  \node[PlotRed,font=\small,anchor=south west] at (-3.2,1.25) {noisy (stochastic)};
+  \node[PlotBlue,font=\small,anchor=north] at (-2.4,-0.25) {exact gradient};
+\end{tikzpicture}
+\caption{Gradient descent with exact gradients (blue, dashed) and with noisy
+  gradient estimates (red), both with $\eta = 0.05$, on
+  $\theta_1^2 + 5\theta_2^2$. The noisy path wanders but makes progress towards
+  the minimum, and then keeps jittering around it.}
+\label{fig:sgd-path}
+\end{figure}
+
+\begin{mlnote}[Why SGD is the workhorse of deep learning]
+For the same amount of computation, SGD takes many cheap, noisy steps instead of
+a few expensive, exact ones, and on large data sets this wins by a wide margin.
+The noise is not only a nuisance: it helps the iterates escape saddle points
+and is believed to steer them towards ``flat'' minima that generalise better.
+Mini-batches of a few hundred examples also map well onto parallel hardware.
+Essentially every modern neural network is trained with mini-batch SGD or one of
+the refinements of the next section.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+A training set contains $50\,000$ images and the batch size is $100$. How many
+parameter updates are made per epoch? How many in $20$ epochs?
+\end{exercise}
+\begin{solution}
+$50\,000/100 = 500$ updates per epoch, so $10\,000$ updates in $20$ epochs.
+\end{solution}
+
+\begin{exercise}
+Run three steps of SGD ($b = 1$, $\eta = 0.25$, $c_0 = 0$) for the mean of the
+data $2, 4, 6, 8$, visiting the examples $6$, $2$, $8$.
+\end{exercise}
+\begin{solution}
+The single-example gradient is $2(c - y)$, so $c \leftarrow c - 0.5(c - y)$:
+$c_1 = 0 - 0.5(0 - 6) = 3$; $c_2 = 3 - 0.5(3 - 2) = 2.5$;
+$c_3 = 2.5 - 0.5(2.5 - 8) = 5.25$. The target is the mean $5$.
+\end{solution}
+
+\begin{exercise}
+Suppose an epoch visits every example exactly once, in mini-batches of equal
+size. Show that the average of the mini-batch gradients (all evaluated at the
+same $\vtheta$) equals the full gradient.
+\end{exercise}
+\begin{solution}
+With $m = n/b$ batches $B_1, \dots, B_m$,
+\[
+  \frac1m\sum_{j=1}^m\frac1b\sum_{i\in B_j}\nabla\ell_i
+  = \frac{1}{mb}\sum_{i=1}^n\nabla\ell_i = \frac1n\sum_{i=1}^n\nabla\ell_i
+  = \nabla L,
+\]
+since the batches together contain every example exactly once.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Momentum and adaptive methods}\label{sec:momentum-adam}
+%----------------------------------------------------------------------
+
+Plain gradient descent has two weaknesses that we have already seen: it
+zig-zags in narrow valleys, and a single learning rate must serve all parameters,
+even if they need very different step sizes. Two ideas address them.
+
+\subsection{Momentum}
+
+\begin{picturethis}
+Replace the cautious hiker by a heavy ball rolling down the landscape. The ball
+builds up speed in directions where the slope is consistent, and its inertia
+smooths out back-and-forth wobbles, because pushes in opposite directions cancel.
+\end{picturethis}
+
+\begin{algorithm}[Gradient descent with momentum]\label{alg:momentum}
+Choose a momentum coefficient $\beta \in [0, 1)$, typically $0.9$, and start with
+the ``velocity'' $\vv_0 = \vzero$. At each step, with $\vg_k = \nabla L(\vtheta_k)$:
+\begin{steps}
+  \item $\vv_{k+1} = \beta\,\vv_k + \vg_k$ \quad (a running sum of past gradients,
+    with old ones fading);
+  \item $\vtheta_{k+1} = \vtheta_k - \eta\,\vv_{k+1}$.
+\end{steps}
+\end{algorithm}
+
+If the gradient keeps pointing the same way, the velocity grows towards
+$\frac{1}{1 - \beta}$ times the gradient (ten times for $\beta = 0.9$), so the ball
+accelerates along consistent directions. In a zig-zag, successive gradients in
+the steep direction have opposite signs and largely cancel.
+
+\subsection{Adaptive learning rates: RMSProp and Adam}
+
+\emph{RMSProp} gives each parameter its own effective learning rate. It keeps
+a running average of the \emph{squared} gradient of each parameter,
+$s_{k+1} = \rho s_k + (1 - \rho)g_k^2$ (all operations component by component),
+and divides the step by its square root:
+$\theta_{k+1} = \theta_k - \eta\,g_k/(\sqrt{s_{k+1}} + \epsilon)$. Parameters with
+consistently large gradients get smaller steps, and parameters with small
+gradients get larger ones. The tiny constant $\epsilon$ (such as $10^{-8}$) only
+prevents division by zero.
+
+\emph{Adam} (``adaptive moment estimation'') combines momentum with RMSProp, and
+is the default optimiser for training most deep networks, including large
+language models.
+
+\begin{algorithm}[Adam]\label{alg:adam}
+With default values $\eta = 10^{-3}$, $\beta_1 = 0.9$, $\beta_2 = 0.999$,
+$\epsilon = 10^{-8}$, start with $\vm_0 = \vs_0 = \vzero$. At step
+$t = 1, 2, \dots$, with gradient $\vg_t$ (all operations component by component):
+\begin{steps}
+  \item $\vm_t = \beta_1\vm_{t-1} + (1 - \beta_1)\,\vg_t$ \quad (average gradient:
+    momentum);
+  \item $\vs_t = \beta_2\vs_{t-1} + (1 - \beta_2)\,\vg_t^2$ \quad (average squared
+    gradient);
+  \item $\hat\vm_t = \vm_t/(1 - \beta_1^t)$ and $\hat\vs_t = \vs_t/(1 - \beta_2^t)$
+    \quad (corrections for starting at zero);
+  \item $\vtheta_t = \vtheta_{t-1} - \eta\,\hat\vm_t/(\sqrt{\hat\vs_t} + \epsilon)$.
+\end{steps}
+\end{algorithm}
+
+\begin{intuition}[What Adam's step looks like]
+At the first step, $\hat\vm_1 = \vg_1$ and $\hat\vs_1 = \vg_1^2$, so the update of
+each parameter is about $\eta\,g/\abs{g} = \pm\eta$: \emph{every parameter moves by
+roughly $\eta$, whatever the size of its gradient}. Later, the ratio
+$\hat m/\sqrt{\hat s}$ is close to $\pm1$ when a parameter's gradient is consistent
+and closer to $0$ when it keeps changing sign. So Adam's steps have a
+predictable size of about $\eta$ per parameter, which makes its learning rate
+much easier to choose than that of plain SGD.
+\end{intuition}
+
+\begin{remark}[AdamW]
+Regularising with $\lambda\norm{\vtheta}^2$ adds $2\lambda\vtheta$ to the gradient,
+which Adam would then rescale along with everything else. The widely used variant
+\emph{AdamW} instead applies the weight decay directly,
+$\vtheta \leftarrow \vtheta - \eta\lambda\vtheta$, separately from the adaptive
+step; this tends to work better.
+\end{remark}
+
+\sectionexercises
+
+\begin{exercise}
+Gradient descent with momentum ($\beta = 0.9$, $\eta = 0.1$) is applied in a
+region where the gradient is constantly $g = 1$. Compute the first three steps
+taken, and the step size the method approaches in the long run.
+\end{exercise}
+\begin{solution}
+$v_1 = 1$, $v_2 = 1.9$, $v_3 = 2.71$, so the steps are $0.1$, $0.19$, $0.271$. The
+velocity approaches $\tfrac{1}{1 - 0.9} = 10$, so the steps approach $1$: ten times
+the step of plain gradient descent.
+\end{solution}
+
+\begin{exercise}
+In Adam's first step, the gradient is $\vg_1 = (0.002, -30)$ and $\eta = 0.001$.
+Compute (approximately) the change in each parameter.
+\end{exercise}
+\begin{solution}
+$\hat\vm_1 = \vg_1$ and $\hat\vs_1 = \vg_1^2$, so the step is
+$-\eta\,\vg_1/\abs{\vg_1} = -0.001\cdot(1, -1) = (-0.001, +0.001)$. Both
+parameters move by $0.001$, although their gradients differ by a factor of
+$15\,000$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Newton's method}\label{sec:newton}
+%----------------------------------------------------------------------
+
+Gradient descent trusts only the slope. \term{Newton's method} also uses the
+curvature: at each step it fits the quadratic Taylor approximation
+(\cref{sec:taylor-1d,sec:taylor-multi}) and jumps straight to its minimum. In one
+variable, the parabola $f(x_k) + f'(x_k)h + \frac12f''(x_k)h^2$ is minimised at
+$h = -f'(x_k)/f''(x_k)$, giving
+\[
+  \keyeq{x_{k+1} = x_k - \frac{f'(x_k)}{f''(x_k)}}
+  \qquad\text{and, in several variables,}\qquad
+  \vtheta_{k+1} = \vtheta_k - \mH^{-1}\nabla L(\vtheta_k).
+\]
+For a quadratic function the approximation is exact, so Newton's method finds
+the minimum in a single step.
+
+\begin{example}[Newton's method]\label{ex:newton}
+Minimise $f(x) = e^x - 2x$, starting from $x_0 = 0$.
+
+\sol $f'(x) = e^x - 2$ and $f''(x) = e^x$, so $x_{k+1} = x_k - \frac{e^{x_k} -
+2}{e^{x_k}}$. The iterates are
+\[
+  x_0 = 0,\quad x_1 = 1,\quad x_2 \approx 0.7358,\quad x_3 \approx 0.69404,
+  \quad x_4 \approx 0.6931476,
+\]
+approaching the exact minimiser $\ln2 \approx 0.6931472$ (where $f' = 0$). The
+errors are about $0.31$, $0.043$, $0.00090$, $0.0000004$: the number of correct
+digits roughly doubles at every step. This \emph{quadratic convergence} is far
+faster than gradient descent, whose error shrinks by a constant factor per step.
+\end{example}
+
+\begin{mlnote}[Why deep learning does not use Newton's method]
+For a model with $n$ parameters, the Hessian has $n^2$ entries and solving with it
+costs on the order of $n^3$ operations. For $n = 10^8$ this is out of the
+question. Moreover, near saddle points the Hessian is indefinite and Newton's
+method happily jumps \emph{towards} the saddle instead of away from it. For
+problems with up to a few thousand parameters, quasi-Newton methods such as
+L-BFGS, which build a cheap approximation of the Hessian from successive
+gradients, are excellent. For deep learning, adaptive first-order methods such
+as Adam, which use only cheap per-parameter curvature estimates, are the
+practical compromise.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Apply one step of Newton's method to $f(x) = x^2 - 6x + 2$ from an arbitrary
+starting point $x_0$. Explain the result.
+\end{exercise}
+\begin{solution}
+$f'(x) = 2x - 6$ and $f'' = 2$, so $x_1 = x_0 - \tfrac{2x_0 - 6}{2} = 3$, the
+exact minimiser, whatever $x_0$ is. For a quadratic, the quadratic
+approximation is the function itself.
+\end{solution}
+
+\begin{exercise}
+Compare one step of Newton's method with one step of gradient descent
+($\eta = 0.1$) for $f(x) = e^x - 2x$ starting at $x_0 = 1$. Which ends up closer
+to $\ln2 \approx 0.693$?
+\end{exercise}
+\begin{solution}
+Newton: $x_1 = 1 - \tfrac{e - 2}{e} \approx 0.736$. Gradient descent:
+$x_1 = 1 - 0.1(e - 2) \approx 0.928$. Newton is much closer.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Constrained optimisation and Lagrange multipliers}\label{sec:lagrange}
+%----------------------------------------------------------------------
+
+Sometimes the variables are not free. Probabilities must add up to one; a
+budget cannot be exceeded; in \cref{fig:l1-l2} the weights were confined to a
+ball. We consider problems of the form
+\[
+  \text{minimise } f(\vx) \quad\text{subject to}\quad g(\vx) = c .
+\]
+
+\begin{intuition}[Tangency]
+Walk along the constraint curve $g(\vx) = c$ while watching the contour lines of
+$f$. As long as you cross contour lines, you can still decrease $f$ by walking
+on. At the constrained minimum you stop crossing them: the constraint curve just
+\emph{touches} a contour line (\cref{fig:lagrange}). Two curves that touch have the
+same perpendicular direction, so the gradients $\nabla f$ and $\nabla g$ (each
+perpendicular to its own contour) are parallel there:
+\[
+  \nabla f(\vx^*) = \lambda\,\nabla g(\vx^*)
+\]
+for some number $\lambda$, called the \term{Lagrange multiplier}.
+\end{intuition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.85]
+  \draw[-{Stealth[length=2mm]},gray] (-0.6,0) -- (5.6,0) node[right] {$x$};
+  \draw[-{Stealth[length=2mm]},gray] (0,-0.6) -- (0,3.4) node[above] {$y$};
+  \foreach \r in {1.2,2.236,3.2}
+    \draw[MLdef!60] (\r,0) arc (0:90:\r);
+  \draw[very thick,PlotRed] (-0.4,2.7) -- (5.4,-0.2) node[below,font=\small] {$x + 2y = 5$};
+  \fill (1,2) circle (2pt);
+  \draw[-{Stealth[length=2mm]},thick,MLdef] (1,2) -- ++(0.5,1) node[right,font=\small] {$\nabla f$};
+  \draw[-{Stealth[length=2mm]},thick,PlotRed] (1.12,1.94) -- ++(0.32,0.64)
+    node[right,font=\small] {$\nabla g$};
+  \node[font=\small,anchor=north east] at (0.95,1.95) {$(1,2)$};
+\end{tikzpicture}
+\caption{Minimising $f = x^2 + y^2$ (circular contours) on the line
+  $g = x + 2y = 5$. At the solution $(1, 2)$ the line touches a contour, and
+  $\nabla f = (2, 4)$ is parallel to $\nabla g = (1, 2)$.}
+\label{fig:lagrange}
+\end{figure}
+
+\begin{theorem}[Method of Lagrange multipliers]\label{thm:lagrange}
+If $\vx^*$ minimises (or maximises) $f(\vx)$ subject to $g(\vx) = c$, and
+$\nabla g(\vx^*) \neq \vzero$, then there is a number $\lambda$ with
+\[
+  \nabla f(\vx^*) = \lambda\,\nabla g(\vx^*) \qquad\text{and}\qquad g(\vx^*) = c .
+\]
+Equivalently, $\vx^*$ and $\lambda$ make the gradient of the \term{Lagrangian}
+$\mathcal{L}(\vx, \lambda) = f(\vx) - \lambda\bigl(g(\vx) - c\bigr)$ equal to zero.
+\end{theorem}
+
+The recipe: write down the equations $\nabla f = \lambda\nabla g$ (one per
+variable) together with the constraint, solve them, and compare the values of
+$f$ at the solutions.
+
+\begin{example}[The closest point on a line]\label{ex:lagrange-line}
+Minimise $f(x, y) = x^2 + y^2$ subject to $x + 2y = 5$.
+
+\sol $\nabla f = (2x, 2y)$ and $\nabla g = (1, 2)$. The equations are
+$2x = \lambda$, $2y = 2\lambda$, $x + 2y = 5$. The first two give $y = 2x$; the
+constraint then gives $5x = 5$, so $(x, y) = (1, 2)$, with $\lambda = 2$ and
+$f = 5$. The point $(1, 2)$ is the point of the line closest to the origin, at
+distance $\sqrt5$ (compare the exercise on distances to lines in
+\cref{sec:dot-product}).
+\end{example}
+
+\begin{example}[Maximising a product]
+Maximise $f(x, y) = xy$ subject to $x + y = 10$.
+
+\sol $\nabla f = (y, x) = \lambda(1, 1)$ gives $x = y$; with the constraint,
+$x = y = 5$ and $f = 25$. This is the rectangle problem of \cref{sec:extrema},
+solved a second way.
+\end{example}
+
+\begin{example}[Maximum likelihood for categories]\label{ex:lagrange-categorical}
+A die-like experiment with three outcomes produced the counts $n_1, n_2, n_3$ in
+$N = n_1 + n_2 + n_3$ trials. Which probabilities $p_1, p_2, p_3$ make the
+observations most likely? (In \cref{ch:statistics} we will see that this means
+maximising $f(\vp) = n_1\ln p_1 + n_2\ln p_2 + n_3\ln p_3$.) The constraint is
+$p_1 + p_2 + p_3 = 1$.
+
+\sol $\pderiv{f}{p_i} = \frac{n_i}{p_i}$ and $\nabla g = (1, 1, 1)$, so
+$\frac{n_i}{p_i} = \lambda$, i.e.\ $p_i = \frac{n_i}{\lambda}$. Summing,
+$1 = \frac{N}{\lambda}$, so $\lambda = N$ and
+\[
+  p_i = \frac{n_i}{N}.
+\]
+The best probabilities are the observed frequencies, for example
+$(0.3, 0.5, 0.2)$ for counts $(3, 5, 2)$. Reassuringly, mathematics confirms
+common sense.
+\end{example}
+
+\begin{remark}[Inequality constraints and projections]
+Constraints of the form $g(\vx) \le c$ lead to the
+\emph{Karush--Kuhn--Tucker (KKT) conditions}: at the optimum, either the
+constraint is not active ($g < c$, and then $\lambda = 0$ and the problem is
+locally unconstrained), or it is active ($g = c$, and the Lagrange condition
+holds with $\lambda$ of the appropriate sign). The theory of support vector
+machines is built on these conditions. A simpler practical approach is
+\emph{projected gradient descent}: take an ordinary gradient step, then move the
+result back to the nearest point satisfying the constraints, for example by
+clipping negative weights to zero when weights must be non-negative.
+\end{remark}
+
+\sectionexercises
+
+\begin{exercise}
+Minimise $x^2 + y^2$ subject to $x + y = 4$.
+\end{exercise}
+\begin{solution}
+$(2x, 2y) = \lambda(1, 1)$ gives $x = y$, so $x = y = 2$, with $\lambda = 4$ and
+minimum value $8$.
+\end{solution}
+
+\begin{exercise}
+Find the maximum and minimum of $f(x, y) = x + y$ on the circle
+$x^2 + y^2 = 2$.
+\end{exercise}
+\begin{solution}
+$(1, 1) = \lambda(2x, 2y)$ gives $x = y = \tfrac{1}{2\lambda}$. On the circle,
+$2x^2 = 2$, so $x = y = \pm1$. The maximum is $f(1, 1) = 2$ and the minimum is
+$f(-1, -1) = -2$.
+\end{solution}
+
+\begin{exercise}
+In \cref{ex:lagrange-categorical}, what are the maximum-likelihood probabilities
+for the counts $(12, 6, 2)$?
+\end{exercise}
+\begin{solution}
+$N = 20$, so $\vp = (0.6, 0.3, 0.1)$.
+\end{solution}
+
+\begin{exercise}
+Weights must satisfy $w_i \ge 0$. After a gradient step the weights are
+$(0.4, -0.1, 0.0, -2.3)$. What does projected gradient descent do next?
+\end{exercise}
+\begin{solution}
+It projects onto the allowed set by replacing each negative entry by the nearest
+allowed value $0$: the new weights are $(0.4, 0, 0, 0)$. (This is the ReLU applied
+to the weight vector.)
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Chapter summary}\label{sec:ch8-summary}
+%----------------------------------------------------------------------
+
+\begin{keytakeaways}
+\begin{itemize}
+  \item Training is empirical risk minimisation:
+    $\min_{\vtheta}\frac1n\sum_i\ell(f(\vx_i;\vtheta), y_i)$, possibly plus a
+    regulariser.
+  \item Some problems have formulas: least squares solves
+    $\mX^\top\mX\vw = \mX^\top\vy$; ridge solves $(\mX^\top\mX + \lambda\mI)\vw =
+    \mX^\top\vy$.
+  \item Gradient descent: $\vtheta \leftarrow \vtheta - \eta\nabla L(\vtheta)$. Each
+    small step goes downhill.
+  \item On a quadratic with curvature $a$, gradient descent converges iff
+    $0 < \eta < 2/a$. A large condition number causes zig-zagging and slow
+    progress. Learning rates are tuned on a log scale and decayed by schedules.
+  \item Convex functions (chords above the graph, Hessian PSD) have no bad local
+    minima. Linear and logistic regression are convex; neural networks are not.
+  \item Mini-batch SGD uses cheap, noisy gradient estimates; one epoch is one pass
+    over the data.
+  \item Momentum accelerates consistent directions; Adam adapts the step size of
+    each parameter and is the default for deep learning.
+  \item Newton's method uses the Hessian and converges very fast, but is too
+    expensive for large models.
+  \item Lagrange multipliers: at a constrained optimum, $\nabla f = \lambda\nabla g$.
+\end{itemize}
+\end{keytakeaways}
+
+We now know how to fit models. But how much should we trust a fitted model, and
+will it work on data it has not seen? Answering such questions requires the
+language of uncertainty: probability, which is the subject of the next chapter.
