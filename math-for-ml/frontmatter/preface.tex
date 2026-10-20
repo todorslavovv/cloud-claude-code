@@ -1,0 +1,185 @@
+%======================================================================
+% Preface: how to use these notes
+%======================================================================
+\chapter*{How to Use These Notes}\label{ch:preface}
+\addcontentsline{toc}{chapter}{How to Use These Notes}
+\markboth{How to Use These Notes}{How to Use These Notes}
+
+\section*{Who these notes are for}
+
+These notes are written for someone who wants to understand machine learning
+(ML) and deep learning (DL) properly, but who currently knows little or no
+mathematics beyond everyday arithmetic: adding, subtracting, multiplying and
+dividing numbers. If you have ever opened a machine learning paper, a textbook
+or even a tutorial and been stopped by a wall of symbols such as
+$\nabla_{\vtheta} L$, $\mW^\top\vx$, $\E[X]$ or $\sum_{i=1}^n$, these notes are
+meant to take you from that point to the point where those symbols feel like
+old friends.
+
+Nothing is assumed. Every concept is introduced from first principles, with a
+reason for why it exists, a picture of what it means, concrete numerical
+examples, and only then the general rule. When we say ``from absolute
+beginner'', we mean it: Chapter~\ref{ch:numbers} starts with what a number
+is.
+
+At the same time, the destination is ambitious. By the last chapter you will
+have met every piece of mathematics that a standard first course in machine
+learning or deep learning takes for granted: linear algebra (vectors, matrices,
+eigenvalues, the singular value decomposition), calculus (derivatives,
+gradients, the chain rule, Taylor approximations), optimization (gradient
+descent and its relatives), probability and statistics (distributions,
+expectation, Bayes' theorem, maximum likelihood, the bias--variance tradeoff),
+and the specific tools of deep learning (softmax, cross-entropy, matrix
+calculus and backpropagation).
+
+\section*{What these notes are not}
+
+They are not a course on programming, and they are not a complete treatment of
+any branch of mathematics. Where a topic is deep (for example, the theory of
+limits or of measure-theoretic probability), we give the intuition that a
+practitioner needs and point you to where the rigorous story is told. The
+final chapter, \emph{Where to Go Next}, suggests what to read after these
+notes.
+
+\section*{How the notes are organised}
+
+The notes are divided into twelve chapters that build on one another. The
+diagram below shows which chapters depend on which. The three main
+``strands'' are linear algebra (left), calculus and optimization (middle) and
+probability and statistics (right); they come together in
+Chapter~\ref{ch:dl}, where we assemble the mathematics of a neural network.
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=7mm and 6mm,
+  chap/.style={draw,rounded corners=3pt,thick,align=center,
+    minimum width=33mm,minimum height=10mm,font=\small,fill=white},
+  found/.style={chap,draw=MLremark,fill=MLremark!8},
+  linalg/.style={chap,draw=MLdef,fill=MLdef!8},
+  calc/.style={chap,draw=MLexample,fill=MLexample!8},
+  prob/.style={chap,draw=MLthm,fill=MLthm!8},
+  dl/.style={chap,draw=MLml,fill=MLml!10},
+  dep/.style={-{Stealth[length=2mm]},thick,gray!70},
+]
+  \node[found] (c1) {\textbf{1} Numbers \&\\ algebra};
+  \node[found,below=of c1] (c2) {\textbf{2} Functions \&\\ graphs};
+  \node[found,left=of c2] (c3) {\textbf{3} Geometry \&\\ trigonometry};
+  \node[linalg,below=of c3] (c4) {\textbf{4} Linear algebra I:\\ vectors \& matrices};
+  \node[calc,below=of c2] (c6) {\textbf{6} Calculus I:\\ one variable};
+  \node[prob,right=of c6] (c9) {\textbf{9} Probability};
+  \node[linalg,below=of c4] (c5) {\textbf{5} Linear algebra II:\\ core ML topics};
+  \node[calc,below=of c6] (c7) {\textbf{7} Multivariable\\ calculus};
+  \node[prob,below=of c9] (c10) {\textbf{10} Statistics\\ for ML};
+  \node[calc,below=of c7] (c8) {\textbf{8} Optimization};
+  \node[dl,below=of c8] (c11) {\textbf{11} Topics for\\ deep learning};
+  \node[found,below=of c11] (c12) {\textbf{12} Where to go next};
+
+  \draw[dep] (c1) -- (c2);
+  \draw[dep] (c2) -- (c3);
+  \draw[dep] (c3) -- (c4);
+  \draw[dep] (c4) -- (c5);
+  \draw[dep] (c2) -- (c6);
+  \draw[dep] (c6) -- (c7);
+  \draw[dep] (c5) -- (c7);
+  \draw[dep] (c6) -- (c9);
+  \draw[dep] (c9) -- (c10);
+  \draw[dep] (c7) -- (c8);
+  \draw[dep] (c5.south) |- (c11.west);
+  \draw[dep] (c8) -- (c11);
+  \draw[dep] (c10.south) |- (c11.east);
+  \draw[dep] (c11) -- (c12);
+\end{tikzpicture}
+\end{center}
+
+If you are a complete beginner, read the chapters in order. If you already
+feel comfortable with some material (say, you remember high-school algebra),
+skim the corresponding chapter, try its exercises, and move on as soon as they
+feel easy. Each chapter opens with a list of what you will learn, which you can
+use as a checklist.
+
+\section*{The boxes}
+
+The text is interspersed with coloured boxes. Each colour always means the
+same thing, so that you can find your way around quickly.
+
+\begin{tcolorbox}[mlbox=MLmotivation]
+\textbf{\color{MLmotivation}Motivation.} Opens every chapter and many sections:
+\emph{why} do we need this idea, and where does it show up in machine learning?
+\end{tcolorbox}
+\begin{tcolorbox}[mlbox=MLdef]
+\textbf{\color{MLdef}Definition.} The precise meaning of a new word or symbol.
+Definitions are the vocabulary of mathematics; it pays to read them twice.
+\end{tcolorbox}
+\begin{tcolorbox}[mlbox=MLthm]
+\textbf{\color{MLthm}Theorem / Proposition / Corollary.} A fact that follows from
+the definitions. Often we explain why it is true, sometimes with a short proof.
+\end{tcolorbox}
+\begin{tcolorbox}[mlbox=MLexample,colback=MLexample!3!white]
+\textbf{\color{MLexample}Example.} A worked example with concrete numbers. Try to
+solve it yourself before reading the \emph{Solution}.
+\end{tcolorbox}
+\begin{tcolorbox}[mlbox=MLintuition,colback=MLintuition!7!white]
+\textbf{\color{MLintuition}Intuition / Picture this.} An informal explanation, an
+analogy, or a mental picture. These are often the most important boxes of all.
+\end{tcolorbox}
+\begin{tcolorbox}[mlbox=MLml]
+\textbf{\color{MLml}Why this matters for ML.} How the idea is used in machine
+learning or deep learning.
+\end{tcolorbox}
+\begin{tcolorbox}[mlbox=MLpitfall]
+\textbf{\color{MLpitfall}Common pitfall.} A mistake that many people make, and how
+to avoid it.
+\end{tcolorbox}
+\begin{tcolorbox}[mlbox=MLnotation]
+\textbf{\color{MLnotation}Notation.} How a new symbol is written and read aloud.
+\end{tcolorbox}
+\begin{tcolorbox}[mlbox=MLremark,colback=MLremark!4!white]
+\textbf{\color{MLremark}Remark.} A side comment: a subtlety, a generalisation, or a
+historical note. Safe to skip on a first reading.
+\end{tcolorbox}
+\begin{tcolorbox}[mlbox=MLalgorithm]
+\textbf{\color{MLalgorithm}Algorithm.} A recipe, written as a list of steps, that a
+computer (or you, with a pencil) can follow.
+\end{tcolorbox}
+\begin{tcolorbox}[mlbox=MLexercise,colback=MLexercise!3!white]
+\textbf{\color{MLexercise}Exercise.} A problem for you to solve. Exercises appear at
+the end of most sections. Every exercise has a solution in
+Appendix~\ref{app:solutions}; the small link in the bottom-right corner of
+each exercise box takes you straight to it, and the exercise number in the
+appendix takes you back.
+\end{tcolorbox}
+
+New technical terms are printed in \textbf{\color{MLterm}bold colour} where
+they are first explained, and every such term is listed in the index at the
+end of the notes.
+
+\section*{How to study mathematics}
+
+Mathematics is not a spectator sport. The following habits make an enormous
+difference.
+
+\begin{itemize}
+  \item \textbf{Read slowly, with pencil and paper.} A page of mathematics can take
+    much longer to read than a page of a novel. That is normal. When the text
+    says ``it follows that'', check that it does.
+  \item \textbf{Work through every example yourself.} Cover the solution, try the
+    problem, then compare.
+  \item \textbf{Do the exercises.} Understanding comes from doing. Start with the
+    first few exercises of each section; they are the easiest.
+  \item \textbf{Say the symbols out loud.} Every formula is a sentence. The
+    \emph{Notation} boxes tell you how to read new symbols, and
+    Appendix~\ref{app:notation} collects them all.
+  \item \textbf{Expect confusion, and push through it.} Being confused is not a
+    sign that you are bad at mathematics; it is what learning mathematics feels
+    like. Come back to a difficult section after a day or two and it will often
+    have become clear.
+  \item \textbf{Connect to code if you can.} If you program, implement small
+    examples (for instance in Python with NumPy). Seeing a formula produce the
+    same number as your hand calculation is a powerful check.
+\end{itemize}
+
+\section*{Reference material at the end}
+
+Appendix~\ref{app:notation} lists all notation and the Greek alphabet,
+Appendix~\ref{app:formulas} is a compact formula sheet for revision, and
+Appendix~\ref{app:solutions} contains solutions to all exercises.

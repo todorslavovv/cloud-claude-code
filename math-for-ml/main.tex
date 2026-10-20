@@ -1,0 +1,72 @@
+%======================================================================
+% main.tex
+%
+%   Mathematics for Machine Learning and Deep Learning:
+%   From Absolute Beginner to Prerequisites
+%
+% Build the complete notes:   make                (see Makefile)
+%                         or: latexmk -pdf main.tex
+% Build a single chapter:     make chapter CH=04
+%
+% Every chapter lives in its own file under chapters/, and is pulled in
+% with \include. See README.md for more details.
+%======================================================================
+\documentclass[11pt,a4paper,oneside,openany]{book}
+\input{preamble}
+
+%----------------------------------------------------------------------
+% Typesetting only part of the notes
+%
+% From an editor (Overleaf, TeXstudio, ...): uncomment the \includeonly
+% line below and list the files you want, always together with the
+% solutions appendix. Chapter numbers, page numbers and cross-references
+% stay correct, provided the complete notes have been compiled at least
+% once before (LaTeX reuses the .aux files of the omitted chapters).
+%
+% From the command line, "make chapter CH=04" does the same thing by
+% defining \MLSelectedParts.
+%----------------------------------------------------------------------
+% \includeonly{chapters/04-linear-algebra-basics,appendices/C-solutions}
+\ifdefined\MLSelectedParts
+  \includeonly{\MLSelectedParts}
+\fi
+
+% \ifMLfullbook is true unless only part of the notes is being typeset;
+% the title page and the table of contents are skipped in that case.
+\makeatletter
+\newif\ifMLfullbook
+\if@partsw\MLfullbookfalse\else\MLfullbooktrue\fi
+\makeatother
+
+\begin{document}
+
+\frontmatter
+\ifMLfullbook
+  \input{frontmatter/titlepage}
+  \tableofcontents
+\fi
+\include{frontmatter/preface}
+
+\mainmatter
+\include{chapters/01-numbers-and-algebra}
+\include{chapters/02-functions-and-graphs}
+\include{chapters/03-geometry-and-trigonometry}
+\include{chapters/04-linear-algebra-basics}
+\include{chapters/05-linear-algebra-core}
+\include{chapters/06-calculus-single-variable}
+\include{chapters/07-multivariable-calculus}
+\include{chapters/08-optimization}
+\include{chapters/09-probability}
+\include{chapters/10-statistics}
+\include{chapters/11-deep-learning-topics}
+\include{chapters/12-where-to-go-next}
+
+\appendix
+\include{appendices/A-notation}
+\include{appendices/B-formula-sheet}
+\include{appendices/C-solutions}
+
+\backmatter
+\printindex
+
+\end{document}

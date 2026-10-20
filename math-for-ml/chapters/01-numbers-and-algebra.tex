@@ -1,0 +1,1770 @@
+%======================================================================
+% Chapter 1: Numbers, Arithmetic, and Algebraic Thinking
+%======================================================================
+\chapter{Numbers, Arithmetic, and Algebraic Thinking}\label{ch:numbers}
+
+\begin{motivation}
+To a computer, everything in machine learning is a number. A photograph of a
+cat is a grid of numbers that record how bright each tiny dot (pixel) is. A
+sentence is turned into a list of numbers before a language model reads it. A
+house is described by numbers such as its floor area, its number of bedrooms
+and its age. A machine learning \emph{model} is a recipe that turns input
+numbers into output numbers (``this picture is a cat with probability
+$0.97$''), and the recipe contains adjustable numbers, called
+\emph{parameters}, that are tuned during training.
+
+So before anything else we need to be fluent with numbers: what kinds of
+numbers exist, how to calculate with them, and, crucially, how to reason
+about numbers we do not know yet. That last skill is called \emph{algebra}. It
+is the language in which every formula of machine learning is written.
+\end{motivation}
+
+\begin{objectives}
+\begin{itemize}
+  \item distinguish natural numbers, integers, rational numbers and real numbers,
+    and use set and interval notation;
+  \item calculate confidently with negative numbers, fractions, decimals and
+    percentages;
+  \item use exponents, roots and scientific notation (such as $3\times10^{-4}$);
+  \item evaluate expressions using the correct order of operations;
+  \item read and write summation notation $\sum$, the most common symbol in
+    machine learning formulas;
+  \item solve linear equations, simple systems of equations, and linear
+    inequalities;
+  \item work with absolute values and interpret them as distances.
+\end{itemize}
+\end{objectives}
+
+%----------------------------------------------------------------------
+\section{Kinds of numbers}\label{sec:kinds-of-numbers}
+%----------------------------------------------------------------------
+
+Numbers were invented to answer questions. ``How many sheep do I have?'' needs
+one kind of number; ``how much do I owe?'' needs another; ``how long is the
+diagonal of this square?'' needs yet another. Each new kind of question
+enlarged the family of numbers. We will meet the family members in the order
+in which they are usually discovered.
+
+\subsection{Natural numbers}
+
+The numbers we use for counting, $1, 2, 3, 4, \dots$, are called the
+\term[natural number]{natural numbers}. The three dots mean ``and so on
+forever'': there is no largest natural number, because you can always add
+one more.
+
+\begin{notation}
+A collection of objects is called a \term{set}, and the objects in it are its
+\term[element of a set]{elements}. We list the elements of a set between curly
+braces. The set of natural numbers has a special symbol, a ``blackboard
+bold'' letter N:
+\[
+  \N = \{1, 2, 3, 4, \dots\}.
+\]
+We write $5 \in \N$, read ``$5$ \emph{is an element of} $\N$'' or simply ``$5$
+is in $\N$''. We write $-2 \notin \N$, read ``$-2$ is not in $\N$''.
+\end{notation}
+
+\begin{remark}
+Some books include $0$ in the natural numbers and some do not. Nothing deep
+depends on this choice. In these notes, $\N$ starts at $1$.
+\end{remark}
+
+\subsection{Integers}
+
+Counting numbers cannot describe a temperature of five degrees below zero, a
+debt of \$20, or a position $3$ metres below sea level. For that we need zero
+and the negative numbers. The \term[integer]{integers} are the whole numbers,
+positive, negative and zero:
+\[
+  \Z = \{\dots, -3, -2, -1, 0, 1, 2, 3, \dots\}.
+\]
+(The letter $\Z$ comes from the German word \emph{Zahlen}, ``numbers''.)
+
+The best way to picture the integers is on a \term{number line}: a straight
+line with $0$ in the middle, the positive numbers spaced evenly to the right
+and the negative numbers to the left (\cref{fig:number-line}). Numbers further
+to the right are larger. So $-1$ is larger than $-5$, even though $5$ is larger
+than $1$: being $1$ degree below zero is warmer than being $5$ degrees below
+zero.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1.3cm]
+  \draw[{Stealth[length=2.5mm]}-{Stealth[length=2.5mm]},thick] (-4.6,0) -- (4.6,0);
+  \foreach \x in {-4,...,4}
+    \draw (\x,0.08) -- (\x,-0.08) node[below=2pt,font=\small] {$\x$};
+  \fill[PlotRed] (-2.5,0) circle (2.2pt) node[above=3pt,font=\small] {$-2.5$};
+  \fill[PlotRed] (0.5,0) circle (2.2pt) node[above=3pt,font=\small] {$\tfrac12$};
+  \fill[PlotRed] (1.41421,0) circle (2.2pt) node[above=3pt,font=\small] {$\sqrt2$};
+  \fill[PlotRed] (3.14159,0) circle (2.2pt) node[above=3pt,font=\small] {$\pi$};
+  \node[font=\small\itshape,text=MLremark] at (-2.5,-0.75) {$\longleftarrow$ smaller (negative)};
+  \node[font=\small\itshape,text=MLremark] at (2.5,-0.75) {larger (positive) $\longrightarrow$};
+\end{tikzpicture}
+\caption{The number line. Every real number corresponds to exactly one point,
+  and every point to exactly one real number. Integers are marked with ticks;
+  a few non-integers are marked in red.}
+\label{fig:number-line}
+\end{figure}
+
+\subsection{Rational numbers}
+
+Sharing $3$ pizzas among $4$ people gives each person $\tfrac34$ of a pizza,
+which is not a whole number. A \term{rational number} is any number that can
+be written as a ratio (a fraction) of two integers,
+\[
+  \frac{p}{q}, \qquad\text{where $p$ and $q$ are integers and } q\neq 0.
+\]
+Examples are $\tfrac34$, $-\tfrac{5}{2}$, $\tfrac{7}{1}=7$ and
+$0.25=\tfrac14$. The set of rational numbers is written $\Q$ (for
+\emph{quotient}). Every integer is rational, because $n = \tfrac{n}{1}$.
+
+When written as decimals, rational numbers either stop
+($\tfrac14 = 0.25$) or repeat a pattern forever ($\tfrac13 = 0.333\ldots$,
+$\tfrac{1}{7} = 0.142857142857\ldots$).
+
+\subsection{Irrational and real numbers}
+
+The ancient Greeks discovered, to their dismay, that some lengths are
+\emph{not} ratios of integers. The diagonal of a square with sides of length
+$1$ has length $\sqrt{2} = 1.41421356\ldots$, and it can be proved that no
+fraction $p/q$ equals $\sqrt2$ exactly. Numbers like this, whose decimal
+expansions never stop and never repeat, are called
+\term[irrational number]{irrational}. Another famous example is
+$\pi = 3.14159265\ldots$, the ratio of a circle's circumference to its
+diameter.
+
+Putting the rational and irrational numbers together gives the
+\term[real number]{real numbers}, written $\R$. These are \emph{all} the points
+on the number line, with no gaps. Almost all the numbers in machine learning
+are real numbers: weights, probabilities, distances, losses and so on.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \draw[thick,MLdef,fill=MLdef!5] (0,0) ellipse (5.2cm and 2.4cm);
+  \draw[thick,MLthm,fill=MLthm!6] (-0.8,0) ellipse (4.0cm and 1.85cm);
+  \draw[thick,MLexample,fill=MLexample!7] (-1.6,0) ellipse (2.8cm and 1.3cm);
+  \draw[thick,MLintuition,fill=MLintuition!12] (-2.3,0) ellipse (1.6cm and 0.8cm);
+  \node[font=\large] at (-2.3,0.3) {$\N$};
+  \node[font=\small] at (-2.3,-0.25) {$1,\ 2,\ 3,\ \dots$};
+  \node[font=\large] at (0.25,0.45) {$\Z$};
+  \node[font=\small] at (0.25,-0.2) {$0,\ -1,\ -7$};
+  \node[font=\large] at (2.2,0.6) {$\Q$};
+  \node[font=\small] at (2.2,-0.05) {$\tfrac12,\ -0.75$};
+  \node[font=\large] at (4.25,0.6) {$\R$};
+  \node[font=\small] at (4.25,-0.05) {$\sqrt2,\ \pi$};
+\end{tikzpicture}
+\caption{The number systems sit inside one another:
+  $\N \subset \Z \subset \Q \subset \R$. Each ring shows a few numbers that
+  belong to that set but not to the smaller ones inside it.}
+\label{fig:nested-sets}
+\end{figure}
+
+\begin{notation}
+If every element of a set $A$ is also an element of a set $B$, we say $A$ is a
+\term{subset} of $B$ and write $A \subset B$. \Cref{fig:nested-sets} shows that
+\[
+  \N \subset \Z \subset \Q \subset \R .
+\]
+We can also describe a set by a property its elements satisfy, using
+\term{set-builder notation}:
+\[
+  \{x \in \R : x > 0\}
+\]
+is read ``the set of all real numbers $x$ \emph{such that} $x$ is greater than
+$0$''. The colon (sometimes written as a vertical bar $\mid$) means ``such
+that''.
+\end{notation}
+
+\subsection{Intervals}
+
+We often need to talk about all the real numbers between two values, for
+example ``all probabilities'', which lie between $0$ and $1$. Such a set is
+called an \term{interval}. A square bracket means the endpoint is included; a
+round bracket means it is excluded.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Notation} & \textbf{Meaning} & \textbf{Name} \\
+\midrule
+$[a,b]$ & all $x$ with $a \le x \le b$ & closed interval \\
+$(a,b)$ & all $x$ with $a < x < b$ & open interval \\
+$[a,b)$ & all $x$ with $a \le x < b$ & half-open interval \\
+$(a,\infty)$ & all $x$ with $x > a$ & unbounded interval \\
+$(-\infty,b]$ & all $x$ with $x \le b$ & unbounded interval \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The symbol $\infty$ (``infinity'') is not a number; $(a,\infty)$ simply means
+that the interval goes on forever to the right, so an infinity symbol always
+gets a round bracket. On a number line we draw a filled dot for an included
+endpoint and an open dot for an excluded one (\cref{fig:intervals}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=0.75cm,y=0.9cm]
+  \foreach \row/\lab in {0/{$[-2,3)$},-1/{$(1,\infty)$},-2/{$(-\infty,0]$}}{
+    \draw[{Stealth[length=2mm]}-{Stealth[length=2mm]},thin,gray] (-4.6,\row) -- (5.6,\row);
+    \foreach \x in {-4,...,5}
+      \draw[gray] (\x,\row+0.07) -- (\x,\row-0.07);
+    \node[anchor=east,font=\small] at (-4.8,\row) {\lab};
+  }
+  \foreach \x in {-4,...,5}
+    \node[below,font=\scriptsize,gray] at (\x,-2.08) {$\x$};
+  % [-2,3)
+  \draw[line width=2.5pt,PlotBlue] (-2,0) -- (3,0);
+  \fill[PlotBlue] (-2,0) circle (3.5pt);
+  \draw[PlotBlue,thick,fill=white] (3,0) circle (3.5pt);
+  % (1,infinity)
+  \draw[line width=2.5pt,PlotBlue,-{Stealth[length=3mm]}] (1,-1) -- (5.6,-1);
+  \draw[PlotBlue,thick,fill=white] (1,-1) circle (3.5pt);
+  % (-infinity,0]
+  \draw[line width=2.5pt,PlotBlue,{Stealth[length=3mm]}-] (-4.6,-2) -- (0,-2);
+  \fill[PlotBlue] (0,-2) circle (3.5pt);
+\end{tikzpicture}
+\caption{Three intervals drawn on the number line. Filled dots are included
+  endpoints, open dots are excluded endpoints.}
+\label{fig:intervals}
+\end{figure}
+
+\begin{mlnote}[What numbers look like inside a computer]
+A grayscale image is stored as a grid of integers from $0$ (black) to $255$
+(white). Before feeding it to a neural network we usually divide every value
+by $255$, so that all inputs lie in the interval $[0,1]$. Class labels such as
+``cat'', ``dog'', ``bird'' are stored as integers $0,1,2$. Everything else
+(weights, predictions, probabilities, losses) is a real number.
+
+A computer cannot store infinitely many decimal digits, so it stores real
+numbers \emph{approximately}, using a format called \emph{floating point}. The
+common 32-bit format keeps about $7$ significant decimal digits. This is
+usually plenty, but it means that extremely small numbers can be rounded to
+$0$. We will see in \cref{ch:functions} that this is one reason why machine
+learning works with \emph{logarithms} of probabilities.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+For each number, list every set among $\N$, $\Z$, $\Q$, $\R$ that contains it:
+$7$, $\ -3$, $\ 0$, $\ 0.25$, $\ -\tfrac23$, $\ \sqrt9$, $\ \sqrt5$, $\ \pi$.
+\end{exercise}
+\begin{solution}
+$7$: $\N,\Z,\Q,\R$. \quad $-3$: $\Z,\Q,\R$. \quad $0$: $\Z,\Q,\R$ (not $\N$
+with our convention). \quad $0.25=\tfrac14$: $\Q,\R$. \quad $-\tfrac23$:
+$\Q,\R$. \quad $\sqrt9 = 3$: $\N,\Z,\Q,\R$. \quad $\sqrt5$: only $\R$ (it is
+irrational). \quad $\pi$: only $\R$.
+\end{solution}
+
+\begin{exercise}
+Write each set in interval notation and sketch it on a number line:
+all $x$ with $-2 \le x < 5$; all $x$ with $x > 3$; all $x$ with $x \le 0$; all
+$x$ with $0 \le x \le 1$.
+\end{exercise}
+\begin{solution}
+$[-2,5)$ (filled dot at $-2$, open dot at $5$); $(3,\infty)$ (open dot at
+$3$, arrow to the right); $(-\infty,0]$ (arrow to the left, filled dot at $0$);
+$[0,1]$ (filled dots at both ends). The last one is the set of all possible
+probabilities.
+\end{solution}
+
+\begin{exercise}
+Show that $0.75$ and $0.272727\ldots$ (with ``$27$'' repeating forever) are
+rational numbers by writing each as a fraction of integers. \emph{Hint for the
+second: call the number $x$, compute $100x$, and subtract $x$.}
+\end{exercise}
+\begin{solution}
+$0.75 = \tfrac{75}{100} = \tfrac34$. For the second, let
+$x = 0.272727\ldots$. Then $100x = 27.272727\ldots$, and subtracting,
+$100x - x = 27$, so $99x = 27$ and $x = \tfrac{27}{99} = \tfrac{3}{11}$.
+(Check: $3 \div 11 = 0.2727\ldots$.)
+\end{solution}
+
+\begin{exercise}
+A grayscale pixel is stored as an integer from $0$ to $255$.
+How many different values can a pixel take? If we rescale by dividing by
+$255$, in which interval do the rescaled values lie, and what is the rescaled
+value of a pixel equal to $51$?
+\end{exercise}
+\begin{solution}
+There are $256$ values ($0$ through $255$; do not forget $0$). The rescaled
+values lie in $[0,1]$, since $0/255 = 0$ and $255/255 = 1$. A pixel value of
+$51$ becomes $51/255 = 0.2$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Arithmetic and its laws}\label{sec:arithmetic}
+%----------------------------------------------------------------------
+
+The four basic operations are addition ($+$), subtraction ($-$),
+multiplication ($\times$) and division ($\div$ or $/$). The result of an
+addition is called a \term{sum}, of a subtraction a \term{difference}, of a
+multiplication a \term{product} and of a division a \term{quotient}. In
+algebra the multiplication sign is often written as a dot, $3 \cdot 4$, or
+left out entirely when letters are involved: $3x$ means $3 \times x$, and $ab$
+means $a \times b$.
+
+\subsection{The laws of arithmetic}
+
+A handful of rules govern all calculations. They look obvious with small
+numbers, but they are exactly what lets us rearrange complicated formulas
+later on. In what follows, $a$, $b$ and $c$ stand for any real numbers.
+
+\begin{theorem}[Laws of arithmetic]\label{thm:laws-arithmetic}
+For all real numbers $a$, $b$, $c$:
+\begin{enumerate}
+  \item \textbf{Commutative laws} (order does not matter):
+    $a + b = b + a$ and $ab = ba$.
+  \item \textbf{Associative laws} (grouping does not matter):
+    $(a+b)+c = a+(b+c)$ and $(ab)c = a(bc)$.
+  \item \textbf{Distributive law} (multiplication spreads over addition):
+    $a(b+c) = ab + ac$.
+  \item \textbf{Identities}: $a + 0 = a$ and $a \cdot 1 = a$.
+  \item \textbf{Inverses}: $a + (-a) = 0$, and if $a \neq 0$,
+    $a \cdot \tfrac{1}{a} = 1$.
+\end{enumerate}
+\end{theorem}
+\index{commutative law}\index{associative law}\index{distributive law}
+
+The number $-a$ is the \term{additive inverse} (or negative) of $a$, and
+$\tfrac1a$ is the \term{reciprocal} of $a$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.85]
+  \draw[thick,fill=MLdef!15] (0,0) rectangle (4,3);
+  \draw[thick,fill=MLexample!18] (4,0) rectangle (6,3);
+  \node at (2,1.5) {$a\times b$};
+  \node at (5,1.5) {$a\times c$};
+  \draw[decorate,decoration={brace,amplitude=5pt,mirror}] (0,-0.1) -- (4,-0.1)
+    node[midway,below=6pt] {$b$};
+  \draw[decorate,decoration={brace,amplitude=5pt,mirror}] (4,-0.1) -- (6,-0.1)
+    node[midway,below=6pt] {$c$};
+  \draw[decorate,decoration={brace,amplitude=5pt}] (-0.1,0) -- (-0.1,3)
+    node[midway,left=6pt] {$a$};
+  \draw[decorate,decoration={brace,amplitude=5pt}] (0,3.1) -- (6,3.1)
+    node[midway,above=6pt] {$b+c$};
+\end{tikzpicture}
+\caption{The distributive law as areas. The whole rectangle has area
+  $a\times(b+c)$; its two pieces have areas $a\times b$ and $a\times c$.}
+\label{fig:distributive}
+\end{figure}
+
+\begin{intuition}[The distributive law is about areas]
+Think of $a \times (b+c)$ as the area of a rectangle of height $a$ and width
+$b + c$ (\cref{fig:distributive}). Cutting it into two rectangles of widths $b$
+and $c$ does not change the total area, which is therefore $ab + ac$. For
+instance, $3 \times (4 + 2) = 3\times 6 = 18$ and $3\times4 + 3\times2 = 12 + 6
+= 18$. The distributive law is also the trick behind mental arithmetic:
+$7 \times 102 = 7\times100 + 7\times 2 = 714$.
+\end{intuition}
+
+\subsection{Negative numbers}
+
+On the number line, adding a positive number moves you to the right and
+subtracting a positive number moves you to the left. So $-3 + 5 = 2$ (start at
+$-3$, move $5$ steps right) and $2 - 6 = -4$ (start at $2$, move $6$ steps
+left).
+
+Subtracting a negative number is the same as adding a positive one:
+\[
+  5 - (-3) = 5 + 3 = 8.
+\]
+One way to see this: subtraction asks ``how far is it from $-3$ up to $5$?'',
+and on the number line that distance is $8$. Another way: taking away a debt of
+\$3 leaves you \$3 richer.
+
+For multiplication and division the rules of signs are:
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}ll@{}}
+\toprule
+positive $\times$ positive $=$ positive & \quad $3 \times 4 = 12$\\
+positive $\times$ negative $=$ negative & \quad $3 \times (-4) = -12$\\
+negative $\times$ negative $=$ positive & \quad $(-3) \times (-4) = 12$\\
+\bottomrule
+\end{tabular}
+\end{center}
+and exactly the same rules hold for division, e.g.\ $(-12) \div (-4) = 3$.
+
+\begin{intuition}[Why is negative times negative positive?]
+Look at the pattern as the first number decreases by $1$ each time:
+\[
+  3 \times (-2) = -6,\quad 2 \times (-2) = -4,\quad 1\times(-2) = -2,\quad
+  0 \times (-2) = 0,\quad (-1)\times(-2) = \ ?
+\]
+Each answer is $2$ larger than the one before, so the pattern forces
+$(-1)\times(-2) = 2$. The rule ``negative times negative is positive'' is the
+only rule that keeps the distributive law true; any other choice would break
+arithmetic.
+\end{intuition}
+
+\subsection{Division by zero}
+
+Division undoes multiplication: $12 \div 3 = 4$ because $3 \times 4 = 12$. So
+$6 \div 0$ would have to be a number that gives $6$ when multiplied by $0$. But
+anything times $0$ is $0$, so no such number exists.
+
+\begin{pitfall}[Never divide by zero]
+Division by zero is \emph{undefined}: expressions such as $\tfrac{5}{0}$ have
+no meaning. (On the other hand, $\tfrac{0}{5} = 0$ is perfectly fine.) In
+code, dividing by zero produces an error or a special ``not a number'' value,
+and it is a common source of bugs in machine learning, for example when
+normalising data whose spread happens to be zero. Practitioners therefore often
+add a tiny number such as $10^{-8}$ to a denominator to keep it away from zero.
+\end{pitfall}
+
+\begin{pitfall}[Subtraction and division have no commutative or associative law]
+$5 - 3 \neq 3 - 5$ and $8 \div 2 \neq 2 \div 8$. Grouping matters too:
+$(10 - 5) - 2 = 3$, but $10 - (5 - 2) = 7$. If you want to rearrange
+subtractions freely, rewrite them as additions of negatives:
+$10 - 5 - 2 = 10 + (-5) + (-2)$, and now any order gives $3$.
+\end{pitfall}
+
+\begin{mlnote}[Linearity]
+The distributive law $a(b + c) = ab + ac$ is the simplest example of a property
+called \emph{linearity}: scaling a sum is the same as summing the scaled parts.
+Linearity is the central idea of linear algebra (\cref{ch:linalg1}), and
+linear algebra is the engine that runs every neural network.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Compute: (a) $-7 + 12$; (b) $4 - 9$; (c) $-3 - (-8)$; (d) $(-6) \times 4$;
+(e) $(-5)\times(-7)$; (f) $(-36) \div (-4)$; (g) $0 \div 5$.
+\end{exercise}
+\begin{solution}
+(a) $5$; (b) $-5$; (c) $-3 + 8 = 5$; (d) $-24$; (e) $35$; (f) $9$; (g) $0$.
+\end{solution}
+
+\begin{exercise}
+Use the distributive law to compute $7 \times 98$ and $25 \times 44$ in your
+head.
+\end{exercise}
+\begin{solution}
+$7 \times 98 = 7 \times (100 - 2) = 700 - 14 = 686$.
+$25 \times 44 = 25 \times (40 + 4) = 1000 + 100 = 1100$.
+\end{solution}
+
+\begin{exercise}
+Give a numerical example showing that division is not associative, that is,
+that $(a \div b) \div c$ can differ from $a \div (b \div c)$.
+\end{exercise}
+\begin{solution}
+Take $a = 16$, $b = 4$, $c = 2$: $(16 \div 4) \div 2 = 4 \div 2 = 2$, while
+$16 \div (4 \div 2) = 16 \div 2 = 8$.
+\end{solution}
+
+\begin{exercise}
+A friend claims that $\tfrac{0}{0} = 1$ ``because anything divided by itself is
+$1$''. Explain what is wrong.
+\end{exercise}
+\begin{solution}
+``$\tfrac{x}{x} = 1$'' holds only for $x \neq 0$. If $\tfrac00$ were a number
+$q$, we would need $0 \times q = 0$; but every number $q$ satisfies this, so
+there is no single answer. For this reason $\tfrac00$ is left undefined (it is
+called \emph{indeterminate}).
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Fractions, decimals and percentages}\label{sec:fractions}
+%----------------------------------------------------------------------
+
+\subsection{What a fraction means}
+
+A \term{fraction} $\tfrac{a}{b}$ has a \term{numerator} $a$ (on top) and a
+\term{denominator} $b$ (on the bottom, never zero). The denominator says
+\emph{into how many equal parts} the whole is cut; the numerator says
+\emph{how many} of those parts we take. So $\tfrac34$ of a pizza means: cut the
+pizza into $4$ equal slices and take $3$ of them. A fraction is also simply a
+division: $\tfrac34 = 3 \div 4 = 0.75$.
+
+\subsection{Equivalent fractions and simplifying}
+
+Cutting each slice in half gives $8$ slices, of which we now have $6$:
+$\tfrac34 = \tfrac68$. In general, multiplying or dividing the numerator
+\emph{and} the denominator by the same non-zero number does not change the
+value of a fraction:
+\[
+  \frac{a}{b} = \frac{a \times k}{b \times k} \qquad (k \neq 0).
+\]
+To \emph{simplify} a fraction, divide top and bottom by any common factor until
+none is left: $\tfrac{18}{24} = \tfrac{18 \div 6}{24 \div 6} = \tfrac34$.
+
+\subsection{Multiplying and dividing fractions}
+
+To multiply fractions, multiply the numerators and multiply the
+denominators:
+\[
+  \frac{a}{b}\times\frac{c}{d} = \frac{ac}{bd}.
+\]
+The word ``of'' usually signals multiplication: half of a third is
+$\tfrac12 \times \tfrac13 = \tfrac16$.
+
+To divide by a fraction, multiply by its reciprocal (flip it upside down):
+\[
+  \frac{a}{b} \div \frac{c}{d} = \frac{a}{b}\times\frac{d}{c} = \frac{ad}{bc}.
+\]
+Why? Ask how many quarters fit into $3$: each whole contains $4$ quarters, so
+$3 \div \tfrac14 = 3 \times 4 = 12$.
+
+\subsection{Adding and subtracting fractions}
+
+You can only add fractions directly if they count slices of the same size,
+that is, if they have the same denominator: $\tfrac{2}{7} + \tfrac{3}{7} =
+\tfrac57$. Otherwise, first rewrite them with a \emph{common denominator}.
+
+\begin{example}[Adding fractions]\label{ex:add-fractions}
+Compute $\tfrac34 + \tfrac56$.
+
+\sol A common denominator is $12$, since both $4$ and $6$ divide $12$. Then
+$\tfrac34 = \tfrac{9}{12}$ and $\tfrac56 = \tfrac{10}{12}$, so
+\[
+  \frac34 + \frac56 = \frac{9}{12} + \frac{10}{12} = \frac{19}{12}.
+\]
+As a check, $0.75 + 0.8333\ldots = 1.5833\ldots$, and $19 \div 12 =
+1.5833\ldots$.
+\end{example}
+
+\begin{pitfall}[Adding tops and bottoms]
+It is tempting to write $\tfrac12 + \tfrac13 = \tfrac25$. This is wrong: the
+answer must be bigger than $\tfrac12$, but $\tfrac25$ is smaller. The correct
+calculation is $\tfrac12 + \tfrac13 = \tfrac36 + \tfrac26 = \tfrac56$.
+\end{pitfall}
+
+\begin{example}[Dividing fractions]
+Compute $\tfrac23 \div \tfrac49$.
+
+\sol Multiply by the reciprocal:
+$\tfrac23 \times \tfrac94 = \tfrac{18}{12} = \tfrac32$.
+\end{example}
+
+\subsection{Decimals}
+
+Decimals are fractions whose denominators are powers of ten:
+$0.7 = \tfrac{7}{10}$, $0.25 = \tfrac{25}{100}$, $0.125 = \tfrac{125}{1000}$.
+To turn a fraction into a decimal, divide: $\tfrac38 = 3 \div 8 = 0.375$.
+
+\subsection{Percentages}
+
+``Per cent'' means ``per hundred'', so a \term{percentage} is a fraction with
+denominator $100$: $35\% = \tfrac{35}{100} = 0.35$. To find a percentage of a
+quantity, multiply: $18\%$ of $250$ is $0.18 \times 250 = 45$.
+
+The \term{percentage change} from an old value to a new value is
+\[
+  \text{percentage change} = \frac{\text{new} - \text{old}}{\text{old}}
+  \times 100\%.
+\]
+
+\begin{example}[Percentage changes are not symmetric]\label{ex:percent-change}
+A price rises from $80$ to $100$ and then falls back from $100$ to $80$. What
+are the two percentage changes?
+
+\sol Rise: $\tfrac{100 - 80}{80} \times 100\% = \tfrac{20}{80}\times100\% =
+25\%$. Fall: $\tfrac{80 - 100}{100}\times100\% = -20\%$. The same absolute
+change of $20$ is a $25\%$ rise but only a $20\%$ fall, because the
+percentages are computed relative to different starting values.
+\end{example}
+
+\begin{pitfall}[Percent versus percentage points]
+Suppose a classifier's accuracy improves from $90\%$ to $95\%$. The accuracy
+has risen by $5$ \term[percentage point]{percentage points}, which is a
+\emph{relative} increase of $\tfrac{5}{90} \approx 5.6\%$. Meanwhile the
+\emph{error rate} has fallen from $10\%$ to $5\%$, a relative reduction of
+$50\%$: the model makes half as many mistakes. All three statements describe
+the same improvement. When you read ``a 50\% improvement'' in a paper, always
+ask: $50\%$ of \emph{what}?
+\end{pitfall}
+
+\subsection{Ratios}
+
+A \term{ratio} compares two quantities. If a data set contains $750$ normal
+emails and $250$ spam emails, the ratio of normal to spam is $750 : 250$, which
+simplifies to $3 : 1$. Out of every $4$ emails, $3$ are normal and $1$ is spam,
+so the \emph{fraction} of spam is $\tfrac14 = 25\%$.
+
+\begin{mlnote}
+Fractions and percentages are everywhere in machine learning: accuracy
+($\tfrac{\text{correct predictions}}{\text{all predictions}}$), train/test
+splits (``use $80\%$ of the data for training''), class imbalance (``spam is
+$1$ in $4$ emails'') and dropout rates (``switch off $10\%$ of the neurons'').
+Being precise about \emph{what} a percentage is a percentage \emph{of} avoids
+many misunderstandings.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Simplify: (a) $\tfrac{18}{24}$; (b) $\tfrac{35}{49}$; (c) $\tfrac{120}{36}$.
+\end{exercise}
+\begin{solution}
+(a) $\tfrac34$ (divide by $6$); (b) $\tfrac57$ (divide by $7$);
+(c) $\tfrac{10}{3}$ (divide by $12$).
+\end{solution}
+
+\begin{exercise}
+Compute and simplify: (a) $\tfrac25 + \tfrac13$; (b) $\tfrac78 - \tfrac16$;
+(c) $\tfrac34 \times \tfrac89$; (d) $\tfrac56 \div \tfrac{10}{3}$.
+\end{exercise}
+\begin{solution}
+(a) $\tfrac{6}{15} + \tfrac{5}{15} = \tfrac{11}{15}$.
+(b) $\tfrac{21}{24} - \tfrac{4}{24} = \tfrac{17}{24}$.
+(c) $\tfrac{24}{36} = \tfrac23$.
+(d) $\tfrac56 \times \tfrac{3}{10} = \tfrac{15}{60} = \tfrac14$.
+\end{solution}
+
+\begin{exercise}
+(a) What is $15\%$ of $80$? (b) $45$ is what percentage of $180$? (c) A
+price rises from $40$ to $50$; what is the percentage change? (d) It then
+falls back to $40$; what is the percentage change now?
+\end{exercise}
+\begin{solution}
+(a) $0.15 \times 80 = 12$. (b) $\tfrac{45}{180} = 0.25 = 25\%$.
+(c) $\tfrac{50-40}{40} = 25\%$. (d) $\tfrac{40-50}{50} = -20\%$.
+\end{solution}
+
+\begin{exercise}
+Model A has an accuracy of $80\%$ and model B an accuracy of $84\%$.
+(a) By how many percentage points is B better? (b) What is the relative
+increase in accuracy? (c) What is the relative reduction in the error rate?
+\end{exercise}
+\begin{solution}
+(a) $4$ percentage points. (b) $\tfrac{84 - 80}{80} = 5\%$. (c) The error rate
+falls from $20\%$ to $16\%$, a relative reduction of $\tfrac{20-16}{20} =
+20\%$.
+\end{solution}
+
+\begin{exercise}
+A data set of $1000$ emails has a $3:1$ ratio of normal emails to spam. How
+many spam emails are there? If we keep $80\%$ of the data for training and
+the split preserves the ratio, how many spam emails are in the training set?
+\end{exercise}
+\begin{solution}
+Spam is $1$ part out of $3+1=4$, so there are $\tfrac14 \times 1000 = 250$ spam
+emails. The training set has $0.8 \times 1000 = 800$ emails, of which
+$\tfrac14 \times 800 = 200$ are spam.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Exponents, roots and scientific notation}\label{sec:exponents}
+%----------------------------------------------------------------------
+
+\subsection{Powers}
+
+Repeated addition is multiplication: $3 + 3 + 3 + 3 = 4 \times 3$. Repeated
+multiplication is \emph{exponentiation}:
+\[
+  3^4 = 3 \times 3 \times 3 \times 3 = 81.
+\]
+In $a^n$, the number $a$ is the \term{base} and $n$ is the
+\term{exponent} (or \term{power}); we read $a^n$ as ``$a$ to the power $n$''.
+Two powers have their own names: $a^2$ is ``$a$ \emph{squared}'' (the area of
+a square with side $a$) and $a^3$ is ``$a$ \emph{cubed}'' (the volume of a cube
+with side $a$).
+
+\subsection{The laws of exponents}
+
+Counting factors explains every rule. For example,
+$2^3 \times 2^2 = (2\times2\times2)\times(2\times2) = 2^5$: three factors plus
+two factors make five factors.
+
+\begin{theorem}[Laws of exponents]\label{thm:exponent-laws}
+For real numbers $a, b \neq 0$ and exponents $m, n$:
+\begin{align*}
+  a^m \cdot a^n &= a^{m+n}, &
+  \frac{a^m}{a^n} &= a^{m-n}, &
+  (a^m)^n &= a^{mn}, \\
+  (ab)^n &= a^n b^n, &
+  \left(\frac{a}{b}\right)^n &= \frac{a^n}{b^n}, &
+  a^0 &= 1, \qquad a^{-n} = \frac{1}{a^n}.
+\end{align*}
+\end{theorem}
+
+The last two rules may look strange: what does it mean to multiply $2$ by
+itself zero times, or minus three times? They are \emph{definitions}, chosen so
+that the other rules keep working. Watch the pattern as we repeatedly divide
+by $2$:
+\[
+  2^3 = 8,\quad 2^2 = 4,\quad 2^1 = 2,\quad 2^0 = 1,\quad
+  2^{-1} = \tfrac12,\quad 2^{-2} = \tfrac14,\quad 2^{-3} = \tfrac18 .
+\]
+Each step down in the exponent divides by $2$. Continuing the pattern forces
+$2^0 = 1$ and $2^{-n} = \tfrac{1}{2^n}$.
+
+\subsection{Roots and fractional exponents}
+
+The \term{square root} of a number $a \ge 0$, written $\sqrt a$, is the
+non-negative number whose square is $a$: $\sqrt{9} = 3$ because $3^2 = 9$.
+(Note that $(-3)^2 = 9$ as well, but the symbol $\sqrt{\ }$ always means the
+non-negative root.) Similarly the \emph{cube root} $\sqrt[3]{a}$ is the number
+whose cube is $a$: $\sqrt[3]{8} = 2$.
+
+Roots are powers with fractional exponents. Since
+$(a^{1/2})^2 = a^{(1/2)\cdot 2} = a^1 = a$ by the power rule, the number
+$a^{1/2}$ must be $\sqrt a$. In general,
+\[
+  a^{1/n} = \sqrt[n]{a}, \qquad a^{m/n} = \left(\sqrt[n]{a}\right)^m .
+\]
+For example, $8^{2/3} = (\sqrt[3]{8})^2 = 2^2 = 4$, and
+$27^{-1/3} = \tfrac{1}{\sqrt[3]{27}} = \tfrac13$.
+
+\begin{pitfall}[Powers do not distribute over sums]
+$(a + b)^2$ is \textbf{not} $a^2 + b^2$. With numbers:
+$(3 + 4)^2 = 7^2 = 49$, but $3^2 + 4^2 = 9 + 16 = 25$. The correct expansion,
+$(a+b)^2 = a^2 + 2ab + b^2$, is pictured in \cref{fig:square-of-sum}: the
+missing $24 = 2\times 3\times 4$ is the area of the two rectangles. Likewise
+$\sqrt{a + b} \neq \sqrt a + \sqrt b$: $\sqrt{9 + 16} = 5$, but
+$\sqrt9 + \sqrt{16} = 7$. Powers and roots \emph{do} distribute over products:
+$(ab)^2 = a^2b^2$ and $\sqrt{ab} = \sqrt a\sqrt b$ for $a, b \ge 0$.
+\end{pitfall}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.75]
+  \draw[thick,fill=MLdef!15] (0,0) rectangle (3,3);
+  \draw[thick,fill=MLexample!18] (3,0) rectangle (4.8,3);
+  \draw[thick,fill=MLexample!18] (0,3) rectangle (3,4.8);
+  \draw[thick,fill=MLintuition!22] (3,3) rectangle (4.8,4.8);
+  \node at (1.5,1.5) {$a^2$};
+  \node at (3.9,1.5) {$ab$};
+  \node at (1.5,3.9) {$ab$};
+  \node at (3.9,3.9) {$b^2$};
+  \draw[decorate,decoration={brace,amplitude=5pt,mirror}] (0,-0.1) -- (3,-0.1)
+    node[midway,below=6pt] {$a$};
+  \draw[decorate,decoration={brace,amplitude=5pt,mirror}] (3,-0.1) -- (4.8,-0.1)
+    node[midway,below=6pt] {$b$};
+  \draw[decorate,decoration={brace,amplitude=5pt}] (-0.1,0) -- (-0.1,3)
+    node[midway,left=6pt] {$a$};
+  \draw[decorate,decoration={brace,amplitude=5pt}] (-0.1,3) -- (-0.1,4.8)
+    node[midway,left=6pt] {$b$};
+\end{tikzpicture}
+\caption{A square with side $a+b$ has area $(a+b)^2 = a^2 + 2ab + b^2$:
+  besides the squares $a^2$ and $b^2$ there are two rectangles of area $ab$.}
+\label{fig:square-of-sum}
+\end{figure}
+
+\begin{pitfall}[Negative signs and powers]
+$-3^2$ means $-(3^2) = -9$, because the power applies only to the $3$. If you
+want to square $-3$, write $(-3)^2 = 9$. Also, the square root of a negative
+number, such as $\sqrt{-4}$, is not a real number (no real number squared is
+negative). Finally, $\sqrt{x^2} = \abs{x}$, not $x$: for example
+$\sqrt{(-5)^2} = \sqrt{25} = 5$. (The absolute value $\abs{x}$ is explained in
+\cref{sec:absolute-value}.)
+\end{pitfall}
+
+\subsection{Scientific notation}
+
+Machine learning involves both very large and very small numbers. Writing them
+out in full is error-prone, so we use \term{scientific notation}: a number
+between $1$ and $10$ multiplied by a power of $10$.
+\[
+  0.0003 = 3 \times 10^{-4}, \qquad
+  175\,000\,000\,000 = 1.75 \times 10^{11}.
+\]
+The exponent counts how many places the decimal point moves: right for
+positive exponents, left for negative ones. To multiply numbers in scientific
+notation, multiply the leading parts and add the exponents:
+\[
+  (3 \times 10^{-4}) \times (2 \times 10^{6}) = 6 \times 10^{2} = 600 .
+\]
+In computer code, $3 \times 10^{-4}$ is usually written \texttt{3e-4}.
+
+\begin{mlnote}
+Typical numbers in deep learning: a learning rate of \texttt{3e-4}, a weight
+decay of \texttt{1e-2}, a small ``safety'' constant $\epsilon$ of \texttt{1e-8}
+added to denominators, and models with $1.75\times10^{11}$ parameters (the
+size of the GPT-3 language model). Being able to read and compare such numbers
+at a glance is a basic practical skill.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Evaluate: (a) $2^3\times2^4$; (b) $\tfrac{5^6}{5^4}$; (c) $(3^2)^3$;
+(d) $10^0$; (e) $4^{-2}$; (f) $9^{1/2}$; (g) $8^{2/3}$; (h) $16^{-3/4}$.
+\end{exercise}
+\begin{solution}
+(a) $2^7 = 128$; (b) $5^2 = 25$; (c) $3^6 = 729$; (d) $1$; (e)
+$\tfrac{1}{16}$; (f) $3$; (g) $(\sqrt[3]8)^2 = 4$; (h)
+$\tfrac{1}{(\sqrt[4]{16})^3} = \tfrac{1}{2^3} = \tfrac18$.
+\end{solution}
+
+\begin{exercise}
+Simplify, assuming $x \neq 0$: (a) $\tfrac{x^3 \cdot x^5}{x^2}$; (b) $(2x^2)^3$;
+(c) $\sqrt{x^4}$; (d) $\tfrac{(x^{-1})^2}{x^{-3}}$.
+\end{exercise}
+\begin{solution}
+(a) $x^{3+5-2} = x^6$. (b) $2^3 (x^2)^3 = 8x^6$. (c) $x^2$ (which is never
+negative, so no absolute value is needed). (d) $x^{-2}/x^{-3} = x^{-2-(-3)} =
+x^1 = x$.
+\end{solution}
+
+\begin{exercise}
+True or false? Give a counterexample for each false statement.
+(a) $(a + b)^2 = a^2 + b^2$; (b) $\sqrt{ab} = \sqrt a\sqrt b$ for $a,b\ge0$;
+(c) $\sqrt{a+b} = \sqrt a + \sqrt b$; (d) $(ab)^3 = a^3b^3$;
+(e) $2^{a+b} = 2^a + 2^b$.
+\end{exercise}
+\begin{solution}
+(a) False: $a=b=1$ gives $4$ versus $2$. (b) True. (c) False: $a=9$, $b=16$
+gives $5$ versus $7$. (d) True. (e) False: $a = b = 1$ gives $2^2 = 4$ versus
+$2 + 2 = 4$, which happens to agree, but $a=1$, $b=2$ gives $2^3 = 8$ versus
+$2 + 4 = 6$. (The correct rule is $2^{a+b} = 2^a \cdot 2^b$.)
+\end{solution}
+
+\begin{exercise}
+Write $0.00005$ and $3\,400\,000$ in scientific notation, and compute
+$(4 \times 10^{3}) \times (2.5\times 10^{-5})$.
+\end{exercise}
+\begin{solution}
+$0.00005 = 5\times10^{-5}$; $3\,400\,000 = 3.4\times10^{6}$;
+$(4\times2.5)\times10^{3-5} = 10\times10^{-2} = 10^{-1} = 0.1$.
+\end{solution}
+
+\begin{exercise}
+A language model has $7 \times 10^9$ parameters, each stored using $2$ bytes.
+How many bytes are needed to store the model? Express the answer in gigabytes,
+where $1$ gigabyte $= 10^9$ bytes.
+\end{exercise}
+\begin{solution}
+$7\times10^9 \times 2 = 1.4\times10^{10}$ bytes, which is
+$\tfrac{1.4\times10^{10}}{10^9} = 14$ gigabytes.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Order of operations}\label{sec:order-of-operations}
+%----------------------------------------------------------------------
+
+What is $2 + 3 \times 4$? If you add first you get $20$; if you multiply first
+you get $14$. Mathematics needs a single agreed answer, and the convention is
+that multiplication comes first, so $2 + 3\times 4 = 14$. The full convention,
+the \term{order of operations}, is:
+
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{Parentheses} (brackets): work out anything inside brackets
+    first, innermost brackets first.
+  \item \textbf{Exponents} (powers and roots).
+  \item \textbf{Multiplication and division}, from left to right.
+  \item \textbf{Addition and subtraction}, from left to right.
+\end{enumerate}
+
+Many people remember this as PEMDAS or BODMAS. Note that multiplication and
+division have \emph{equal} rank and are done left to right, and likewise for
+addition and subtraction.
+
+\begin{example}[Order of operations]
+Evaluate (a) $8 - 2 \times 3 + 4$; (b) $20 \div 4 \times 5$;
+(c) $2 \times 3^2$; (d) $(2+3)^2 - 4 \times 5$;
+(e) $3 + 12 \div (5 - 2) \times 2$.
+
+\sol
+(a) Multiply first: $8 - 6 + 4$; then left to right: $2 + 4 = 6$.
+(b) Left to right: $20 \div 4 = 5$, then $5 \times 5 = 25$ (not
+$20 \div 20 = 1$).
+(c) Power first: $2 \times 9 = 18$ (not $6^2 = 36$).
+(d) Brackets, then power: $5^2 - 4\times5 = 25 - 20 = 5$.
+(e) Brackets: $3 + 12 \div 3 \times 2$; then left to right:
+$12\div3 = 4$, $4\times2 = 8$; finally $3 + 8 = 11$.
+\end{example}
+
+A fraction bar groups like brackets: $\dfrac{6 + 4}{2}$ means $(6+4) \div 2 =
+5$, not $6 + 4 \div 2 = 8$.
+
+\begin{pitfall}[Ambiguous expressions]
+Expressions such as $1/2x$ are ambiguous: is it $\tfrac{1}{2x}$ or
+$\tfrac12 x$? Different people (and different calculators) disagree. When
+writing, always add brackets to remove any doubt: $1/(2x)$ or $(1/2)x$.
+\end{pitfall}
+
+\begin{remark}[Order of operations in code]
+Programming languages follow the same conventions. In Python, powers are
+written \texttt{**}, and \texttt{-2**2} evaluates to \texttt{-4}, exactly like
+$-2^2$ in mathematics, because the power is applied before the minus sign.
+\end{remark}
+
+\sectionexercises
+
+\begin{exercise}
+Evaluate: (a) $6 + 4\times3 - 2$; (b) $(6+4)\times(3-2)$; (c) $48\div6\div2$;
+(d) $2\times5^2 - 3^2$; (e) $-3^2 + (-3)^2$; (f) $(8 - 2\times3)^3$.
+\end{exercise}
+\begin{solution}
+(a) $6 + 12 - 2 = 16$. (b) $10 \times 1 = 10$. (c) $8 \div 2 = 4$.
+(d) $50 - 9 = 41$. (e) $-9 + 9 = 0$. (f) $(8-6)^3 = 2^3 = 8$.
+\end{solution}
+
+\begin{exercise}
+Insert brackets into $2 + 3 \times 4 - 1$ so that its value is (a) $19$;
+(b) $11$; (c) $15$.
+\end{exercise}
+\begin{solution}
+(a) $(2+3)\times4 - 1 = 19$. (b) $2 + 3\times(4-1) = 11$.
+(c) $(2+3)\times(4-1) = 15$.
+\end{solution}
+
+\begin{exercise}
+Evaluate $\dfrac{2^3 + 4}{6 - 2\times 3 + 3}$ and $\sqrt{3^2 + 4^2}$.
+\end{exercise}
+\begin{solution}
+Numerator $8 + 4 = 12$, denominator $6 - 6 + 3 = 3$, so the value is $4$.
+And $\sqrt{9 + 16} = \sqrt{25} = 5$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Variables, expressions and algebraic thinking}\label{sec:algebra}
+%----------------------------------------------------------------------
+
+\subsection{Variables}
+
+Algebra begins with a simple but powerful idea: use a letter to stand for a
+number. The letter is called a \term{variable}. It may stand for a number we
+do not know yet (``find $x$''), or for a number that can change (``the price
+depends on the size $x$ of the house''), or for \emph{any} number at all (``for
+every $x$, $x + 0 = x$'').
+
+An \term{expression} is a combination of numbers, variables and operations,
+such as $3x + 2$ or $x^2 - 5x + 6$. \emph{Evaluating} an expression means
+substituting a value for each variable and calculating. For $x = 4$,
+$3x + 2 = 3 \times 4 + 2 = 14$.
+
+\begin{intuition}[A variable is a labelled box]
+Think of a variable as a box with a name written on it. The expression
+$3x + 2$ is a recipe: ``take whatever is in box $x$, multiply it by $3$, then
+add $2$''. The recipe makes sense before we know what is in the box. This is
+exactly how a machine learning model is written down: as a recipe in terms of
+inputs (boxes filled by the data) and parameters (boxes filled during
+training).
+\end{intuition}
+
+\subsection{Terms, coefficients and like terms}
+
+In $5x^2 - 3x + 7$, the pieces separated by $+$ or $-$ signs are called
+\term[term of an expression]{terms}: $5x^2$, $-3x$ and $7$. The number in front
+of a variable is its \term{coefficient} ($5$ and $-3$ here), and a term
+without a variable is a \term{constant}. \term{Like terms} contain the same
+variables raised to the same powers, and they can be combined by adding their
+coefficients:
+\[
+  3x + 5 + 2x - 1 = (3+2)x + (5 - 1) = 5x + 4 .
+\]
+This is just the distributive law in reverse: $3x + 2x = (3 + 2)x$. Unlike
+terms, such as $x$ and $x^2$, cannot be combined.
+
+\subsection{Expanding brackets}
+
+Expanding means multiplying out brackets using the distributive law:
+$3(x + 2) = 3x + 6$ and $-2(x - 5) = -2x + 10$ (careful with the signs). For a
+product of two brackets, multiply every term in the first bracket by every
+term in the second:
+\[
+  (x + 2)(x + 3) = x\cdot x + x \cdot 3 + 2 \cdot x + 2 \cdot 3
+  = x^2 + 5x + 6.
+\]
+\Cref{fig:area-model} shows this as the area of a rectangle with sides $x + 2$
+and $x + 3$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.7]
+  \draw[thick,fill=MLdef!15] (0,0) rectangle (4,4);
+  \draw[thick,fill=MLexample!18] (4,0) rectangle (7,4);
+  \draw[thick,fill=MLexample!18] (0,4) rectangle (4,6);
+  \draw[thick,fill=MLintuition!22] (4,4) rectangle (7,6);
+  \node at (2,2) {$x^2$};
+  \node at (5.5,2) {$3x$};
+  \node at (2,5) {$2x$};
+  \node at (5.5,5) {$6$};
+  \draw[decorate,decoration={brace,amplitude=5pt,mirror}] (0,-0.1) -- (4,-0.1)
+    node[midway,below=6pt] {$x$};
+  \draw[decorate,decoration={brace,amplitude=5pt,mirror}] (4,-0.1) -- (7,-0.1)
+    node[midway,below=6pt] {$3$};
+  \draw[decorate,decoration={brace,amplitude=5pt}] (-0.1,0) -- (-0.1,4)
+    node[midway,left=6pt] {$x$};
+  \draw[decorate,decoration={brace,amplitude=5pt}] (-0.1,4) -- (-0.1,6)
+    node[midway,left=6pt] {$2$};
+\end{tikzpicture}
+\caption{The area model for $(x+2)(x+3)$. The four pieces have areas
+  $x^2$, $3x$, $2x$ and $6$, giving $x^2 + 5x + 6$.}
+\label{fig:area-model}
+\end{figure}
+
+Three products appear so often that they are worth memorising:
+\begin{align*}
+  (a+b)^2 &= a^2 + 2ab + b^2, \\
+  (a-b)^2 &= a^2 - 2ab + b^2, \\
+  (a+b)(a-b) &= a^2 - b^2 .
+\end{align*}
+The second identity will reappear many times, because machine learning is full
+of squared differences such as $(y - \hat y)^2$.
+
+\subsection{Factoring}
+
+\term{Factoring} is expanding in reverse: writing an expression as a product.
+Pull out a common factor, $6x + 9 = 3(2x + 3)$, or find two brackets that
+multiply to the expression, $x^2 + 5x + 6 = (x+2)(x+3)$. To factor
+$x^2 + bx + c$, look for two numbers that \emph{add} to $b$ and
+\emph{multiply} to $c$; here $2 + 3 = 5$ and $2 \times 3 = 6$. Factoring will
+help us solve equations involving $x^2$ in \cref{ch:functions}.
+
+\subsection{Formulas}
+
+A \term{formula} is an equation that tells you how to compute one quantity from
+others. Examples are the area of a rectangle, $A = \ell w$; the conversion from
+degrees Celsius to degrees Fahrenheit, $F = \tfrac95 C + 32$; and the
+prediction of a simple model of house prices,
+\[
+  \text{predicted price} = w \times \text{size} + b ,
+\]
+where $w$ and $b$ are numbers that the model learns from data.
+
+\begin{mlnote}[Models are expressions with parameters]
+In the house-price formula, ``size'' is an \emph{input} (it changes from house
+to house) while $w$ and $b$ are \emph{parameters} (they are fixed once the
+model has been trained). In machine learning, $w$ is called a \term{weight} and
+$b$ a \term{bias}. A large neural network is the same idea on a huge scale: a
+very long expression with millions or billions of weights. Training means
+finding values of the weights that make the expression's outputs match the
+data.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Evaluate $2x^2 - 3x + 1$ at $x = 3$, at $x = -1$ and at $x = \tfrac12$.
+\end{exercise}
+\begin{solution}
+At $x=3$: $18 - 9 + 1 = 10$. At $x=-1$: $2 + 3 + 1 = 6$. At $x=\tfrac12$:
+$\tfrac12 - \tfrac32 + 1 = 0$.
+\end{solution}
+
+\begin{exercise}
+Simplify: (a) $4a + 3b - a + 5b$; (b) $2(x-3) - 3(x+1)$;
+(c) $x(x + 2) - (x^2 - 4x)$.
+\end{exercise}
+\begin{solution}
+(a) $3a + 8b$. (b) $2x - 6 - 3x - 3 = -x - 9$.
+(c) $x^2 + 2x - x^2 + 4x = 6x$.
+\end{solution}
+
+\begin{exercise}
+Expand: (a) $(x+4)(x-2)$; (b) $(2x - 3)^2$; (c) $(x+5)(x-5)$;
+(d) $(a - b)(a^2 + ab + b^2)$.
+\end{exercise}
+\begin{solution}
+(a) $x^2 - 2x + 4x - 8 = x^2 + 2x - 8$. (b) $4x^2 - 12x + 9$.
+(c) $x^2 - 25$. (d) $a^3 + a^2b + ab^2 - a^2b - ab^2 - b^3 = a^3 - b^3$.
+\end{solution}
+
+\begin{exercise}
+Factor: (a) $12x + 18$; (b) $x^2 + 7x + 12$; (c) $x^2 - 9$;
+(d) $x^2 - x - 6$.
+\end{exercise}
+\begin{solution}
+(a) $6(2x + 3)$. (b) $(x+3)(x+4)$, since $3+4=7$ and $3\times4=12$.
+(c) $(x-3)(x+3)$. (d) $(x-3)(x+2)$, since $-3+2=-1$ and $(-3)\times2=-6$.
+\end{solution}
+
+\begin{exercise}
+A model predicts house prices with the formula
+$\text{price} = 3000 \times \text{size} + 50\,000$, with size in square
+metres. What does it predict for a house of $80$ square metres? If the true
+price is $300\,000$, what is the error $\text{true} - \text{predicted}$?
+\end{exercise}
+\begin{solution}
+$3000 \times 80 + 50\,000 = 240\,000 + 50\,000 = 290\,000$. The error is
+$300\,000 - 290\,000 = 10\,000$: the model under-predicts by $10\,000$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Summation and product notation}\label{sec:summation}
+%----------------------------------------------------------------------
+
+\begin{motivation}
+Machine learning learns from data sets with thousands or millions of
+examples, and its formulas constantly say ``add this up over all the
+examples''. Writing out $x_1 + x_2 + x_3 + \cdots + x_{1000000}$ is
+impractical, so mathematicians use a compact shorthand: the capital Greek
+letter sigma, $\sum$. You will see it in almost every machine learning formula,
+so it is worth getting completely comfortable with it now.
+\end{motivation}
+
+\subsection{Subscripts}
+
+When we have many related numbers, we give them the same letter and tell them
+apart with a small number written below, called a \term{subscript} or
+\term{index}. A data set of four measurements might be
+\[
+  x_1 = 2,\quad x_2 = 5,\quad x_3 = 3,\quad x_4 = 7 .
+\]
+We read $x_3$ as ``$x$ sub three'' or ``$x$ three''. A general element is
+written $x_i$, where $i$ can be any of $1, 2, 3, 4$.
+
+\subsection{Sigma notation}
+
+\begin{definition}[Summation notation]\label{def:summation}
+For numbers $x_1, x_2, \dots, x_n$,
+\[
+  \sum_{i=1}^{n} x_i = x_1 + x_2 + \cdots + x_n .
+\]
+This is read ``the sum of $x_i$ for $i$ from $1$ to $n$''. The variable $i$ is
+the \term[index of summation]{index of summation}; it starts at the value
+below the $\sum$ and increases in steps of $1$ up to the value on top.
+\end{definition}
+\index{summation notation}\index{sigma notation|see{summation notation}}
+
+\begin{example}[Reading sums]\label{ex:sums}
+Compute (a) $\sum_{i=1}^{4} i$; (b) $\sum_{i=1}^{3} i^2$;
+(c) $\sum_{k=0}^{3} 2^k$; (d) $\sum_{i=1}^4 x_i$ for the data
+$x_1 = 2, x_2 = 5, x_3 = 3, x_4 = 7$.
+
+\sol
+(a) $1 + 2 + 3 + 4 = 10$.
+(b) $1^2 + 2^2 + 3^2 = 1 + 4 + 9 = 14$.
+(c) $2^0 + 2^1 + 2^2 + 2^3 = 1 + 2 + 4 + 8 = 15$ (the index may start at $0$).
+(d) $2 + 5 + 3 + 7 = 17$.
+\end{example}
+
+The name of the index does not matter: $\sum_{i=1}^4 x_i$, $\sum_{j=1}^4 x_j$
+and $\sum_{k=1}^4 x_k$ all mean the same thing. For this reason the index is
+called a \emph{dummy variable}.
+
+\subsection{Rules for sums}
+
+Because a sum is just repeated addition, the laws of arithmetic give us some
+useful rules.
+
+\begin{proposition}[Rules for sums]\label{prop:sum-rules}
+For numbers $x_1,\dots,x_n$, $y_1, \dots, y_n$ and a constant $c$:
+\begin{align*}
+  \sum_{i=1}^{n} c\,x_i &= c\sum_{i=1}^{n} x_i
+    && \text{(constants can be pulled out)},\\
+  \sum_{i=1}^{n} (x_i + y_i) &= \sum_{i=1}^{n} x_i + \sum_{i=1}^{n} y_i
+    && \text{(sums can be split)},\\
+  \sum_{i=1}^{n} c &= n\,c
+    && \text{(adding $c$ to itself $n$ times)}.
+\end{align*}
+\end{proposition}
+
+\begin{proof}
+The first rule is the distributive law:
+$c x_1 + c x_2 + \dots + c x_n = c(x_1 + \dots + x_n)$. The second rule just
+reorders the terms, which the commutative and associative laws allow. The
+third rule is the definition of multiplication.
+\end{proof}
+
+\begin{pitfall}[What you cannot do with sums]
+In general,
+\[
+  \sum_i x_i y_i \neq \Bigl(\sum_i x_i\Bigr)\Bigl(\sum_i y_i\Bigr)
+  \qquad\text{and}\qquad
+  \sum_i x_i^2 \neq \Bigl(\sum_i x_i\Bigr)^2 .
+\]
+For the data $2, 5, 3, 7$: $\sum_i x_i^2 = 4 + 25 + 9 + 49 = 87$, whereas
+$\bigl(\sum_i x_i\bigr)^2 = 17^2 = 289$.
+\end{pitfall}
+
+\subsection{The mean}
+
+The \term[mean]{mean} (average) of $n$ numbers is their sum divided by $n$. It
+is written with a bar:
+\[
+  \bar x = \frac{1}{n}\sum_{i=1}^{n} x_i .
+\]
+For the data $2, 5, 3, 7$, $\bar x = \tfrac{17}{4} = 4.25$.
+
+\subsection{Product notation}
+
+The capital Greek letter pi, $\prod$, does for multiplication what $\sum$ does
+for addition:
+\[
+  \prod_{i=1}^{n} x_i = x_1 \times x_2 \times \cdots \times x_n .
+\]
+For example $\prod_{i=1}^{4} i = 1\times2\times3\times4 = 24$. This
+particular product is so common that it has its own name and symbol:
+$n! = 1 \times 2 \times \cdots \times n$ is called ``$n$
+\term{factorial}'', so $4! = 24$. By convention, $0! = 1$.
+
+\begin{mlnote}[The mean squared error]
+Suppose a model makes predictions $\hat y_1, \dots, \hat y_n$ (read ``$y$
+hat'') for $n$ data points whose true values are $y_1, \dots, y_n$. The most
+common way to measure how wrong the model is, is the
+\term{mean squared error}:
+\[
+  \MSE = \frac{1}{n}\sum_{i=1}^{n} (y_i - \hat y_i)^2 .
+\]
+In words: for each data point, compute the error $y_i - \hat y_i$, square it
+(so that positive and negative errors both count, and big errors count a lot),
+and average over all data points. For true values $3, 5, 4, 6$ and predictions
+$2, 5, 5, 8$, the errors are $1, 0, -1, -2$, their squares are $1, 0, 1, 4$,
+and $\MSE = \tfrac{6}{4} = 1.5$. Training a model usually means making a
+quantity like this as small as possible.
+
+Products appear when we combine probabilities: the probability that a model
+assigns to an entire data set is often a product $\prod_{i=1}^n p_i$ of the
+probabilities of the individual examples (\cref{ch:statistics}).
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Compute: (a) $\sum_{i=1}^{5}(2i - 1)$; (b) $\sum_{k=1}^{4} k^2$;
+(c) $\sum_{j=0}^{3} 3$; (d) $\prod_{i=1}^{5} i$.
+\end{exercise}
+\begin{solution}
+(a) $1 + 3 + 5 + 7 + 9 = 25$. (b) $1 + 4 + 9 + 16 = 30$.
+(c) There are four terms ($j = 0,1,2,3$), each equal to $3$, so the sum is
+$12$. (d) $5! = 120$.
+\end{solution}
+
+\begin{exercise}
+Write in sigma notation: (a) $1 + 2 + \cdots + 100$;
+(b) $x_1^2 + x_2^2 + \cdots + x_n^2$; (c) $w_1 x_1 + w_2 x_2 + w_3 x_3$.
+\end{exercise}
+\begin{solution}
+(a) $\sum_{i=1}^{100} i$. (b) $\sum_{i=1}^{n} x_i^2$.
+(c) $\sum_{i=1}^{3} w_i x_i$. (This last kind of sum, a \emph{weighted sum},
+is what a single artificial neuron computes.)
+\end{solution}
+
+\begin{exercise}
+Let $x = (1, 4, 2, 5)$ and $y = (3, 0, 1, 2)$, meaning $x_1 = 1$, $y_1 = 3$,
+and so on. Compute $\sum_i x_i$, $\sum_i y_i$, $\sum_i x_i y_i$ and
+$\left(\sum_i x_i\right)\left(\sum_i y_i\right)$.
+\end{exercise}
+\begin{solution}
+$\sum_i x_i = 12$, $\sum_i y_i = 6$,
+$\sum_i x_i y_i = 3 + 0 + 2 + 10 = 15$, and
+$\left(\sum_i x_i\right)\left(\sum_i y_i\right) = 72$. The last two differ,
+confirming that a sum of products is not a product of sums.
+\end{solution}
+
+\begin{exercise}
+Use the rules for sums to show that the deviations from the mean always add up
+to zero: $\sum_{i=1}^n (x_i - \bar x) = 0$.
+\end{exercise}
+\begin{solution}
+Split the sum and use $\sum_{i=1}^n c = nc$ with the constant $c = \bar x$:
+\[
+  \sum_{i=1}^n (x_i - \bar x) = \sum_{i=1}^n x_i - n\bar x
+  = n\bar x - n\bar x = 0,
+\]
+because $\sum_{i=1}^n x_i = n\bar x$ by the definition of the mean.
+\end{solution}
+
+\begin{exercise}
+True values are $y = (2, 4, 6)$ and a model predicts $\hat y = (3, 4, 4)$.
+Compute the mean squared error and the mean absolute error
+$\tfrac1n\sum_i \abs{y_i - \hat y_i}$. (The absolute value $\abs{\cdot}$ simply
+removes a minus sign; see \cref{sec:absolute-value}.)
+\end{exercise}
+\begin{solution}
+Errors $y_i - \hat y_i$: $-1, 0, 2$. Squares: $1, 0, 4$, so
+$\MSE = \tfrac53 \approx 1.67$. Absolute errors: $1, 0, 2$, so the mean
+absolute error is $\tfrac33 = 1$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Solving equations}\label{sec:equations}
+%----------------------------------------------------------------------
+
+An \term{equation} states that two expressions are equal, for example
+$3x + 5 = 20$. A \term[solution of an equation]{solution} is a value of the
+variable that makes the statement true. Here $x = 5$ is a solution, because
+$3 \times 5 + 5 = 20$.
+
+\subsection{The balance principle}
+
+\begin{picturethis}
+Imagine an old-fashioned balance scale with $3x + 5$ in the left pan and $20$
+in the right pan, perfectly level. If you remove $5$ from \emph{both} pans, it
+stays level: $3x = 15$. If you then divide the contents of \emph{both} pans
+into three equal parts and keep one part of each, it still stays level:
+$x = 5$. Solving an equation means doing the same thing to both sides until
+the variable stands alone.
+\end{picturethis}
+
+The allowed moves are: add or subtract the same number on both sides; multiply
+or divide both sides by the same \emph{non-zero} number; and simplify either
+side. Each move undoes one operation that was applied to $x$, in reverse order.
+
+\begin{example}[Linear equations]\label{ex:linear-equations}
+Solve (a) $3x + 5 = 20$; (b) $5x - 3 = 2x + 9$; (c) $\tfrac{x}{4} + 1 = 3$;
+(d) $\tfrac{x+1}{3} = \tfrac{x-1}{2}$.
+
+\sol
+(a) Subtract $5$: $3x = 15$. Divide by $3$: $x = 5$.
+\emph{Check:} $3\times5 + 5 = 20$. \checkmark
+
+(b) Gather the $x$ terms on one side by subtracting $2x$: $3x - 3 = 9$. Add
+$3$: $3x = 12$. Divide by $3$: $x = 4$.
+\emph{Check:} left side $5\times4 - 3 = 17$, right side $2\times4+9 = 17$.
+\checkmark
+
+(c) Subtract $1$: $\tfrac{x}{4} = 2$. Multiply by $4$: $x = 8$.
+
+(d) Clear the fractions by multiplying both sides by $6$, a common multiple of
+the denominators: $2(x+1) = 3(x-1)$. Expand: $2x + 2 = 3x - 3$. Subtract $2x$
+and add $3$: $5 = x$. \emph{Check:} $\tfrac{6}{3} = 2 = \tfrac42$. \checkmark
+\end{example}
+
+Always check your answer by substituting it back into the \emph{original}
+equation. It takes seconds and catches most mistakes.
+
+Equations of the form $ax + b = c$ are called \term[linear equation]{linear
+equations}, because (as we will see in \cref{ch:functions}) their graphs are
+straight lines. Every linear equation with $a \neq 0$ has exactly one
+solution, $x = \tfrac{c-b}{a}$. Some equations that look linear have no
+solution at all ($x + 1 = x + 2$ simplifies to the false statement $1 = 2$) or
+are true for every $x$ ($2(x+1) = 2x + 2$ simplifies to $2 = 2$; such an
+equation is called an \emph{identity}).
+
+\subsection{Rearranging formulas}
+
+The same moves let us solve a formula for any one of its variables. To convert
+Fahrenheit to Celsius, solve $F = \tfrac95 C + 32$ for $C$: subtract $32$, then
+multiply by $\tfrac59$:
+\[
+  C = \tfrac59(F - 32).
+\]
+A body temperature of $98.6\,^\circ$F is therefore
+$\tfrac59 \times 66.6 = 37\,^\circ$C.
+
+\subsection{Two equations in two unknowns}
+
+Sometimes we have two unknowns and two facts about them. For example: two
+numbers add up to $10$ and differ by $2$. What are they? Writing $x$ and $y$
+for the numbers,
+\[
+  \begin{cases}
+    x + y = 10,\\
+    x - y = 2.
+  \end{cases}
+\]
+This is a \term[system of linear equations]{system of linear equations}. Two
+standard methods solve it.
+
+\textbf{Elimination.} Add the two equations: the $y$'s cancel and we get
+$2x = 12$, so $x = 6$. Substituting into the first equation gives $y = 4$.
+
+\textbf{Substitution.} Solve one equation for one variable and substitute
+into the other. From the second equation, $x = y + 2$; substituting into the
+first gives $(y + 2) + y = 10$, so $2y = 8$, $y = 4$, and $x = 6$.
+
+\begin{example}[Fitting a line through two points]\label{ex:line-two-points}
+Find numbers $w$ and $b$ so that the formula $y = wx + b$ gives $y = 3$ when
+$x = 1$ and gives $y = 7$ when $x = 3$.
+
+\sol Substituting the two data points gives two equations:
+\[
+  \begin{cases}
+    w + b = 3,\\
+    3w + b = 7.
+  \end{cases}
+\]
+Subtracting the first equation from the second eliminates $b$: $2w = 4$, so
+$w = 2$. Then $b = 3 - w = 1$. The formula is $y = 2x + 1$.
+\emph{Check:} $2\times1+1 = 3$ and $2\times3+1 = 7$. \checkmark
+\end{example}
+
+\begin{mlnote}[From two equations to millions]
+\Cref{ex:line-two-points} is a miniature version of training a model: we
+chose the parameters $w$ and $b$ so that the model reproduces the data. With
+two data points and two parameters we can fit the data exactly. Real data sets
+have many more data points than parameters, so there are more equations than
+unknowns and usually no exact solution. We will then look for the parameters
+that make the errors as small as possible, a problem called \emph{least
+squares} (\cref{ch:linalg2}). Large systems of equations are written and
+solved with matrices (\cref{ch:linalg1}).
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Solve and check: (a) $4x - 7 = 13$; (b) $2(x+3) = 5x - 3$;
+(c) $\tfrac{x}{3} - 2 = 4$; (d) $\tfrac{2x-1}{5} = \tfrac{x+2}{3}$.
+\end{exercise}
+\begin{solution}
+(a) $4x = 20$, $x = 5$.
+(b) $2x + 6 = 5x - 3$, so $9 = 3x$ and $x = 3$; check: $12 = 12$.
+(c) $\tfrac{x}{3} = 6$, $x = 18$.
+(d) Multiply by $15$: $3(2x - 1) = 5(x + 2)$, so $6x - 3 = 5x + 10$ and
+$x = 13$; check: $\tfrac{25}{5} = 5 = \tfrac{15}{3}$.
+\end{solution}
+
+\begin{exercise}
+Rearrange each formula for the indicated variable: (a) $v = u + at$ for $t$;
+(b) $A = \tfrac12 bh$ for $h$; (c) $z = \tfrac{x - \mu}{\sigma}$ for $x$.
+(The letters $\mu$ and $\sigma$ are the Greek letters ``mu'' and ``sigma''.
+The quantity $z$ is the \emph{z-score} of statistics, which you will meet in
+\cref{ch:probability}.)
+\end{exercise}
+\begin{solution}
+(a) $t = \tfrac{v - u}{a}$ (assuming $a \neq 0$).
+(b) $h = \tfrac{2A}{b}$ (assuming $b \neq 0$).
+(c) Multiply by $\sigma$: $z\sigma = x - \mu$, so $x = \mu + \sigma z$.
+\end{solution}
+
+\begin{exercise}
+Solve the systems: (a) $x + y = 7$, $x - y = 3$; (b) $3x + 2y = 16$,
+$x - 2y = 0$; (c) $2x + y = 5$, $4x + 2y = 10$; (d) $x + y = 1$,
+$x + y = 3$.
+\end{exercise}
+\begin{solution}
+(a) Adding: $2x = 10$, so $x = 5$, $y = 2$.
+(b) Adding: $4x = 16$, so $x = 4$ and then $y = 2$.
+(c) The second equation is twice the first, so they carry the same
+information: every pair with $y = 5 - 2x$ is a solution (infinitely many
+solutions).
+(d) The two equations contradict each other ($1 \neq 3$), so there is no
+solution.
+\end{solution}
+
+\begin{exercise}
+Find the line $y = wx + b$ that passes through the points $(x,y) = (2,5)$ and
+$(4,9)$.
+\end{exercise}
+\begin{solution}
+$2w + b = 5$ and $4w + b = 9$. Subtracting: $2w = 4$, so $w = 2$ and
+$b = 5 - 4 = 1$. The line is $y = 2x + 1$.
+\end{solution}
+
+\begin{exercise}
+A theatre sells adult tickets at $12$ and child tickets at $7$. A group buys
+$20$ tickets for a total of $190$. How many adult tickets did they buy?
+\end{exercise}
+\begin{solution}
+Let $a$ and $c$ be the numbers of adult and child tickets: $a + c = 20$ and
+$12a + 7c = 190$. Substituting $c = 20 - a$: $12a + 140 - 7a = 190$, so
+$5a = 50$ and $a = 10$ (and $c = 10$).
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Inequalities}\label{sec:inequalities}
+%----------------------------------------------------------------------
+
+\subsection{Inequality symbols}
+
+An \term{inequality} compares two quantities that need not be equal:
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Symbol} & \textbf{Read as} & \textbf{Example}\\
+\midrule
+$a < b$ & $a$ is less than $b$ & $-3 < 2$\\
+$a > b$ & $a$ is greater than $b$ & $7 > 4$\\
+$a \le b$ & $a$ is less than or equal to $b$ & $5 \le 5$\\
+$a \ge b$ & $a$ is greater than or equal to $b$ & $0.3 \ge 0$\\
+$a \neq b$ & $a$ is not equal to $b$ & $1 \neq 2$\\
+\bottomrule
+\end{tabular}
+\end{center}
+On the number line, $a < b$ means that $a$ lies to the left of $b$. (A memory
+aid: the symbol always opens towards the larger number.)
+
+\subsection{Solving inequalities}
+
+Inequalities are solved almost exactly like equations: you may add or
+subtract the same number on both sides, and multiply or divide both sides by
+the same \emph{positive} number. There is one crucial exception.
+
+\begin{theorem}[Multiplying an inequality by a negative number]
+\label{thm:flip-inequality}
+If $a < b$ and $c < 0$, then $ca > cb$. In words: multiplying or dividing both
+sides of an inequality by a negative number \emph{reverses} the direction of
+the inequality.
+\end{theorem}
+
+\begin{intuition}
+Multiplying by $-1$ reflects the number line in the point $0$, like a mirror.
+Since $2 < 5$, the point $2$ is to the left of $5$; after reflection, $-2$ is to
+the \emph{right} of $-5$, so $-2 > -5$. Order is reversed by the mirror.
+\end{intuition}
+
+\begin{example}[Solving an inequality]\label{ex:inequality}
+Solve $3 - 2x \ge 7$.
+
+\sol Subtract $3$ from both sides: $-2x \ge 4$. Divide by $-2$, which is
+negative, so the inequality flips: $x \le -2$. The solution set is the
+interval $(-\infty, -2]$:
+\begin{center}
+\begin{tikzpicture}[x=0.6cm]
+  \draw[{Stealth[length=2mm]}-{Stealth[length=2mm]},thin,gray] (-6.5,0) -- (3.5,0);
+  \foreach \x in {-6,...,3}{
+    \draw[gray] (\x,0.07) -- (\x,-0.07) node[below,font=\scriptsize] {$\x$};}
+  \draw[line width=2.5pt,PlotBlue,{Stealth[length=3mm]}-] (-6.5,0) -- (-2,0);
+  \fill[PlotBlue] (-2,0) circle (3.5pt);
+\end{tikzpicture}
+\end{center}
+\emph{Check} a value inside the set, say $x = -3$: $3 + 6 = 9 \ge 7$
+\checkmark; and one outside, say $x = 0$: $3 \ge 7$ is false. \checkmark
+\end{example}
+
+A \emph{compound inequality} such as $-1 < 2x + 3 \le 9$ is solved by
+operating on all three parts at once: subtract $3$ to get $-4 < 2x \le 6$, then
+divide by $2$ to get $-2 < x \le 3$, i.e.\ the interval $(-2, 3]$.
+
+\subsection{Maximum and minimum}
+
+The \term{maximum} of two numbers is the larger of them, and the
+\term{minimum} is the smaller:
+\[
+  \max(3, 7) = 7, \qquad \min(3, 7) = 3, \qquad \max(-2, -5) = -2 .
+\]
+More generally, $\max$ and $\min$ of a list of numbers pick out its largest
+and smallest elements.
+
+\begin{mlnote}[Inequalities in machine learning]
+Inequalities express constraints: a probability $p$ always satisfies
+$0 \le p \le 1$, and a learning rate must be positive. The maximum function
+also defines the most popular building block of modern neural networks, the
+\term{rectified linear unit}, or ReLU:
+\[
+  \ReLU(x) = \max(0, x) .
+\]
+It passes positive numbers through unchanged and replaces negative numbers by
+$0$. So $\ReLU(2.5) = 2.5$ and $\ReLU(-1.3) = 0$. Another example is
+\emph{clipping}, which forces a number into an interval $[-c, c]$ using
+$\min(\max(x, -c), c)$; ``gradient clipping'' uses this idea to stop training
+from blowing up.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Solve, and write the answer in interval notation: (a) $2x + 5 < 11$;
+(b) $4 - 3x \le 10$; (c) $-3 \le 2x - 1 < 7$.
+\end{exercise}
+\begin{solution}
+(a) $2x < 6$, so $x < 3$: $(-\infty, 3)$.
+(b) $-3x \le 6$; dividing by $-3$ flips the sign: $x \ge -2$:
+$[-2, \infty)$.
+(c) Add $1$: $-2 \le 2x < 8$; divide by $2$: $-1 \le x < 4$: $[-1, 4)$.
+\end{solution}
+
+\begin{exercise}
+Evaluate: (a) $\max(-2, 5)$; (b) $\min(-2, 5)$; (c) $\ReLU(-3.7)$;
+(d) $\ReLU(2.1)$; (e) $\max(1, 4, -6, 2)$.
+\end{exercise}
+\begin{solution}
+(a) $5$; (b) $-2$; (c) $0$; (d) $2.1$; (e) $4$.
+\end{solution}
+
+\begin{exercise}
+For which values of $x$ is $\ReLU(x) = x$? For which is $\ReLU(x) = 0$?
+\end{exercise}
+\begin{solution}
+$\ReLU(x) = x$ exactly when $x \ge 0$; $\ReLU(x) = 0$ exactly when $x \le 0$
+(both hold at $x = 0$).
+\end{solution}
+
+\begin{exercise}
+The clipping function with $c = 1$ is $\operatorname{clip}(x) =
+\min(\max(x, -1), 1)$. Compute $\operatorname{clip}(-3)$,
+$\operatorname{clip}(0.5)$ and $\operatorname{clip}(2)$, and describe in words
+what the function does.
+\end{exercise}
+\begin{solution}
+$\operatorname{clip}(-3) = \min(-1, 1) = -1$;
+$\operatorname{clip}(0.5) = \min(0.5, 1) = 0.5$;
+$\operatorname{clip}(2) = \min(2, 1) = 1$. It leaves numbers in $[-1,1]$
+unchanged and replaces anything outside by the nearest endpoint.
+\end{solution}
+
+\begin{exercise}
+Starting from the true statement $3 < 8$, multiply both sides by $-2$. Is
+$-6 < -16$ true? Explain what goes wrong and how to fix it.
+\end{exercise}
+\begin{solution}
+$-6 < -16$ is false: $-6$ lies to the right of $-16$ on the number line.
+Multiplying by a negative number reverses the inequality, so the correct
+statement is $-6 > -16$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Absolute value}\label{sec:absolute-value}
+%----------------------------------------------------------------------
+
+\begin{definition}[Absolute value]\label{def:absolute-value}
+The \term{absolute value} of a real number $x$ is
+\[
+  \abs{x} = \begin{cases}
+    x & \text{if } x \ge 0,\\
+    -x & \text{if } x < 0.
+  \end{cases}
+\]
+\end{definition}
+
+In practice: the absolute value removes a minus sign, if there is one.
+$\abs{5} = 5$, $\abs{-5} = 5$, $\abs{0} = 0$. (In the second case the
+definition says $\abs{-5} = -(-5) = 5$.)
+
+\begin{intuition}[Absolute value is distance]
+$\abs{x}$ is the distance from $x$ to $0$ on the number line, and distances are
+never negative. More usefully, $\abs{a - b}$ is the distance between the
+numbers $a$ and $b$ (\cref{fig:abs-distance}). For example, the distance
+between $-2$ and $3$ is $\abs{-2 - 3} = \abs{-5} = 5$, and it does not matter
+in which order we subtract: $\abs{3 - (-2)} = 5$ too.
+\end{intuition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm]
+  \draw[{Stealth[length=2mm]}-{Stealth[length=2mm]},thick] (-4.5,0) -- (4.5,0);
+  \foreach \x in {-4,...,4}
+    \draw (\x,0.07) -- (\x,-0.07) node[below,font=\small] {$\x$};
+  \fill[PlotRed] (-2,0) circle (2.5pt) node[above=4pt] {$a=-2$};
+  \fill[PlotBlue] (3,0) circle (2.5pt) node[above=4pt] {$b=3$};
+  \draw[decorate,decoration={brace,amplitude=6pt,mirror},thick]
+    (-2,-0.55) -- (3,-0.55) node[midway,below=8pt] {$\abs{a-b} = 5$};
+\end{tikzpicture}
+\caption{The distance between two numbers $a$ and $b$ on the number line is
+  $\abs{a-b}$.}
+\label{fig:abs-distance}
+\end{figure}
+
+\begin{proposition}[Properties of absolute value]\label{prop:abs-properties}
+For all real numbers $a$ and $b$:
+\begin{enumerate}
+  \item $\abs{a} \ge 0$, and $\abs{a} = 0$ only when $a = 0$;
+  \item $\abs{ab} = \abs{a}\,\abs{b}$ and, if $b \neq 0$,
+    $\abs{a/b} = \abs{a}/\abs{b}$;
+  \item $\abs{a + b} \le \abs{a} + \abs{b}$ (the \term{triangle inequality});
+  \item $\sqrt{a^2} = \abs{a}$.
+\end{enumerate}
+\end{proposition}
+
+The triangle inequality says that going from $0$ to $a + b$ can never be
+longer than going first a distance $\abs{a}$ and then a distance $\abs{b}$.
+Equality holds when $a$ and $b$ have the same sign; when the signs differ, the
+two steps partly cancel: $\abs{3 + (-5)} = 2$, while $\abs3 + \abs{-5} = 8$.
+The name will make more sense in \cref{ch:linalg1}, where the same inequality
+holds for the sides of a triangle.
+
+\subsection{Equations and inequalities with absolute values}
+
+Reading absolute values as distances makes these problems easy.
+
+\begin{example}[Absolute value equations and inequalities]
+\label{ex:abs-equations}
+Solve (a) $\abs{x - 3} = 2$; (b) $\abs{x - 3} < 2$; (c) $\abs{x-3} \ge 2$;
+(d) $\abs{2x + 1} \le 5$.
+
+\sol (a) ``The distance from $x$ to $3$ is $2$'': $x = 1$ or $x = 5$.
+
+(b) ``The distance from $x$ to $3$ is less than $2$'': $1 < x < 5$, the
+interval $(1, 5)$.
+
+(c) ``At least $2$ away from $3$'': $x \le 1$ or $x \ge 5$.
+
+(d) $\abs{u} \le 5$ means $-5 \le u \le 5$. With $u = 2x + 1$:
+$-5 \le 2x + 1 \le 5$, so $-6 \le 2x \le 4$, i.e.\ $-3 \le x \le 2$.
+\end{example}
+
+\begin{pitfall}[Absolute value does not split over sums]
+$\abs{a + b}$ is not in general equal to $\abs a + \abs b$ (see the example
+above). Also, $-\abs{x}$ is always $\le 0$, while $\abs{-x} = \abs{x}$ is
+always $\ge 0$; these are different things.
+\end{pitfall}
+
+\begin{mlnote}[Two ways of measuring errors]
+If a model predicts $\hat y$ and the true value is $y$, the size of the error is
+$\abs{y - \hat y}$, regardless of whether the prediction was too high or too
+low. Averaging over a data set gives the \term{mean absolute error},
+\[
+  \text{MAE} = \frac1n \sum_{i=1}^{n} \abs{y_i - \hat y_i},
+\]
+an alternative to the mean squared error of \cref{sec:summation}. Squaring
+punishes large errors much more than small ones (an error of $10$ contributes
+$100$ to the MSE but only $10$ to the MAE), so the two measures lead to models
+with different behaviour. In \cref{ch:linalg2} absolute values reappear in the
+``$L^1$ norm'', which is used to encourage models to set many weights to
+exactly zero.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Evaluate: $\abs{-8}$, $\abs{3 - 10}$, $\abs{-2}\cdot\abs{5}$, $\abs{-4 + 9}$,
+$-\abs{-6}$.
+\end{exercise}
+\begin{solution}
+$8$; $\abs{-7} = 7$; $2\cdot5 = 10$; $\abs{5} = 5$; $-6$.
+\end{solution}
+
+\begin{exercise}
+Solve: (a) $\abs{x+2} = 5$; (b) $\abs{x-1} \le 3$; (c) $\abs{2x - 4} > 6$.
+\end{exercise}
+\begin{solution}
+(a) $x + 2 = 5$ or $x + 2 = -5$, so $x = 3$ or $x = -7$.
+(b) $-3 \le x - 1 \le 3$, so $-2 \le x \le 4$: $[-2, 4]$.
+(c) $2x - 4 > 6$ or $2x - 4 < -6$, so $x > 5$ or $x < -1$.
+\end{solution}
+
+\begin{exercise}
+What is the distance between $-3.5$ and $2$ on the number line?
+\end{exercise}
+\begin{solution}
+$\abs{-3.5 - 2} = \abs{-5.5} = 5.5$.
+\end{solution}
+
+\begin{exercise}
+Check the triangle inequality for $a = 4$, $b = -7$. For which pairs of
+numbers does $\abs{a+b} = \abs a + \abs b$ hold exactly?
+\end{exercise}
+\begin{solution}
+$\abs{4 + (-7)} = 3 \le \abs4 + \abs{-7} = 11$. Equality holds exactly when
+$a$ and $b$ do not have opposite signs, i.e.\ when both are $\ge 0$ or both are
+$\le 0$.
+\end{solution}
+
+\begin{exercise}
+True values are $y = (10, 12, 8)$ and predictions are $\hat y = (11, 9, 8)$.
+Compute the MAE and the MSE. Which data point dominates the MSE, and why?
+\end{exercise}
+\begin{solution}
+Errors: $-1, 3, 0$. MAE $= \tfrac{1 + 3 + 0}{3} = \tfrac43 \approx 1.33$.
+MSE $= \tfrac{1 + 9 + 0}{3} = \tfrac{10}{3} \approx 3.33$. The second data
+point contributes $9$ of the $10$ units of squared error: squaring makes the
+largest error dominate.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Chapter summary}\label{sec:ch1-summary}
+%----------------------------------------------------------------------
+
+\begin{keytakeaways}
+\begin{itemize}
+  \item The number systems are nested: $\N \subset \Z \subset \Q \subset \R$.
+    Machine learning works almost entirely with real numbers, which are
+    stored approximately by computers.
+  \item The commutative, associative and distributive laws let us rearrange
+    calculations. Never divide by zero.
+  \item Fractions: find a common denominator to add; multiply straight across;
+    divide by multiplying by the reciprocal. Always ask what a percentage is a
+    percentage \emph{of}.
+  \item Exponent laws: $a^m a^n = a^{m+n}$, $(a^m)^n = a^{mn}$, $a^0 = 1$,
+    $a^{-n} = 1/a^n$, $a^{1/n} = \sqrt[n]{a}$. But $(a+b)^2 \neq a^2 + b^2$.
+  \item Order of operations: brackets, exponents, multiplication and division
+    (left to right), addition and subtraction (left to right).
+  \item Variables are named boxes for numbers; a model is an expression with
+    inputs and parameters (weights and biases).
+  \item $\sum_{i=1}^n x_i$ means $x_1 + \dots + x_n$. Constants can be pulled
+    out of sums and sums can be split, but a sum of products is not a product
+    of sums. The mean is $\bar x = \frac1n\sum_i x_i$.
+  \item Solve equations by doing the same thing to both sides. Two unknowns
+    need two equations (elimination or substitution).
+  \item Inequalities work like equations, except that multiplying by a
+    negative number reverses them. $\ReLU(x) = \max(0, x)$.
+  \item $\abs{a - b}$ is the distance between $a$ and $b$; mean absolute error
+    and mean squared error are two ways to measure a model's mistakes.
+\end{itemize}
+\end{keytakeaways}
+
+In the next chapter we turn expressions into \emph{functions}: machines that
+take an input and produce an output. Functions are the mathematical name for
+what a machine learning model is.

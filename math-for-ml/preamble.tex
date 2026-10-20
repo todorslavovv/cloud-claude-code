@@ -1,0 +1,534 @@
+%======================================================================
+% preamble.tex
+%
+% Shared preamble for
+%   "Mathematics for Machine Learning and Deep Learning:
+%    From Absolute Beginner to Prerequisites"
+%
+% Loaded by main.tex via \input{preamble}. Everything that controls the
+% look of the notes (fonts, colours, boxes, headings), the notation
+% macros, and the automatic exercise-solution machinery lives here, so
+% that every chapter file contains only content.
+%======================================================================
+
+%----------------------------------------------------------------------
+% Fonts, encoding and micro-typography
+%----------------------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[final]{microtype}
+
+%----------------------------------------------------------------------
+% Page geometry and paragraph layout
+%----------------------------------------------------------------------
+\usepackage[a4paper,top=27mm,bottom=27mm,left=30mm,right=30mm,
+            headheight=14pt]{geometry}
+\usepackage[skip=5pt plus 1pt minus 1pt,indent=0pt]{parskip}
+\usepackage{needspace}
+
+%----------------------------------------------------------------------
+% Mathematics
+%----------------------------------------------------------------------
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+
+%----------------------------------------------------------------------
+% Colours (one colour per kind of box, used consistently throughout)
+%----------------------------------------------------------------------
+\usepackage{xcolor}
+\definecolor{MLchapter}{RGB}{25,60,110}      % chapter and section titles
+\definecolor{MLlink}{RGB}{20,80,160}         % internal hyperlinks
+\definecolor{MLurl}{RGB}{140,40,110}         % external hyperlinks
+\definecolor{MLterm}{RGB}{20,55,120}         % newly introduced terms
+\definecolor{MLdef}{RGB}{31,95,168}          % definitions
+\definecolor{MLthm}{RGB}{128,40,110}         % theorems, propositions
+\definecolor{MLexample}{RGB}{40,120,60}      % worked examples
+\definecolor{MLintuition}{RGB}{176,104,0}    % intuition / picture this
+\definecolor{MLml}{RGB}{0,118,124}           % why this matters for ML
+\definecolor{MLpitfall}{RGB}{185,45,40}      % common pitfalls
+\definecolor{MLremark}{RGB}{100,100,100}     % remarks
+\definecolor{MLmotivation}{RGB}{70,60,160}   % motivation
+\definecolor{MLnotation}{RGB}{70,100,115}    % notation
+\definecolor{MLexercise}{RGB}{60,60,60}      % exercises
+\definecolor{MLalgorithm}{RGB}{120,80,40}    % algorithms
+\definecolor{MLsummary}{RGB}{25,60,110}      % chapter summaries
+% Colours used inside figures
+\definecolor{PlotBlue}{RGB}{31,95,168}
+\definecolor{PlotRed}{RGB}{200,55,45}
+\definecolor{PlotGreen}{RGB}{40,140,70}
+\definecolor{PlotOrange}{RGB}{225,130,20}
+\definecolor{PlotPurple}{RGB}{120,60,160}
+\definecolor{PlotGray}{RGB}{120,120,120}
+
+%----------------------------------------------------------------------
+% Graphics and plotting
+%----------------------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,positioning,decorations.pathreplacing,
+  patterns,shapes.geometric,angles,quotes,backgrounds,fit,matrix}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
+% A common look for all function plots in the notes.
+\pgfplotsset{
+  mlplot/.style={
+    axis lines=middle,
+    axis line style={-{Stealth[length=2mm]},thin},
+    xlabel style={anchor=north west,font=\small},
+    ylabel style={anchor=south east,font=\small},
+    tick label style={font=\footnotesize},
+    every axis plot/.append style={thick},
+    grid=major,
+    grid style={gray!20},
+    clip=true,
+  },
+}
+\tikzset{
+  vec/.style={-{Stealth[length=2.6mm]},very thick},
+  dot/.style={circle,fill,inner sep=1.3pt},
+  opendot/.style={circle,draw,fill=white,inner sep=1.3pt},
+}
+
+%----------------------------------------------------------------------
+% Tables, lists, captions, code
+%----------------------------------------------------------------------
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{enumitem}
+\setlist{itemsep=2pt,topsep=3pt,parsep=0pt}
+\setlist[enumerate,1]{label=(\alph*)}
+\newlist{steps}{enumerate}{1}
+\setlist[steps]{label=\textbf{Step \arabic*.},leftmargin=*,align=left,
+  itemsep=3pt,topsep=3pt}
+\usepackage[font=small,labelfont={bf,color=MLchapter},margin=8mm]{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\lstdefinestyle{mlpython}{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{MLdef}\bfseries,
+  commentstyle=\color{MLremark}\itshape,
+  stringstyle=\color{MLexample},
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  frame=single,
+  framesep=4pt,
+  rulecolor=\color{gray!40},
+  backgroundcolor=\color{gray!5},
+  xleftmargin=6pt,
+  xrightmargin=6pt,
+  aboveskip=8pt,
+  belowskip=8pt,
+  upquote=true,
+}
+\lstset{style=mlpython}
+
+%----------------------------------------------------------------------
+% Headings and running heads
+%----------------------------------------------------------------------
+\usepackage{titlesec}
+% The last command of the "before" code receives the chapter title;
+% \MLsetchaptertitle prints it and remembers it for the solutions
+% appendix (see the exercise machinery below).
+\newcommand{\MLcurrentchaptertitle}{}
+\newcommand{\MLsetchaptertitle}[1]{%
+  \gdef\MLcurrentchaptertitle{#1}#1}
+\titleformat{\chapter}[display]
+  {\normalfont\color{MLchapter}\filright}
+  {\large\scshape\chaptertitlename\ \thechapter}
+  {4pt}
+  {\huge\bfseries\MLsetchaptertitle}
+  [\vspace{2pt}{\color{MLchapter}\titlerule[0.8pt]}]
+\titleformat{name=\chapter,numberless}[display]
+  {\normalfont\color{MLchapter}\filright}
+  {}
+  {0pt}
+  {\huge\bfseries}
+  [\vspace{2pt}{\color{MLchapter}\titlerule[0.8pt]}]
+\titlespacing*{\chapter}{0pt}{-10pt}{22pt}
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{MLchapter}\filright}
+  {\thesection}{0.7em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{MLchapter}\filright}
+  {\thesubsection}{0.7em}{}
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\filright}
+  {\thesubsubsection}{0.7em}{}
+\titlespacing*{\section}{0pt}{16pt plus 4pt minus 2pt}{6pt plus 2pt}
+\titlespacing*{\subsection}{0pt}{12pt plus 3pt minus 2pt}{4pt plus 2pt}
+\titlespacing*{\subsubsection}{0pt}{10pt plus 3pt minus 2pt}{3pt plus 1pt}
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{1}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\itshape\nouppercase{\leftmark}}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyfoot[C]{\small\thepage}%
+  \renewcommand{\headrulewidth}{0pt}}
+% Running head: "4. Vectors and Linear Algebra ..." (no number in the
+% front matter). Must come after \pagestyle{fancy}, which resets it.
+\makeatletter
+\renewcommand{\chaptermark}[1]{%
+  \markboth{\ifnum\c@secnumdepth>\m@ne\if@mainmatter
+    \thechapter.\enspace\fi\fi #1}{}}
+\makeatother
+
+%----------------------------------------------------------------------
+% Index, hyperlinks, clever references
+%----------------------------------------------------------------------
+\usepackage{etoolbox}
+\usepackage{imakeidx}
+\makeindex[intoc,columns=2,title=Index]
+\usepackage[hyperfootnotes=false]{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=MLlink,
+  citecolor=MLlink,
+  urlcolor=MLurl,
+  bookmarksnumbered=true,
+  bookmarksopen=true,
+  bookmarksopenlevel=0,
+  pdftitle={Mathematics for Machine Learning and Deep Learning: From
+    Absolute Beginner to Prerequisites},
+  pdfsubject={Lecture notes},
+  pdfkeywords={mathematics, machine learning, deep learning, linear algebra,
+    calculus, probability, statistics, optimization},
+}
+\usepackage[capitalise,nameinlink,noabbrev]{cleveref}
+
+%----------------------------------------------------------------------
+% Boxes
+%----------------------------------------------------------------------
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable,theorems}
+
+% Base style shared by every coloured box: a thick rule on the left, a
+% lightly tinted background, and the ability to break across pages.
+\tcbset{
+  mlbox/.style={
+    enhanced,
+    breakable,
+    sharp corners,
+    boxrule=0pt,
+    frame hidden,
+    colback=#1!6!white,
+    borderline west={2.5pt}{0pt}{#1},
+    left=9pt,right=8pt,top=6pt,bottom=6pt,
+    before skip=9pt plus 2pt,
+    after skip=9pt plus 2pt,
+    parbox=false,
+  },
+}
+
+%----------------------------------------------------------------------
+% Theorem-like environments
+%
+% Numbered (one shared counter per chapter, so "Example 4.7" follows
+% "Definition 4.6"):  definition, theorem, proposition, corollary,
+%                     example, algorithm
+% Numbered separately: exercise
+% Unnumbered:         intuition, picturethis, remark, mlnote, pitfall,
+%                     motivation, notation
+%
+% Every one of them is drawn inside a tcolorbox (see below), and every
+% one accepts an optional title, e.g. \begin{definition}[Slope].
+%----------------------------------------------------------------------
+\newcommand{\MLnewthmstyle}[2]{%
+  \newtheoremstyle{#1}%
+    {0pt}{0pt}%                 space above / below (the box handles it)
+    {\normalfont}%              body font
+    {}%                         indentation of the head
+    {\bfseries\color{#2}}%      head font
+    {.}%                        punctuation after the head
+    {0.5em}%                    space after the head
+    {}}%                        head specification (default)
+\MLnewthmstyle{mldefinition}{MLdef}
+\MLnewthmstyle{mltheorem}{MLthm}
+\MLnewthmstyle{mlexample}{MLexample}
+\MLnewthmstyle{mlintuition}{MLintuition}
+\MLnewthmstyle{mlml}{MLml}
+\MLnewthmstyle{mlpitfall}{MLpitfall}
+\MLnewthmstyle{mlremark}{MLremark}
+\MLnewthmstyle{mlmotivation}{MLmotivation}
+\MLnewthmstyle{mlnotation}{MLnotation}
+\MLnewthmstyle{mlexercise}{MLexercise}
+\MLnewthmstyle{mlalgorithm}{MLalgorithm}
+
+\theoremstyle{mldefinition}
+\newtheorem{definition}{Definition}[chapter]
+\theoremstyle{mltheorem}
+\newtheorem{theorem}[definition]{Theorem}
+\newtheorem{proposition}[definition]{Proposition}
+\newtheorem{corollary}[definition]{Corollary}
+\theoremstyle{mlexample}
+\newtheorem{example}[definition]{Example}
+\theoremstyle{mlalgorithm}
+\newtheorem{algorithm}[definition]{Algorithm}
+\theoremstyle{mlintuition}
+\newtheorem*{intuition}{Intuition}
+\newtheorem*{picturethis}{Picture this}
+\theoremstyle{mlml}
+\newtheorem*{mlnote}{Why this matters for ML}
+\theoremstyle{mlpitfall}
+\newtheorem*{pitfall}{Common pitfall}
+\theoremstyle{mlremark}
+\newtheorem*{remark}{Remark}
+\theoremstyle{mlmotivation}
+\newtheorem*{motivation}{Motivation}
+\theoremstyle{mlnotation}
+\newtheorem*{notation}{Notation}
+\theoremstyle{mlexercise}
+\newtheorem{exercisebase}{Exercise}[chapter]
+
+\crefname{definition}{Definition}{Definitions}
+\crefname{theorem}{Theorem}{Theorems}
+\crefname{proposition}{Proposition}{Propositions}
+\crefname{corollary}{Corollary}{Corollaries}
+\crefname{example}{Example}{Examples}
+\crefname{algorithm}{Algorithm}{Algorithms}
+\crefname{exercisebase}{Exercise}{Exercises}
+\crefname{figure}{Figure}{Figures}
+\crefname{table}{Table}{Tables}
+\crefname{equation}{Equation}{Equations}
+\crefname{chapter}{Chapter}{Chapters}
+\crefname{section}{Section}{Sections}
+\crefname{subsection}{Section}{Sections}
+\crefname{appendix}{Appendix}{Appendices}
+
+\tcolorboxenvironment{definition}{mlbox=MLdef}
+\tcolorboxenvironment{theorem}{mlbox=MLthm}
+\tcolorboxenvironment{proposition}{mlbox=MLthm}
+\tcolorboxenvironment{corollary}{mlbox=MLthm}
+\tcolorboxenvironment{example}{mlbox=MLexample,colback=MLexample!3!white}
+\tcolorboxenvironment{algorithm}{mlbox=MLalgorithm}
+\tcolorboxenvironment{intuition}{mlbox=MLintuition,colback=MLintuition!7!white}
+\tcolorboxenvironment{picturethis}{mlbox=MLintuition,colback=MLintuition!7!white}
+\tcolorboxenvironment{mlnote}{mlbox=MLml}
+\tcolorboxenvironment{pitfall}{mlbox=MLpitfall}
+\tcolorboxenvironment{remark}{mlbox=MLremark,colback=MLremark!4!white}
+\tcolorboxenvironment{motivation}{mlbox=MLmotivation}
+\tcolorboxenvironment{notation}{mlbox=MLnotation}
+
+% Proofs: amsthm's proof environment with a coloured QED box.
+\renewcommand{\qedsymbol}{\textcolor{MLthm}{$\blacksquare$}}
+
+% "Solution." label used inside worked examples.
+\newcommand{\sol}{\par\smallskip\noindent\textit{Solution.}\enspace}
+
+% A box for the learning goals at the start of each chapter.
+\newtcolorbox{objectives}{
+  enhanced,breakable,sharp corners,
+  colback=MLchapter!4!white,colframe=MLchapter!60!white,boxrule=0.6pt,
+  title={In this chapter you will learn to\dots},
+  fonttitle=\bfseries\color{white},colbacktitle=MLchapter!85!white,
+  left=8pt,right=8pt,top=5pt,bottom=5pt,before skip=10pt,after skip=12pt,
+  parbox=false,
+}
+
+% A box for the summary at the end of each chapter.
+\newtcolorbox{keytakeaways}[1][Key takeaways]{
+  enhanced,breakable,sharp corners,
+  colback=MLsummary!4!white,colframe=MLsummary!60!white,boxrule=0.6pt,
+  title={#1},
+  fonttitle=\bfseries\color{white},colbacktitle=MLsummary!85!white,
+  left=8pt,right=8pt,top=5pt,bottom=5pt,before skip=10pt,after skip=10pt,
+  parbox=false,
+}
+
+% A frame around a key formula, for use inside display maths:
+%   \[ \keyeq{a^2+b^2=c^2} \]
+\tcbset{highlight math style={enhanced,sharp corners,colback=white,
+  colframe=MLchapter!70!white,boxrule=0.8pt,left=5pt,right=5pt,
+  top=3pt,bottom=3pt}}
+\newcommand{\keyeq}[1]{\tcbhighmath{#1}}
+
+%----------------------------------------------------------------------
+% New terms: bold, coloured, and automatically added to the index.
+%   \term{gradient}               -> index entry "gradient"
+%   \term[mean!arithmetic]{mean}  -> custom index entry
+%----------------------------------------------------------------------
+\newcommand{\term}[2][]{%
+  \textbf{\color{MLterm}#2}%
+  \ifblank{#1}{\index{#2}}{\index{#1}}}
+
+%----------------------------------------------------------------------
+% Exercises and automatically collected solutions
+%
+% Usage inside a chapter:
+%
+%   \sectionexercises
+%   \begin{exercise}
+%     Compute $3+4\times 2$.
+%   \end{exercise}
+%   \begin{solution}
+%     Multiplication first: $3+8=11$.
+%   \end{solution}
+%
+% The solution is not printed where it is written. Instead it is stored
+% in the file \jobname.sol, together with the number of the exercise it
+% belongs to, and \printsolutions (used in the solutions appendix)
+% typesets all of them, grouped by chapter, with links in both
+% directions. Solutions must not contain verbatim material or the
+% character #.
+%----------------------------------------------------------------------
+\makeatletter
+\newcounter{MLsolutioncount}
+\newwrite\ML@solfile
+\newif\ifML@solfileopen
+\gdef\ML@lastsolchapter{}
+
+\AtBeginDocument{%
+  \immediate\openout\ML@solfile=\jobname.sol\relax
+  \global\ML@solfileopentrue}
+
+\newenvironment{exercise}[1][]{%
+  \ifblank{#1}{\begin{exercisebase}}{\begin{exercisebase}[#1]}%
+  \label{exercise:\theexercisebase}}%
+  {\end{exercisebase}}
+% The link to the solution sits in the bottom-right corner, in a strip
+% of extra padding so that it never overlaps the text of the exercise.
+\tcolorboxenvironment{exercise}{%
+  mlbox=MLexercise,colback=MLexercise!3!white,bottom=12pt,
+  overlay unbroken and last={%
+    \node[anchor=south east,inner sep=3pt,font=\scriptsize]
+      at (frame.south east)
+      {\hyperref[solution:\theexercisebase]{\textcolor{MLexercise!75!white}%
+        {Solution on p.\,\pageref*{solution:\theexercisebase}\,%
+          $\rightarrow$}}};}}
+
+\NewDocumentEnvironment{solution}{+b}{%
+  \ifML@solfileopen
+    \edef\ML@thischapter{\thechapter}%
+    \ifx\ML@thischapter\ML@lastsolchapter\else
+      \immediate\write\ML@solfile{%
+        \string\MLSolutionsChapter{\thechapter}%
+        {\unexpanded\expandafter{\MLcurrentchaptertitle}}}%
+      \global\let\ML@lastsolchapter\ML@thischapter
+    \fi
+    \immediate\write\ML@solfile{%
+      \string\MLSolution{\theexercisebase}{\unexpanded{#1}}}%
+    \stepcounter{MLsolutioncount}%
+  \fi}{}
+
+% Heading printed before the exercises of a section.
+\newcommand{\sectionexercises}{%
+  \par\needspace{6\baselineskip}\medskip
+  \noindent{\large\bfseries\color{MLexercise}Exercises for
+    Section~\thesection}\par\nopagebreak\smallskip}
+
+% Typesetting of the stored solutions.
+\newcommand{\MLSolutionsChapter}[2]{%
+  \section*{Chapter #1: #2}%
+  \phantomsection
+  \addcontentsline{toc}{section}{Chapter #1: #2}}
+\newcommand{\MLSolution}[2]{%
+  \par\needspace{3\baselineskip}\medskip\noindent
+  \phantomsection\def\@currentlabel{#1}\label{solution:#1}%
+  {\bfseries\hyperref[exercise:#1]{\textcolor{MLexercise}{Exercise~#1.}}}%
+  \enspace #2\par}
+\newcommand{\printsolutions}{%
+  \ifML@solfileopen
+    \immediate\closeout\ML@solfile
+    \global\ML@solfileopenfalse
+  \fi
+  \InputIfFileExists{\jobname.sol}{}{%
+    \par\textit{No solutions were recorded in this run.}\par}}
+\makeatother
+
+%----------------------------------------------------------------------
+% Notation macros (see Appendix A for the full list)
+%----------------------------------------------------------------------
+% Number sets
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+
+% Vectors (bold lower case) and matrices (bold upper case)
+\newcommand{\vect}[1]{\bm{#1}}
+\newcommand{\mat}[1]{\bm{#1}}
+\newcommand{\va}{\vect{a}}
+\newcommand{\vb}{\vect{b}}
+\newcommand{\vc}{\vect{c}}
+\newcommand{\vd}{\vect{d}}
+\newcommand{\ve}{\vect{e}}
+\newcommand{\vg}{\vect{g}}
+\newcommand{\vh}{\vect{h}}
+\newcommand{\vm}{\vect{m}}
+\newcommand{\vp}{\vect{p}}
+\newcommand{\vq}{\vect{q}}
+\newcommand{\vr}{\vect{r}}
+\newcommand{\vs}{\vect{s}}
+\newcommand{\vu}{\vect{u}}
+\newcommand{\vv}{\vect{v}}
+\newcommand{\vw}{\vect{w}}
+\newcommand{\vx}{\vect{x}}
+\newcommand{\vy}{\vect{y}}
+\newcommand{\vz}{\vect{z}}
+\newcommand{\vzero}{\vect{0}}
+\newcommand{\vone}{\vect{1}}
+\newcommand{\vtheta}{\bm{\theta}}
+\newcommand{\vmu}{\bm{\mu}}
+\newcommand{\vdelta}{\bm{\delta}}
+\newcommand{\vepsilon}{\bm{\varepsilon}}
+\newcommand{\mA}{\mat{A}}
+\newcommand{\mB}{\mat{B}}
+\newcommand{\mC}{\mat{C}}
+\newcommand{\mD}{\mat{D}}
+\newcommand{\mH}{\mat{H}}
+\newcommand{\mI}{\mat{I}}
+\newcommand{\mM}{\mat{M}}
+\newcommand{\mP}{\mat{P}}
+\newcommand{\mQ}{\mat{Q}}
+\newcommand{\mR}{\mat{R}}
+\newcommand{\mS}{\mat{S}}
+\newcommand{\mU}{\mat{U}}
+\newcommand{\mV}{\mat{V}}
+\newcommand{\mW}{\mat{W}}
+\newcommand{\mX}{\mat{X}}
+\newcommand{\mY}{\mat{Y}}
+\newcommand{\mZero}{\mat{0}}
+\newcommand{\mSigma}{\bm{\Sigma}}
+\newcommand{\mLambda}{\bm{\Lambda}}
+
+% Delimiters
+\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
+\DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+\DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}
+
+% Operators
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\Corr}{Corr}
+\DeclareMathOperator{\Bias}{Bias}
+\DeclareMathOperator{\MSE}{MSE}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator{\spn}{span}
+\DeclareMathOperator{\proj}{proj}
+\DeclareMathOperator{\softmax}{softmax}
+\DeclareMathOperator{\ReLU}{ReLU}
+\DeclareMathOperator{\KL}{KL}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\deriv}[2]{\frac{\dd #1}{\dd #2}}
+\newcommand{\pderiv}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\iid}{\overset{\text{i.i.d.}}{\sim}}

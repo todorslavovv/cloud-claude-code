@@ -1,0 +1,53 @@
+%======================================================================
+% Title page
+%======================================================================
+\begin{titlepage}
+\centering
+\vspace*{1.5cm}
+
+{\color{MLchapter}\rule{\linewidth}{1.2pt}}\par
+\vspace{0.9cm}
+{\fontsize{28}{34}\selectfont\bfseries\color{MLchapter}
+  Mathematics for\\[0.2em] Machine Learning\\[0.2em] and Deep Learning\par}
+\vspace{0.7cm}
+{\LARGE From Absolute Beginner to Prerequisites\par}
+\vspace{0.9cm}
+{\color{MLchapter}\rule{\linewidth}{1.2pt}}\par
+
+\vspace{1.6cm}
+
+% Contour lines of the "loss" f(x,y) = x^2 + 6y^2 and the path taken by
+% gradient descent with step size 0.13, started at (-4.2, 1.5). Each
+% contour is drawn at the loss value of one of the iterates, so every
+% red dot sits exactly on a contour line.
+\begin{tikzpicture}[scale=1.05]
+  \foreach \c/\shade in {0.264/75,0.488/68,0.910/60,1.717/52,3.313/44,
+                         6.617/36,13.893/28,31.14/20}{
+    \draw[MLchapter!\shade!white,thick]
+      (0,0) ellipse ({sqrt(\c)} and {sqrt(\c/6)});
+  }
+  \draw[PlotRed,thick,-{Stealth[length=2mm]}]
+    (-4.200,1.500) -- (-3.108,-0.840) -- (-2.300,0.470) -- (-1.702,-0.263)
+    -- (-1.259,0.148) -- (-0.932,-0.083) -- (-0.690,0.046) -- (-0.510,-0.026)
+    -- (-0.378,0.015) -- (-0.279,-0.008) -- (-0.207,0.005);
+  \foreach \p in {(-4.200,1.500),(-3.108,-0.840),(-2.300,0.470),
+                  (-1.702,-0.263),(-1.259,0.148),(-0.932,-0.083),
+                  (-0.690,0.046),(-0.510,-0.026)}{
+    \fill[PlotRed] \p circle (1.6pt);
+  }
+  \fill[MLchapter] (0,0) circle (2pt);
+  \node[font=\small\itshape,text=MLchapter,anchor=west] at (0.15,-0.2) {minimum};
+  \node[font=\small\itshape,text=PlotRed,anchor=south] at (-4.2,1.55) {start};
+\end{tikzpicture}
+
+\vspace{0.5cm}
+{\small\itshape\color{MLremark} Gradient descent finding the bottom of a valley:
+the central idea of Chapter~8, built from everything that comes before it.\par}
+
+\vfill
+
+{\Large Lecture Notes\par}
+\vspace{0.4cm}
+{\normalsize Version 1.0 \quad\textbullet\quad October 2026\par}
+\vspace{0.6cm}
+\end{titlepage}

@@ -1,0 +1,24 @@
+# LaTeX build directory used by math-for-ml/Makefile
+math-for-ml/build/
+
+# LaTeX auxiliary files (in case the notes are compiled without the Makefile)
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.lof
+*.log
+*.lot
+*.out
+*.sol
+*.synctex.gz
+*.toc
+
+# Editor and OS clutter
+.DS_Store
+*~
+*.swp
