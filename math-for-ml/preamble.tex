@@ -169,6 +169,10 @@
 \titlespacing*{\subsubsection}{0pt}{10pt plus 3pt minus 2pt}{3pt plus 1pt}
 \setcounter{secnumdepth}{2}
 \setcounter{tocdepth}{1}
+% Room for two-digit section numbers such as 11.10 in the contents.
+\makeatletter
+\renewcommand*{\l@section}{\@dottedtocline{1}{1.5em}{2.9em}}
+\makeatother
 
 \usepackage{fancyhdr}
 \pagestyle{fancy}
@@ -392,6 +396,7 @@
 \newcounter{MLsolutioncount}
 \newwrite\ML@solfile
 \newif\ifML@solfileopen
+\newif\ifML@anysolution  % set once a solution has been recorded in this run
 \gdef\ML@lastsolchapter{}
 
 \AtBeginDocument{%
@@ -425,6 +430,7 @@
     \immediate\write\ML@solfile{%
       \string\MLSolution{\theexercisebase}{\unexpanded{#1}}}%
     \stepcounter{MLsolutioncount}%
+    \global\ML@anysolutiontrue
   \fi}{}
 
 % Heading printed before the exercises of a section.
@@ -448,8 +454,12 @@
     \immediate\closeout\ML@solfile
     \global\ML@solfileopenfalse
   \fi
-  \InputIfFileExists{\jobname.sol}{}{%
-    \par\textit{No solutions were recorded in this run.}\par}}
+  \ifML@anysolution
+    \InputIfFileExists{\jobname.sol}{}{}%
+  \else
+    \par\textit{The part of the notes typeset in this run contains no
+      exercises.}\par
+  \fi}
 \makeatother
 
 %----------------------------------------------------------------------
