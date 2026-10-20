@@ -1,1 +1,1253 @@
+%======================================================================
+% Chapter 6: Calculus of One Variable
+%======================================================================
 \chapter{Calculus of One Variable}\label{ch:calculus}
+
+\begin{motivation}
+Training a machine learning model means adjusting its parameters to make a
+loss function smaller. Suppose the loss depends on a single weight $w$. If we
+nudge $w$ up a little, does the loss go up or down, and how fast? The answer
+is given by the \emph{derivative} of the loss with respect to $w$. Knowing it
+for every weight tells us which way to move all of them, and this is exactly
+what gradient descent does (\cref{ch:optimization}). The tool that computes
+these derivatives through the many layers of a neural network,
+\emph{backpropagation}, is nothing but the \emph{chain rule} of this chapter
+applied systematically.
+
+Calculus also has a second half, \emph{integration}, which adds up infinitely
+many infinitely small pieces. We need it because probabilities of continuous
+quantities are areas under curves (\cref{ch:probability}).
+\end{motivation}
+
+\begin{objectives}
+\begin{itemize}
+  \item explain average and instantaneous rates of change;
+  \item understand limits intuitively and evaluate simple limits;
+  \item define the derivative and interpret it as a slope, a rate and a
+    sensitivity;
+  \item differentiate functions using the power, product, quotient and chain
+    rules and the derivatives of $e^x$, $\ln x$, $\sin x$, $\cos x$;
+  \item compute the derivatives of the sigmoid and other functions used in ML;
+  \item find and classify maxima and minima, and solve optimisation problems;
+  \item approximate functions by Taylor polynomials;
+  \item compute integrals and interpret them as areas and accumulated change;
+  \item estimate derivatives numerically.
+\end{itemize}
+\end{objectives}
+
+%----------------------------------------------------------------------
+\section{Rates of change}\label{sec:rates}
+%----------------------------------------------------------------------
+
+A ball is dropped from a tower. Physics tells us that after $t$ seconds it has
+fallen $d(t) = 4.9t^2$ metres. How fast is it moving at exactly $t = 1$
+second?
+
+Speed is distance divided by time, but at a single instant no distance is
+covered and no time passes, so ``$\frac00$'' is no help. What we \emph{can}
+compute is the \emph{average} speed over a time interval:
+\[
+  \text{average speed between } t = 1 \text{ and } t = 1 + h
+  = \frac{d(1 + h) - d(1)}{h}.
+\]
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{c|cccc}
+interval length $h$ & $1$ & $0.1$ & $0.01$ & $0.001$\\
+\hline
+average speed (m/s) & $14.7$ & $10.29$ & $9.849$ & $9.8049$
+\end{tabular}
+\end{center}
+
+As the interval shrinks, the average speeds settle down towards $9.8$\,m/s.
+This number, the value the averages approach, is what we mean by the
+\emph{instantaneous} speed at $t = 1$.
+
+\begin{definition}[Average rate of change]\label{def:average-rate}
+The \term{average rate of change} of a function $f$ between $x = a$ and
+$x = b$ is
+\[
+  \frac{f(b) - f(a)}{b - a} = \frac{\Delta f}{\Delta x}.
+\]
+(The Greek letter $\Delta$, ``delta'', is the standard symbol for a change in a
+quantity.) Geometrically, it is the slope of the \term{secant line} through the
+points $(a, f(a))$ and $(b, f(b))$ on the graph.
+\end{definition}
+
+The instantaneous rate of change is what the average rate approaches as the
+interval shrinks to nothing. To make ``approaches'' precise we need the idea of
+a limit.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=9cm,height=7cm,xmin=-0.3,xmax=2.6,ymin=-0.8,ymax=5,
+  xlabel=$x$,ylabel=$y$,xtick={1,2},ytick={1,2,3,4}]
+  \addplot[black,very thick,domain=-0.3:2.2,samples=100]{x^2};
+  \addplot[PlotBlue,domain=-0.3:2.6]{3*x-2};
+  \addplot[PlotGreen,domain=-0.3:2.6]{2.5*x-1.5};
+  \addplot[PlotOrange,domain=-0.3:2.6]{2.2*x-1.2};
+  \addplot[PlotRed,very thick,domain=-0.3:2.6]{2*x-1};
+  \addplot[only marks,mark=*,mark size=2pt,black] coordinates {(1,1) (2,4) (1.5,2.25) (1.2,1.44)};
+  \node[font=\small,anchor=west] at (axis cs:2.05,4.1) {$y = x^2$};
+  \node[font=\small,PlotRed,anchor=north west] at (axis cs:1.55,1.7) {tangent, slope $2$};
+\end{axis}
+\end{tikzpicture}
+\caption{Secant lines of $y = x^2$ through $(1, 1)$ and $(1 + h, (1+h)^2)$ for
+  $h = 1$ (blue, slope $3$), $h = 0.5$ (green, slope $2.5$) and $h = 0.2$ (orange,
+  slope $2.2$). As $h$ shrinks they approach the tangent line (red), whose slope
+  $2$ is the derivative at $x = 1$.}
+\label{fig:secants}
+\end{figure}
+
+\sectionexercises
+
+\begin{exercise}
+Find the average rate of change of $f(x) = x^2 + 1$ on the interval $[1, 3]$
+and on the interval $[1, 1.1]$.
+\end{exercise}
+\begin{solution}
+On $[1, 3]$: $\tfrac{10 - 2}{2} = 4$. On $[1, 1.1]$: $\tfrac{2.21 - 2}{0.1} =
+2.1$. (As the interval shrinks, the rate approaches $2$, the derivative at $1$.)
+\end{solution}
+
+\begin{exercise}
+A model's training loss is $2.3$ at step $0$ and $0.5$ at step $1000$. What is
+the average rate of change of the loss per step? What does the sign tell you?
+\end{exercise}
+\begin{solution}
+$\tfrac{0.5 - 2.3}{1000} = -0.0018$ per step. The negative sign means the loss
+is decreasing on average, i.e.\ the model is improving.
+\end{solution}
+
+\begin{exercise}
+A population (in thousands) is $P(t) = 50 \cdot 1.02^t$ after $t$ years. What
+is its average growth rate between $t = 0$ and $t = 10$?
+\end{exercise}
+\begin{solution}
+$P(10) = 50\cdot1.02^{10} \approx 60.95$, so the average rate is
+$\tfrac{60.95 - 50}{10} \approx 1.095$ thousand per year.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Limits}\label{sec:limits}
+%----------------------------------------------------------------------
+
+\subsection{The idea of a limit}
+
+\begin{definition}[Limit, informally]\label{def:limit}
+We write
+\[
+  \lim_{x \to a} f(x) = L
+\]
+(read ``the \term{limit} of $f(x)$ as $x$ approaches $a$ is $L$'') if $f(x)$
+can be made as close to $L$ as we like by taking $x$ close enough to $a$, but
+not equal to $a$.
+\end{definition}
+
+The words ``not equal to $a$'' matter: a limit describes what happens
+\emph{near} $a$, not \emph{at} $a$. The function need not even be defined at
+$a$.
+
+\begin{example}[A limit at a hole]\label{ex:limit-hole}
+Find $\lim_{x\to1} \frac{x^2 - 1}{x - 1}$.
+
+\sol At $x = 1$ the expression is $\frac00$, which is meaningless. But for
+$x \neq 1$ we can factor and cancel: $\frac{(x - 1)(x + 1)}{x - 1} = x + 1$.
+As $x$ approaches $1$, this approaches $2$. A table confirms it:
+\begin{center}
+\begin{tabular}{c|cccccc}
+$x$ & $0.9$ & $0.99$ & $0.999$ & $1.001$ & $1.01$ & $1.1$\\
+\hline
+$\frac{x^2-1}{x-1}$ & $1.9$ & $1.99$ & $1.999$ & $2.001$ & $2.01$ & $2.1$
+\end{tabular}
+\end{center}
+So the limit is $2$, even though the function has a ``hole'' at $x = 1$.
+\end{example}
+
+\begin{example}[A famous limit]\label{ex:sinx-over-x}
+For $x$ in radians, $\frac{\sin x}{x}$ takes the values $0.8415$, $0.9589$,
+$0.99833$, $0.99998$ at $x = 1, 0.5, 0.1, 0.01$. So
+$\lim_{x\to0}\frac{\sin x}{x} = 1$: for small angles, $\sin x \approx x$.
+\end{example}
+
+\subsection{Limits that do not exist, and one-sided limits}
+
+The step function of \cref{sec:activation-gallery} is $0$ just to the left of
+$0$ and $1$ just to the right. Its \emph{left-hand limit} at $0$, written
+$\lim_{x\to0^-}$, is $0$ and its \emph{right-hand limit} $\lim_{x\to0^+}$ is
+$1$. Since they disagree, the limit $\lim_{x\to0}$ does not exist. Another way
+for a limit to fail is to blow up: as $x \to 0^+$, $\frac1x$ grows without
+bound. We write $\lim_{x\to0^+}\frac1x = \infty$, which is shorthand for ``no
+limit; it becomes arbitrarily large''.
+
+\subsection{Limits at infinity}
+
+We also ask what happens as $x$ grows without bound:
+\[
+  \lim_{x\to\infty}\frac1x = 0, \qquad
+  \lim_{x\to\infty}e^{-x} = 0, \qquad
+  \lim_{x\to\infty}\sigma(x) = 1, \qquad
+  \lim_{x\to-\infty}\sigma(x) = 0 .
+\]
+The number $e$ itself was defined in \cref{sec:exponential} as a limit:
+$e = \lim_{n\to\infty}\left(1 + \frac1n\right)^n$.
+
+\subsection{Rules and continuity}
+
+Limits behave as you would hope: the limit of a sum is the sum of the limits,
+and likewise for differences, products, quotients (if the denominator's limit
+is not zero) and constant multiples.
+
+\begin{definition}[Continuity]\label{def:continuity}
+A function $f$ is \term[continuous function]{continuous} at $a$ if
+$\lim_{x\to a}f(x) = f(a)$. It is continuous if it is continuous at every point
+of its domain.
+\end{definition}
+
+Informally, a continuous function has a graph you can draw without lifting your
+pen: no jumps, no holes, no sudden blow-ups. Polynomials, $e^x$, $\ln x$ (for
+$x > 0$), $\sin x$, $\cos x$, the sigmoid and the ReLU are all continuous; the
+step function is not continuous at $0$.
+
+\begin{remark}[The precise definition]
+Mathematicians make ``as close as we like'' precise as follows:
+$\lim_{x\to a}f(x) = L$ means that for every tolerance $\varepsilon > 0$, there
+is a distance $\delta > 0$ such that $\abs{f(x) - L} < \varepsilon$ whenever
+$0 < \abs{x - a} < \delta$. You will not need this ``$\varepsilon$--$\delta$''
+definition in these notes, but it is the foundation on which all of calculus
+rests.
+\end{remark}
+
+\begin{mlnote}
+Limits describe the long-run behaviour of algorithms (``as the number of
+training steps goes to infinity, does the loss converge?''), the behaviour of
+learning-rate schedules that shrink towards zero, and the \emph{saturation} of
+activation functions: since $\sigma(x) \to 1$ as $x\to\infty$, a sigmoid neuron
+with a very large input is ``stuck'' near $1$ and barely reacts to changes,
+an effect we will quantify with derivatives below.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Evaluate (a) $\lim_{x\to2}\frac{x^2 - 4}{x - 2}$; (b) $\lim_{x\to3}(2x + 1)$;
+(c) $\lim_{x\to0}\frac{x^2 + 3x}{x}$.
+\end{exercise}
+\begin{solution}
+(a) $\tfrac{(x-2)(x+2)}{x-2} = x + 2 \to 4$. (b) $7$ (the function is
+continuous, so just substitute). (c) $\tfrac{x(x + 3)}{x} = x + 3 \to 3$.
+\end{solution}
+
+\begin{exercise}
+Evaluate (a) $\lim_{x\to\infty}\frac{3x + 1}{x - 2}$; (b)
+$\lim_{x\to\infty}e^{-2x}$; (c) $\lim_{x\to-\infty}\sigma(x)$.
+\emph{Hint for (a):} divide the top and bottom by $x$.
+\end{exercise}
+\begin{solution}
+(a) $\tfrac{3 + 1/x}{1 - 2/x} \to \tfrac{3}{1} = 3$. (b) $0$. (c) $0$, because
+$e^{-x}\to\infty$ as $x \to -\infty$, so $\tfrac{1}{1 + e^{-x}} \to 0$.
+\end{solution}
+
+\begin{exercise}
+Is $\ReLU(x) = \max(0, x)$ continuous at $0$? Is the step function?
+\end{exercise}
+\begin{solution}
+ReLU: the left-hand limit is $0$, the right-hand limit is $0$, and
+$\ReLU(0) = 0$, so it is continuous. The step function has left limit $0$ and
+right limit $1$, so the limit does not exist and it is not continuous at $0$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{The derivative}\label{sec:derivative}
+%----------------------------------------------------------------------
+
+\begin{definition}[Derivative]\label{def:derivative}
+The \term{derivative} of $f$ at the point $a$ is
+\[
+  \keyeq{f'(a) = \lim_{h\to0}\frac{f(a + h) - f(a)}{h}}
+\]
+if this limit exists; then $f$ is called \term[differentiable
+function]{differentiable} at $a$. The line through $(a, f(a))$ with slope
+$f'(a)$ is the \term{tangent line} to the graph at $a$.
+\end{definition}
+
+The fraction is the slope of a secant line over an interval of width $h$
+(\cref{fig:secants}), so the derivative is the slope of the tangent line: the
+slope of the graph \emph{at a single point}.
+
+\begin{example}[Derivatives from the definition]\label{ex:derivative-definition}
+(a) For $f(x) = x^2$:
+\[
+  \frac{(a + h)^2 - a^2}{h} = \frac{a^2 + 2ah + h^2 - a^2}{h}
+  = \frac{2ah + h^2}{h} = 2a + h \;\longrightarrow\; 2a
+  \quad\text{as } h \to 0 .
+\]
+So $f'(a) = 2a$. At $a = 1$ the tangent has slope $2$, as in
+\cref{fig:secants}.
+
+(b) For the falling ball, $d(t) = 4.9t^2$, the same computation gives
+$d'(t) = 9.8t$, so the speed at $t = 1$ is $9.8$\,m/s, as our table
+suggested.
+\end{example}
+
+\subsection{Notation and interpretation}
+
+Computing $f'(a)$ for every $a$ gives a new function $f'$, the derivative of
+$f$. There are several notations, all common:
+\[
+  f'(x), \qquad \deriv{f}{x}, \qquad \deriv{y}{x} \ \ (\text{when } y = f(x)),
+  \qquad \frac{\dd}{\dd x}f(x).
+\]
+The second is due to Leibniz: think of $\dd x$ as a tiny change in $x$ and
+$\dd f$ as the corresponding tiny change in $f$; the derivative is their ratio.
+(For us, ``$\frac{\dd}{\dd x}$'' is just a symbol for ``the derivative with
+respect to $x$ of''.)
+
+\begin{intuition}[Three ways to read a derivative]
+\begin{itemize}
+  \item \textbf{Slope:} $f'(a)$ is the steepness of the graph at $a$.
+  \item \textbf{Rate:} $f'(a)$ is how fast $f$ changes per unit change of the
+    input, at that moment (speed, growth rate, marginal cost).
+  \item \textbf{Sensitivity:} for a small change $h$ of the input,
+    \[
+      f(a + h) \approx f(a) + f'(a)\,h .
+    \]
+    ``If I nudge the input by $h$, the output moves by about $f'(a)$ times
+    $h$.'' This is the reading machine learning cares about most.
+\end{itemize}
+The sign of $f'$ tells us the direction: where $f' > 0$ the function is
+increasing, where $f' < 0$ it is decreasing, and where $f' = 0$ the tangent is
+horizontal.
+\end{intuition}
+
+\subsection{Where derivatives do not exist}
+
+A function is not differentiable where its graph has a jump (such as the step
+function at $0$), a corner, or a vertical tangent. The absolute value $\abs{x}$
+has a corner at $0$: the slope is $-1$ to the left and $+1$ to the right, so
+the difference quotient has no single limit. Being differentiable is stronger
+than being continuous: $\abs{x}$ is continuous everywhere but not differentiable
+at $0$.
+
+\begin{mlnote}[Corners and jumps in neural networks]
+The ReLU has a corner at $0$, just like $\abs{x}$: its slope is $0$ for $x < 0$
+and $1$ for $x > 0$. In practice this causes no trouble: an input of exactly
+$0.000\ldots$ is rare, and software simply uses the slope $0$ there. (The
+general notion behind such choices is the \emph{subgradient}.) The step
+function is a different story: its slope is $0$ everywhere except at the jump,
+where it does not exist. A slope of $0$ says ``changing this weight changes
+nothing'', which gives gradient-based training no information at all. This is
+why the step function of the early perceptrons was replaced by smooth
+functions such as the sigmoid when networks began to be trained by gradient
+descent.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Use the definition of the derivative to find $f'(x)$ for (a) $f(x) = 3x + 2$;
+(b) $f(x) = x^2 + x$.
+\end{exercise}
+\begin{solution}
+(a) $\tfrac{3(x + h) + 2 - 3x - 2}{h} = \tfrac{3h}{h} = 3$, so $f'(x) = 3$.
+(b) $\tfrac{(x+h)^2 + (x + h) - x^2 - x}{h} = \tfrac{2xh + h^2 + h}{h} =
+2x + h + 1 \to 2x + 1$.
+\end{solution}
+
+\begin{exercise}
+Use the definition to show that the derivative of $f(x) = \frac1x$ is
+$-\frac{1}{x^2}$.
+\end{exercise}
+\begin{solution}
+$\tfrac1h\left(\tfrac{1}{x+h} - \tfrac1x\right) = \tfrac1h\cdot\tfrac{x - (x+h)}{x(x+h)}
+= \tfrac{-1}{x(x+h)} \to -\tfrac{1}{x^2}$ as $h\to0$.
+\end{solution}
+
+\begin{exercise}
+Find the equation of the tangent line to $y = x^2$ at $x = 3$.
+\end{exercise}
+\begin{solution}
+The point is $(3, 9)$ and the slope is $2\cdot3 = 6$. Point--slope form:
+$y - 9 = 6(x - 3)$, i.e.\ $y = 6x - 9$.
+\end{solution}
+
+\begin{exercise}
+Where is $f(x) = \abs{x - 2}$ not differentiable? Where is $\ReLU(x - 1)$ not
+differentiable?
+\end{exercise}
+\begin{solution}
+$\abs{x - 2}$ has its corner at $x = 2$; $\ReLU(x - 1)$ has its corner at
+$x = 1$. Both are differentiable everywhere else.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Rules of differentiation}\label{sec:diff-rules}
+%----------------------------------------------------------------------
+
+Computing every derivative from the definition would be exhausting. Instead we
+derive a few rules once and then combine them.
+
+\subsection{Basic rules}
+
+\begin{theorem}[Basic differentiation rules]\label{thm:basic-rules}
+For differentiable functions $f$, $g$ and constants $c$, $n$:
+\begin{align*}
+  &\text{constant rule:} && \tfrac{\dd}{\dd x}\,c = 0,\\
+  &\text{power rule:} && \tfrac{\dd}{\dd x}\,x^n = n\,x^{n-1}
+    \quad\text{(for every real number } n\text{)},\\
+  &\text{constant multiple rule:} && \tfrac{\dd}{\dd x}\,c\,f(x) = c\,f'(x),\\
+  &\text{sum rule:} && \tfrac{\dd}{\dd x}\,\bigl(f(x) + g(x)\bigr)
+    = f'(x) + g'(x).
+\end{align*}
+\end{theorem}
+
+A constant does not change, so its rate of change is zero. For whole-number
+powers, the power rule can be checked from the definition, as we did for
+$x^2$; it also holds for negative and fractional powers.
+
+\begin{example}[Using the power rule]
+\[
+  \tfrac{\dd}{\dd x}x^5 = 5x^4, \quad
+  \tfrac{\dd}{\dd x}\sqrt{x} = \tfrac{\dd}{\dd x}x^{1/2} = \tfrac12 x^{-1/2}
+  = \frac{1}{2\sqrt x}, \quad
+  \tfrac{\dd}{\dd x}\frac{1}{x^2} = \tfrac{\dd}{\dd x}x^{-2} = -2x^{-3}
+  = -\frac{2}{x^3}.
+\]
+Combining with the sum and constant multiple rules,
+$\tfrac{\dd}{\dd x}(4x^3 - 2x + 7) = 12x^2 - 2$.
+\end{example}
+
+\subsection{Exponentials, logarithms and trigonometric functions}
+
+\begin{theorem}[Derivatives of special functions]\label{thm:special-derivatives}
+\begin{gather*}
+  (e^x)' = e^x, \qquad (\ln x)' = \frac1x, \qquad (a^x)' = a^x\ln a,\\
+  (\sin x)' = \cos x, \qquad (\cos x)' = -\sin x .
+\end{gather*}
+(The trigonometric formulas require $x$ in radians.)
+\end{theorem}
+
+The first formula is the special property of $e$ promised in
+\cref{sec:exponential}: \emph{the slope of $e^x$ equals its value}. Here is
+why. From the definition,
+\[
+  \frac{e^{x+h} - e^x}{h} = e^x\cdot\frac{e^h - 1}{h},
+\]
+and numerically $\frac{e^h - 1}{h}$ equals $1.0517$, $1.00502$, $1.0005$ for
+$h = 0.1, 0.01, 0.001$: it tends to $1$. (That is precisely what singles out
+$e$: for any other base $a$ the corresponding limit is $\ln a$ instead of $1$.)
+Similarly, the derivative of $\sin x$ comes down to the limit
+$\frac{\sin h}{h}\to1$ of \cref{ex:sinx-over-x}.
+
+\subsection{The product and quotient rules}
+
+\begin{theorem}[Product and quotient rules]\label{thm:product-quotient}
+\[
+  (fg)' = f'g + fg', \qquad
+  \left(\frac{f}{g}\right)' = \frac{f'g - fg'}{g^2}
+  \quad (\text{where } g \neq 0).
+\]
+\end{theorem}
+
+\begin{intuition}[Why the product rule looks like that]
+Think of $f(x)g(x)$ as the area of a rectangle with sides $f$ and $g$. When $x$
+increases by a tiny $\dd x$, the sides grow by $\dd f$ and $\dd g$. The area
+grows by two thin strips, $\dd f\cdot g$ and $f\cdot\dd g$, plus a tiny corner
+$\dd f\,\dd g$ that is negligible in comparison. Dividing by $\dd x$ gives
+$f'g + fg'$. Note that $(fg)'$ is \emph{not} $f'g'$.
+\end{intuition}
+
+\begin{example}[Product and quotient rules]
+(a) $\frac{\dd}{\dd x}\left(x^2e^x\right) = 2x\,e^x + x^2e^x = (x^2 + 2x)e^x$.
+
+(b) $\frac{\dd}{\dd x}\frac{x}{1 + x^2} = \frac{1\cdot(1 + x^2) - x\cdot2x}{(1 +
+x^2)^2} = \frac{1 - x^2}{(1 + x^2)^2}$.
+\end{example}
+
+\subsection{The chain rule}
+
+The most important rule for machine learning tells us how to differentiate a
+composition $f(g(x))$ (\cref{sec:composition}).
+
+\begin{theorem}[Chain rule]\label{thm:chain-rule}
+If $y = f(u)$ and $u = g(x)$, then
+\[
+  \keyeq{\frac{\dd}{\dd x}f(g(x)) = f'(g(x))\cdot g'(x)}
+  \qquad\text{or, in Leibniz notation,}\qquad
+  \deriv{y}{x} = \deriv{y}{u}\cdot\deriv{u}{x}.
+\]
+\end{theorem}
+
+\begin{intuition}[Rates multiply]
+If $u$ changes $3$ times as fast as $x$, and $y$ changes $2$ times as fast as
+$u$, then $y$ changes $2\times3 = 6$ times as fast as $x$. Think of gears: if
+gear A turns twice for each turn of gear B, and gear B turns three times for
+each turn of gear C, then A turns six times for each turn of C. Sensitivities
+along a chain of functions multiply. A neural network is a long chain of
+functions, and backpropagation (\cref{ch:dl}) multiplies the local
+sensitivities of all its links.
+\end{intuition}
+
+\begin{example}[The chain rule in action]\label{ex:chain-rule}
+In each case identify the outer and inner functions.
+\begin{enumerate}
+  \item $\frac{\dd}{\dd x}(3x + 1)^5$: outer $u^5$, inner $u = 3x + 1$. Result:
+    $5(3x + 1)^4\cdot3 = 15(3x + 1)^4$.
+  \item $\frac{\dd}{\dd x}e^{-x^2}$: outer $e^u$, inner $u = -x^2$. Result:
+    $e^{-x^2}\cdot(-2x) = -2x\,e^{-x^2}$.
+  \item $\frac{\dd}{\dd x}\ln(1 + x^2)$: outer $\ln u$, inner $u = 1 + x^2$.
+    Result: $\frac{1}{1 + x^2}\cdot2x = \frac{2x}{1 + x^2}$.
+  \item $\frac{\dd}{\dd x}\sin(e^{2x})$: three layers. Working from the outside
+    in: $\cos(e^{2x})\cdot e^{2x}\cdot2$.
+\end{enumerate}
+\end{example}
+
+\begin{pitfall}[Forgetting the inner derivative]
+The most common mistake is to differentiate the outer function and stop:
+$\frac{\dd}{\dd x}e^{3x}$ is $3e^{3x}$, not $e^{3x}$. Always ask: ``what is
+inside, and have I multiplied by its derivative?''
+\end{pitfall}
+
+\begin{keytakeaways}[Table of derivatives]
+\renewcommand{\arraystretch}{1.35}
+\centering
+\begin{tabular}{@{}ll@{\qquad}ll@{}}
+$f(x)$ & $f'(x)$ & $f(x)$ & $f'(x)$\\
+\midrule
+$c$ & $0$ & $e^x$ & $e^x$\\
+$x^n$ & $nx^{n-1}$ & $a^x$ & $a^x\ln a$\\
+$\sqrt x$ & $\frac{1}{2\sqrt x}$ & $\ln x$ & $\frac1x$\\
+$\frac1x$ & $-\frac{1}{x^2}$ & $\sin x$ & $\cos x$\\
+$\sigma(x)$ & $\sigma(x)\bigl(1 - \sigma(x)\bigr)$ & $\cos x$ & $-\sin x$\\
+$\tanh x$ & $1 - \tanh^2 x$ & $\ReLU(x)$ & $0$ for $x<0$, $1$ for $x>0$\\
+\midrule
+\multicolumn{4}{@{}l@{}}{$(cf)' = cf'$,\quad $(f + g)' = f' + g'$,\quad
+  $(fg)' = f'g + fg'$,}\\
+\multicolumn{4}{@{}l@{}}{$(f/g)' = (f'g - fg')/g^2$,\quad
+  $\bigl(f(g(x))\bigr)' = f'(g(x))\,g'(x)$}
+\end{tabular}
+\end{keytakeaways}
+
+\subsection{Derivatives that machine learning uses every day}
+
+\begin{example}[The derivative of the sigmoid]\label{ex:sigmoid-derivative}
+Show that $\sigma'(x) = \sigma(x)\bigl(1 - \sigma(x)\bigr)$, where
+$\sigma(x) = \frac{1}{1 + e^{-x}}$.
+
+\sol Write $\sigma(x) = (1 + e^{-x})^{-1}$ and use the chain rule with outer
+function $u^{-1}$ and inner function $u = 1 + e^{-x}$, whose derivative is
+$-e^{-x}$:
+\[
+  \sigma'(x) = -(1 + e^{-x})^{-2}\cdot(-e^{-x})
+  = \frac{e^{-x}}{(1 + e^{-x})^2}
+  = \frac{1}{1 + e^{-x}}\cdot\frac{e^{-x}}{1 + e^{-x}} .
+\]
+The first factor is $\sigma(x)$. The second is
+$\frac{(1 + e^{-x}) - 1}{1 + e^{-x}} = 1 - \sigma(x)$.
+\end{example}
+
+\begin{mlnote}[Saturation and vanishing gradients]
+Since $\sigma(x)(1 - \sigma(x))$ is a product of two numbers that add up to
+$1$, it is largest when both equal $\frac12$, i.e.\ at $x = 0$, where
+$\sigma'(0) = \frac14$. For large $\abs{x}$ the sigmoid is flat and
+$\sigma'(x)\approx0$: the neuron is \emph{saturated}. By the chain rule, a
+signal passing backwards through ten sigmoid layers is multiplied by at most
+$\left(\frac14\right)^{10} \approx 10^{-6}$. This \emph{vanishing gradient}
+problem made deep sigmoid networks very hard to train, and is one reason
+ReLU, whose slope is $1$ for all positive inputs, took over.
+\end{mlnote}
+
+\begin{example}[Differentiating a tiny model's loss]\label{ex:tiny-loss-derivative}
+A one-weight model predicts $\hat y = \sigma(wx)$, and its loss on one data
+point is $L(w) = (y - \sigma(wx))^2$. Find $L'(w)$, and evaluate it for $x = 2$,
+$y = 1$, $w = 0.5$.
+
+\sol Three nested layers: $w \mapsto z = wx \mapsto \hat y = \sigma(z) \mapsto
+L = (y - \hat y)^2$. The chain rule multiplies their derivatives:
+\[
+  L'(w) = \underbrace{-2(y - \hat y)}_{\dd L/\dd\hat y}
+  \cdot\underbrace{\sigma(z)\bigl(1 - \sigma(z)\bigr)}_{\dd\hat y/\dd z}
+  \cdot\underbrace{x}_{\dd z/\dd w}.
+\]
+With the given numbers, $z = 1$, $\hat y = \sigma(1) \approx 0.731$ and
+$\sigma'(1) \approx 0.197$, so $L'(0.5) \approx -2(0.269)(0.197)(2) \approx
+-0.212$. The derivative is negative: increasing $w$ will decrease the loss, so
+training should increase $w$. This little computation is backpropagation in
+miniature.
+\end{example}
+
+\sectionexercises
+
+\begin{exercise}
+Differentiate: (a) $4x^3 - 2x + 7$; (b) $\sqrt x + \frac1x$;
+(c) $5e^x - 3\ln x$; (d) $x^{3/2}$.
+\end{exercise}
+\begin{solution}
+(a) $12x^2 - 2$. (b) $\tfrac{1}{2\sqrt x} - \tfrac{1}{x^2}$.
+(c) $5e^x - \tfrac3x$. (d) $\tfrac32x^{1/2}$.
+\end{solution}
+
+\begin{exercise}
+Differentiate: (a) $x^2e^x$; (b) $x\ln x$; (c) $\frac{x^2}{x + 1}$.
+\end{exercise}
+\begin{solution}
+(a) $(x^2 + 2x)e^x$. (b) $1\cdot\ln x + x\cdot\tfrac1x = \ln x + 1$.
+(c) $\tfrac{2x(x + 1) - x^2}{(x + 1)^2} = \tfrac{x^2 + 2x}{(x + 1)^2}$.
+\end{solution}
+
+\begin{exercise}
+Differentiate: (a) $(2x + 1)^4$; (b) $e^{3x}$; (c) $\ln(x^2 + 1)$;
+(d) $\sin(x^2)$; (e) $e^{-x^2/2}$.
+\end{exercise}
+\begin{solution}
+(a) $4(2x + 1)^3\cdot2 = 8(2x + 1)^3$. (b) $3e^{3x}$. (c) $\tfrac{2x}{x^2 + 1}$.
+(d) $2x\cos(x^2)$. (e) $-x\,e^{-x^2/2}$ (this function is the shape of the
+normal distribution of \cref{ch:probability}).
+\end{solution}
+
+\begin{exercise}
+Show that the derivative of the softplus function $\ln(1 + e^x)$ is the
+sigmoid $\sigma(x)$.
+\end{exercise}
+\begin{solution}
+By the chain rule, $\tfrac{\dd}{\dd x}\ln(1 + e^x) = \tfrac{1}{1 + e^x}\cdot e^x =
+\tfrac{e^x}{1 + e^x}$. Dividing top and bottom by $e^x$ gives
+$\tfrac{1}{e^{-x} + 1} = \sigma(x)$.
+\end{solution}
+
+\begin{exercise}
+For the loss $L(w) = (y - wx)^2$ of a linear model with one data point
+$x = 3$, $y = 5$, find $L'(w)$ and evaluate it at $w = 1$. Should $w$ be
+increased or decreased to reduce the loss?
+\end{exercise}
+\begin{solution}
+By the chain rule, $L'(w) = 2(y - wx)\cdot(-x) = -2x(y - wx) = -6(5 - 3w)$. At
+$w = 1$: $L'(1) = -12 < 0$, so the loss decreases when $w$ increases: increase
+$w$. (The loss is zero at $w = \tfrac53$.)
+\end{solution}
+
+\begin{exercise}
+Show that $\tanh'(x) = 1 - \tanh^2(x)$, using the quotient rule on
+$\tanh x = \frac{e^x - e^{-x}}{e^x + e^{-x}}$.
+\end{exercise}
+\begin{solution}
+With $f = e^x - e^{-x}$ and $g = e^x + e^{-x}$ we have $f' = g$ and $g' = f$.
+So $\tanh' = \tfrac{f'g - fg'}{g^2} = \tfrac{g^2 - f^2}{g^2} = 1 -
+\left(\tfrac fg\right)^2 = 1 - \tanh^2 x$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Maxima, minima and the shape of a graph}\label{sec:extrema}
+%----------------------------------------------------------------------
+
+\subsection{Critical points}
+
+At the top of a hill or the bottom of a valley, the tangent line is
+horizontal. This simple observation is the basis of optimisation.
+
+\begin{definition}[Local extrema and critical points]\label{def:extrema}
+A function $f$ has a \term{local minimum} at $c$ if $f(c) \le f(x)$ for all $x$
+near $c$, and a \term{local maximum} if $f(c) \ge f(x)$ for all $x$ near $c$. It
+has a \term{global minimum} at $c$ if $f(c) \le f(x)$ for \emph{all} $x$ in the
+domain. A point $c$ where $f'(c) = 0$ is called a \term{critical point}
+(or stationary point).
+\end{definition}
+
+\begin{theorem}[Extrema occur at critical points]\label{thm:fermat}
+If $f$ is differentiable and has a local minimum or maximum at an interior
+point $c$ of its domain, then $f'(c) = 0$.
+\end{theorem}
+
+The converse is false: $f(x) = x^3$ has $f'(0) = 0$ but neither a minimum nor
+a maximum at $0$ (it keeps increasing). So critical points are only
+\emph{candidates}, and we need tests to classify them.
+
+\subsection{The second derivative and concavity}
+
+The derivative of $f'$ is the \term{second derivative} $f''$ (also written
+$\frac{\dd^2 f}{\dd x^2}$). It measures how the slope itself changes:
+\begin{itemize}
+  \item where $f'' > 0$, the slope increases: the graph bends upwards like a
+    cup and is called \emph{convex} (or concave up);
+  \item where $f'' < 0$, the slope decreases: the graph bends downwards like a
+    cap and is called \emph{concave} (or concave down);
+  \item a point where the bending changes direction is an
+    \term{inflection point}.
+\end{itemize}
+
+\begin{theorem}[Second derivative test]\label{thm:second-derivative-test}
+Let $f'(c) = 0$.
+\begin{itemize}
+  \item If $f''(c) > 0$, then $f$ has a local minimum at $c$ (bottom of a cup).
+  \item If $f''(c) < 0$, then $f$ has a local maximum at $c$ (top of a cap).
+  \item If $f''(c) = 0$, the test is inconclusive.
+\end{itemize}
+\end{theorem}
+
+Alternatively, the \emph{first derivative test} looks at the sign of $f'$ on
+either side of $c$: a change from $-$ to $+$ (falling, then rising) means a
+minimum, and a change from $+$ to $-$ means a maximum.
+
+\begin{example}[Classifying critical points]\label{ex:classify-critical}
+Find and classify the critical points of $f(x) = x^3 - 3x$ (the cubic of
+\cref{fig:cubic}).
+
+\sol $f'(x) = 3x^2 - 3 = 3(x - 1)(x + 1)$, so the critical points are
+$x = \pm1$. Next, $f''(x) = 6x$. At $x = 1$: $f''(1) = 6 > 0$, a local minimum
+with value $f(1) = -2$. At $x = -1$: $f''(-1) = -6 < 0$, a local maximum with
+value $f(-1) = 2$. Since $f''(x) = 6x$ changes sign at $0$, the origin is an
+inflection point. Neither extremum is global: $f(x)\to\pm\infty$ as
+$x\to\pm\infty$.
+\end{example}
+
+\begin{example}[The mean minimises the squared error]\label{ex:mean-minimises}
+In \cref{sec:polynomials} we saw that the number $c$ that minimises the total
+squared error $L(c) = \sum_{i=1}^n (y_i - c)^2$ is the mean of the $y_i$. Prove
+it with calculus.
+
+\sol By the sum and chain rules,
+$L'(c) = \sum_{i=1}^n 2(y_i - c)\cdot(-1) = -2\left(\sum_{i=1}^n y_i - nc\right)$.
+Setting $L'(c) = 0$ gives $nc = \sum_i y_i$, i.e.\ $c = \frac1n\sum_iy_i = \bar
+y$. And $L''(c) = 2n > 0$, so this critical point is a minimum (in fact the
+global one, since $L$ is a parabola opening upwards).
+\end{example}
+
+\begin{remark}[The median minimises the absolute error]
+If instead we minimise $\sum_i\abs{y_i - c}$, the derivative of each term is
+$-1$ when $c < y_i$ and $+1$ when $c > y_i$. The total derivative is
+(number of data points below $c$) $-$ (number above $c$), which is zero when
+$c$ is in the middle of the data: the \emph{median}. So the mean squared error
+is minimised by the mean and the mean absolute error by the median, which is
+why models trained with absolute errors are less sensitive to outliers.
+\end{remark}
+
+\begin{example}[An optimisation problem]
+A rectangle has perimeter $20$\,m. Which shape has the largest area?
+
+\sol If one side is $x$, the other is $10 - x$, and the area is
+$A(x) = x(10 - x) = 10x - x^2$ for $0 \le x \le 10$. Then $A'(x) = 10 - 2x = 0$
+gives $x = 5$, and $A''(x) = -2 < 0$, a maximum. The best rectangle is the
+$5\times5$ square, with area $25$\,m$^2$. (At the endpoints $x = 0$ and
+$x = 10$ the area is $0$.)
+\end{example}
+
+\subsection{Local versus global}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=11cm,height=5.5cm,xmin=-0.2,xmax=10.2,ymin=0,ymax=4.6,
+  xlabel={parameter $w$},ylabel={loss},xtick=\empty,ytick=\empty,
+  xlabel style={anchor=north,at={(axis description cs:0.5,-0.03)}},
+  ylabel style={anchor=south,rotate=90,at={(axis description cs:-0.03,0.5)}}]
+  \addplot[PlotBlue,very thick,domain=0:10,samples=300]
+    {2.2 + 0.9*sin(deg(1.35*x)) + 0.5*sin(deg(0.5*x+1)) + 0.03*(x-6)^2};
+  \addplot[only marks,mark=*,mark size=2.6pt,PlotRed] coordinates {(8.025,0.957)};
+  \addplot[only marks,mark=*,mark size=2.6pt,PlotOrange] coordinates {(3.724,1.638)};
+  \addplot[only marks,mark=*,mark size=2.6pt,PlotGreen] coordinates {(5.69,2.766) (0.99,4.327)};
+  \node[font=\small,PlotRed,anchor=north] at (axis cs:8.025,0.88) {global minimum};
+  \node[font=\small,PlotOrange,anchor=north] at (axis cs:3.724,1.56) {local minimum};
+  \node[font=\small,PlotGreen!70!black,anchor=south] at (axis cs:5.69,2.84) {local maximum};
+\end{axis}
+\end{tikzpicture}
+\caption{A loss function of one parameter with several critical points (two
+  local maxima in green, two local minima). All have $f' = 0$, but only one is
+  the global minimum. Gradient descent started at the left, say at $w = 2$,
+  would slide into the local minimum and stay there.}
+\label{fig:local-global}
+\end{figure}
+
+A function can have many local minima (\cref{fig:local-global}), and
+derivatives only see the neighbourhood of a point. To find a \emph{global}
+minimum we must compare the values at all critical points (and at the ends of
+the domain, if there are any). For special functions called \emph{convex}
+functions, every local minimum is automatically global; we study them in
+\cref{ch:optimization}.
+
+\begin{mlnote}[Loss landscapes]
+The loss of a neural network, viewed as a function of its weights, is a
+landscape with many hills and valleys, so it has many critical points. One
+might fear that training would constantly get stuck in poor local minima. In
+practice, for large networks, this is rarely the main problem; in many
+dimensions most critical points turn out to be \emph{saddle points}
+(\cref{ch:multivariable}) rather than minima, and many of the minima found by
+gradient descent are almost equally good.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Find and classify the critical points of $f(x) = x^3 - 6x^2 + 9x + 1$.
+\end{exercise}
+\begin{solution}
+$f'(x) = 3x^2 - 12x + 9 = 3(x - 1)(x - 3)$, so $x = 1$ and $x = 3$.
+$f''(x) = 6x - 12$: $f''(1) = -6 < 0$ (local maximum, $f(1) = 5$) and
+$f''(3) = 6 > 0$ (local minimum, $f(3) = 1$).
+\end{solution}
+
+\begin{exercise}
+Use derivatives to find the minimum of $f(x) = x^2 - 4x + 7$, and compare with
+completing the square.
+\end{exercise}
+\begin{solution}
+$f'(x) = 2x - 4 = 0$ at $x = 2$; $f''(x) = 2 > 0$, so it is a minimum, with
+value $f(2) = 3$. Completing the square: $f(x) = (x - 2)^2 + 3$, the same
+answer.
+\end{solution}
+
+\begin{exercise}
+Find the value of $c$ that minimises the weighted squared error
+$L(c) = 2(c - 1)^2 + (c - 4)^2$. Interpret the answer.
+\end{exercise}
+\begin{solution}
+$L'(c) = 4(c - 1) + 2(c - 4) = 6c - 12 = 0$, so $c = 2$; $L'' = 6 > 0$. This is
+the weighted mean $\tfrac{2\cdot1 + 1\cdot4}{2 + 1} = 2$: the data point $1$
+counts twice.
+\end{solution}
+
+\begin{exercise}
+Find the maximum of $f(x) = x\,e^{-x}$ for $x \ge 0$.
+\end{exercise}
+\begin{solution}
+$f'(x) = e^{-x} - xe^{-x} = (1 - x)e^{-x}$, which is zero at $x = 1$, positive
+before and negative after. So $x = 1$ is a maximum, with value
+$f(1) = e^{-1} \approx 0.368$.
+\end{solution}
+
+\begin{exercise}
+Show that the second derivative test is inconclusive for $f(x) = x^4$ at $0$,
+and decide by another argument whether $0$ is a minimum.
+\end{exercise}
+\begin{solution}
+$f'(x) = 4x^3$ and $f''(x) = 12x^2$, so $f'(0) = f''(0) = 0$: inconclusive.
+But $x^4 \ge 0 = f(0)$ for all $x$, so $0$ is a (global) minimum. (By
+contrast, $x^3$ also has $f'(0) = f''(0) = 0$ and no extremum at all.)
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Linear and quadratic approximation}\label{sec:taylor-1d}
+%----------------------------------------------------------------------
+
+\subsection{The tangent line approximation}
+
+Zoom in far enough on the graph of a differentiable function and it looks like
+a straight line: its tangent line. This gives the \term{linear approximation}
+\[
+  \keyeq{f(a + h) \approx f(a) + f'(a)\,h}
+\]
+valid for small $h$. For example, with $f(x) = \sqrt x$, $a = 4$ and $h = 0.1$:
+$f(4) = 2$ and $f'(4) = \frac{1}{2\sqrt4} = \frac14$, so
+$\sqrt{4.1} \approx 2 + \frac14(0.1) = 2.025$. The true value is
+$2.02485\ldots$.
+
+\subsection{The quadratic approximation}
+
+A straight line cannot follow the bending of a curve. Adding a term with the
+second derivative fixes this:
+\[
+  \keyeq{f(a + h) \approx f(a) + f'(a)\,h + \tfrac12 f''(a)\,h^2}
+\]
+For $\sqrt x$ at $4$: $f''(x) = -\frac14x^{-3/2}$, so $f''(4) = -\frac{1}{32}$
+and $\sqrt{4.1} \approx 2.025 - \frac12\cdot\frac{1}{32}\cdot0.01 \approx
+2.024844$, correct to six decimal places. The factor $\frac12$ makes the
+second derivative of the approximation equal to $f''(a)$.
+
+\subsection{Taylor polynomials}
+
+Continuing the pattern gives the \term{Taylor polynomial} of degree $n$:
+\[
+  f(a + h) \approx f(a) + f'(a)h + \frac{f''(a)}{2!}h^2 + \frac{f'''(a)}{3!}h^3
+  + \dots + \frac{f^{(n)}(a)}{n!}h^n ,
+\]
+where $f^{(k)}$ is the $k$-th derivative. For $e^x$ at $a = 0$, all derivatives
+equal $1$, so
+\[
+  e^x \approx 1 + x + \frac{x^2}{2} + \frac{x^3}{6} + \dots + \frac{x^n}{n!} ,
+\]
+and the approximation improves as $n$ grows (\cref{fig:taylor}). For example,
+$e^{0.1} \approx 1 + 0.1 + 0.005 = 1.105$, while the true value is
+$1.10517\ldots$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=10cm,height=6.5cm,xmin=-2.5,xmax=2.5,ymin=-1.5,ymax=7.5,
+  xlabel=$x$,ylabel=$y$,xtick={-2,-1,1,2},ytick={2,4,6},
+  legend style={font=\small,at={(0.03,0.97)},anchor=north west,draw=gray!40,fill=white},
+  legend cell align=left]
+  \addplot[black,very thick,domain=-2.5:2.02,samples=100]{exp(x)};
+  \addlegendentry{$e^x$}
+  \addplot[PlotRed,domain=-2.5:2.5]{1+x};
+  \addlegendentry{degree 1: $1 + x$}
+  \addplot[PlotBlue,domain=-2.5:2.5,samples=100]{1+x+x^2/2};
+  \addlegendentry{degree 2}
+  \addplot[PlotGreen,domain=-2.5:2.5,samples=100]{1+x+x^2/2+x^3/6};
+  \addlegendentry{degree 3}
+\end{axis}
+\end{tikzpicture}
+\caption{Taylor polynomials of $e^x$ around $0$. Each extra term makes the
+  approximation good over a wider range around $0$.}
+\label{fig:taylor}
+\end{figure}
+
+\begin{intuition}[Every smooth minimum looks like a parabola]
+At a minimum $a$ we have $f'(a) = 0$, so the quadratic approximation becomes
+\[
+  f(a + h) \approx f(a) + \tfrac12 f''(a)\,h^2 .
+\]
+Close to the bottom, every smooth valley is a parabola, and its width is
+controlled by the curvature $f''(a)$: a large $f''(a)$ means a narrow, steep
+valley; a small one means a wide, flat valley. In \cref{ch:optimization} this
+explains how large the steps of gradient descent may be.
+\end{intuition}
+
+\begin{mlnote}
+Optimisation algorithms are built on these approximations. Gradient descent
+uses the linear approximation: it trusts the tangent to tell it which way is
+downhill. Newton's method uses the quadratic approximation and jumps straight
+to the bottom of the approximating parabola (\cref{ch:optimization}). The
+multivariable versions of both are developed in \cref{ch:multivariable}.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Find the linear approximation of $\ln(1 + x)$ near $x = 0$ and use it to
+estimate $\ln 1.05$.
+\end{exercise}
+\begin{solution}
+$f(0) = 0$ and $f'(x) = \tfrac{1}{1+x}$, so $f'(0) = 1$ and
+$\ln(1 + x) \approx x$. Hence $\ln1.05 \approx 0.05$ (true value $0.04879$).
+\end{solution}
+
+\begin{exercise}
+Find the quadratic approximation of $\cos x$ near $0$ and estimate
+$\cos(0.2)$.
+\end{exercise}
+\begin{solution}
+$\cos0 = 1$, $(\cos)'(0) = -\sin0 = 0$, $(\cos)''(0) = -\cos0 = -1$. So
+$\cos x \approx 1 - \tfrac{x^2}{2}$ and $\cos(0.2) \approx 1 - 0.02 = 0.98$
+(true value $0.98007$).
+\end{solution}
+
+\begin{exercise}
+Find the quadratic approximation of $f(x) = \frac1x$ around $a = 1$ and use it
+to estimate $\frac{1}{1.1}$.
+\end{exercise}
+\begin{solution}
+$f(1) = 1$, $f'(x) = -x^{-2}$ so $f'(1) = -1$, and $f''(x) = 2x^{-3}$ so
+$f''(1) = 2$. Thus $f(1 + h) \approx 1 - h + h^2$, and
+$\tfrac{1}{1.1} \approx 1 - 0.1 + 0.01 = 0.91$ (true value $0.90909$).
+\end{solution}
+
+\begin{exercise}
+A loss function has a minimum at $w = a$ with $f(a) = 2$ and $f''(a) = 8$.
+Estimate $f(a + 0.1)$ and $f(a - 0.1)$.
+\end{exercise}
+\begin{solution}
+Since $f'(a) = 0$: $f(a \pm 0.1) \approx 2 + \tfrac12\cdot8\cdot0.01 = 2.04$
+in both directions.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Integration}\label{sec:integration}
+%----------------------------------------------------------------------
+
+\begin{motivation}
+Differentiation turns a quantity into its rate of change. Integration goes
+the other way: from a rate of change it recovers the accumulated total (from
+speed to distance travelled), and more generally it computes areas under
+curves. In machine learning, integrals turn up whenever continuous quantities
+are involved: the probability that a continuous random variable falls in an
+interval is an area under its density curve, and averages (expected values) of
+continuous quantities are integrals (\cref{ch:probability}).
+\end{motivation}
+
+\subsection{Area as a limit of sums}
+
+How large is the area between the graph of $f(x) = x^2$ and the $x$-axis, for
+$x$ from $0$ to $1$? Approximate it by rectangles (\cref{fig:riemann}). Using
+$n$ rectangles of width $\frac1n$ whose heights are the function values at their
+right ends gives the estimate
+\[
+  \sum_{k=1}^{n} f\!\left(\frac kn\right)\frac1n .
+\]
+For $n = 4, 8, 10, 100$ these sums are $0.469$, $0.398$, $0.385$, $0.338$; as
+the rectangles get thinner, the sums approach $\frac13$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=8cm,height=6cm,xmin=0,xmax=1.15,ymin=0,ymax=1.15,
+  xlabel=$x$,ylabel=$y$,xtick={0,0.25,0.5,0.75,1},ytick={0.5,1},
+  xlabel style={anchor=north,at={(axis description cs:0.5,-0.08)}},
+  ylabel style={anchor=east,at={(axis description cs:-0.08,0.5)}}]
+  \foreach \k in {1,...,8}{
+    \edef\temp{\noexpand\draw[fill=MLdef!25,draw=MLdef]
+      (axis cs:{(\k-1)/8},0) rectangle (axis cs:{\k/8},{(\k/8)^2});}
+    \temp}
+  \addplot[black,very thick,domain=0:1.07,samples=100]{x^2};
+  \node[font=\small,anchor=south east] at (axis cs:1.05,1.05) {$y = x^2$};
+\end{axis}
+\end{tikzpicture}
+\caption{Approximating the area under $y = x^2$ on $[0,1]$ by $8$ rectangles
+  (total area $0.398$). With thinner rectangles the total approaches the exact
+  area $\frac13$.}
+\label{fig:riemann}
+\end{figure}
+
+\begin{definition}[Definite integral]\label{def:integral}
+The \term{definite integral} of $f$ from $a$ to $b$,
+\[
+  \int_a^b f(x)\,\dd x ,
+\]
+is the limit of such sums of rectangle areas as the width of the rectangles
+goes to zero. It is the \emph{signed} area between the graph and the $x$-axis:
+area above the axis counts positively and area below counts negatively.
+\end{definition}
+
+\begin{notation}
+The integral sign $\int$ is an elongated S, for ``sum''. The symbol $\dd x$
+recalls the width of the infinitely thin rectangles, and $f(x)\,\dd x$ the area
+of one of them. The numbers $a$ and $b$ are the \emph{limits of integration},
+and $f$ is the \emph{integrand}. The variable $x$ is a dummy variable, like
+the index of a sum: $\int_0^1 x^2\,\dd x = \int_0^1 t^2\,\dd t$.
+\end{notation}
+
+\subsection{The fundamental theorem of calculus}
+
+Computing limits of sums directly is laborious. Fortunately there is a
+shortcut, which connects integration to differentiation.
+
+\begin{definition}[Antiderivative]\label{def:antiderivative}
+A function $F$ with $F' = f$ is called an \term{antiderivative} of $f$. If $F$
+is one antiderivative, all others are $F + C$ for a constant $C$, and we write
+the \term{indefinite integral} $\int f(x)\,\dd x = F(x) + C$.
+\end{definition}
+
+\begin{theorem}[Fundamental theorem of calculus]\label{thm:ftc}
+If $f$ is continuous on $[a, b]$ and $F$ is any antiderivative of $f$, then
+\[
+  \keyeq{\int_a^b f(x)\,\dd x = F(b) - F(a)}
+\]
+The right-hand side is often written $\bigl[F(x)\bigr]_a^b$.
+\end{theorem}
+
+\begin{intuition}[Accumulating a rate gives the total change]
+Let $F(t)$ be the position of a car and $f(t) = F'(t)$ its speed. In a tiny
+time interval $\dd t$, the car moves about $f(t)\,\dd t$. Adding up all these
+tiny moves from time $a$ to time $b$ (that is, integrating the speed) gives the
+total distance moved, which is the change of position $F(b) - F(a)$. Integration
+and differentiation are inverse operations.
+\end{intuition}
+
+\subsection{Computing integrals}
+
+Reading the table of derivatives backwards gives a table of antiderivatives:
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{@{}ll@{\qquad}ll@{}}
+\toprule
+$f(x)$ & $\int f(x)\,\dd x$ & $f(x)$ & $\int f(x)\,\dd x$\\
+\midrule
+$x^n$ \ ($n \neq -1$) & $\frac{x^{n+1}}{n+1} + C$ & $e^x$ & $e^x + C$\\
+$\frac1x$ & $\ln\abs{x} + C$ & $e^{kx}$ & $\frac1k e^{kx} + C$\\
+$\cos x$ & $\sin x + C$ & $\sin x$ & $-\cos x + C$\\
+\bottomrule
+\end{tabular}
+\end{center}
+Integrals are also linear: $\int(cf + g) = c\int f + \int g$.
+
+\begin{example}[Definite integrals]\label{ex:definite-integrals}
+(a) $\int_0^1 x^2\,\dd x = \left[\frac{x^3}{3}\right]_0^1 = \frac13 - 0 =
+\frac13$, confirming the rectangle computation.
+
+(b) $\int_1^3(2x + 1)\,\dd x = \bigl[x^2 + x\bigr]_1^3 = (9 + 3) - (1 + 1) =
+10$.
+
+(c) $\int_0^1 e^x\,\dd x = \bigl[e^x\bigr]_0^1 = e - 1 \approx 1.718$.
+
+(d) $\int_0^\pi\sin x\,\dd x = \bigl[-\cos x\bigr]_0^\pi = -(-1) - (-1) = 2$.
+
+(e) $\int_{-1}^{1}x\,\dd x = \left[\frac{x^2}{2}\right]_{-1}^{1} = \frac12 -
+\frac12 = 0$: the area above the axis (for $x > 0$) cancels the area below.
+\end{example}
+
+The chain rule, read backwards, gives the technique of \emph{substitution}:
+for instance, since $\frac{\dd}{\dd x}e^{x^2} = 2x\,e^{x^2}$, we have
+$\int 2x\,e^{x^2}\,\dd x = e^{x^2} + C$.
+
+\subsection{Integrals over infinite intervals}
+
+An integral can extend to infinity, as a limit:
+\[
+  \int_0^\infty e^{-x}\,\dd x = \lim_{b\to\infty}\bigl[-e^{-x}\bigr]_0^b
+  = \lim_{b\to\infty}\left(1 - e^{-b}\right) = 1 .
+\]
+Although the region under $e^{-x}$ stretches out forever, its area is finite.
+Such integrals are essential in probability. A famous one, which we state
+without proof, is the area under the bell curve:
+\[
+  \int_{-\infty}^{\infty} e^{-x^2}\,\dd x = \sqrt\pi .
+\]
+
+\begin{mlnote}[Integrals in machine learning]
+For a continuous random variable with density $p(x)$, the probability of
+landing between $a$ and $b$ is $\int_a^b p(x)\,\dd x$, the total area
+$\int_{-\infty}^{\infty}p(x)\,\dd x$ must equal $1$, and the average value is
+$\int x\,p(x)\,\dd x$ (\cref{ch:probability}). The constant $\sqrt\pi$ above is
+why $\sqrt{2\pi}$ appears in the formula of the normal distribution. A popular
+measure of classifier quality, the \emph{area under the ROC curve} (AUC), is
+literally an integral. In practice, integrals that cannot be done by hand are
+estimated numerically or by random sampling (\cref{ch:statistics}).
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Compute: (a) $\int_0^2 3x^2\,\dd x$; (b) $\int_1^4\sqrt x\,\dd x$;
+(c) $\int_0^1(e^x + 1)\,\dd x$; (d) $\int_1^2\frac1x\,\dd x$.
+\end{exercise}
+\begin{solution}
+(a) $\bigl[x^3\bigr]_0^2 = 8$. (b) $\left[\tfrac23x^{3/2}\right]_1^4 =
+\tfrac23(8 - 1) = \tfrac{14}{3} \approx 4.67$. (c) $\bigl[e^x + x\bigr]_0^1 =
+(e + 1) - 1 = e \approx 2.718$. (d) $\bigl[\ln x\bigr]_1^2 = \ln2 \approx
+0.693$.
+\end{solution}
+
+\begin{exercise}
+Find antiderivatives of $x^5$, $\frac{1}{x^2}$, $e^{2x}$ and $\cos x$.
+\end{exercise}
+\begin{solution}
+$\tfrac{x^6}{6} + C$; $-\tfrac1x + C$ (since $x^{-2}$ integrates to
+$\tfrac{x^{-1}}{-1}$); $\tfrac12e^{2x} + C$; $\sin x + C$.
+\end{solution}
+
+\begin{exercise}
+Approximate $\int_0^2 x\,\dd x$ using $4$ rectangles whose heights are taken at
+their \emph{left} ends, and compare with the exact value.
+\end{exercise}
+\begin{solution}
+Width $0.5$; left ends $0, 0.5, 1, 1.5$; sum $0.5(0 + 0.5 + 1 + 1.5) = 1.5$.
+The exact value is $\left[\tfrac{x^2}{2}\right]_0^2 = 2$ (the area of a triangle
+with base $2$ and height $2$). Left-end rectangles underestimate an increasing
+function.
+\end{solution}
+
+\begin{exercise}
+The function $p(x) = 2x$ on $[0, 1]$ (and $0$ elsewhere) is a probability
+density. Check that its total area is $1$, and compute $\int_0^1 x\,p(x)\,\dd x$,
+its average value.
+\end{exercise}
+\begin{solution}
+$\int_0^1 2x\,\dd x = \bigl[x^2\bigr]_0^1 = 1$. And
+$\int_0^1 x\cdot2x\,\dd x = \left[\tfrac{2x^3}{3}\right]_0^1 = \tfrac23$: values
+near $1$ are more likely than values near $0$, so the average is above
+$\tfrac12$.
+\end{solution}
+
+\begin{exercise}
+Compute $\int_0^\infty e^{-2x}\,\dd x$.
+\end{exercise}
+\begin{solution}
+$\lim_{b\to\infty}\left[-\tfrac12e^{-2x}\right]_0^b =
+\lim_{b\to\infty}\tfrac12\left(1 - e^{-2b}\right) = \tfrac12$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Derivatives on a computer}\label{sec:numerical-derivatives}
+%----------------------------------------------------------------------
+
+The definition of the derivative suggests a way to estimate it numerically:
+pick a small $h$ and compute a difference quotient. The \emph{forward
+difference} $\frac{f(x + h) - f(x)}{h}$ works, but the \term{central
+difference}
+\[
+  f'(x) \approx \frac{f(x + h) - f(x - h)}{2h}
+\]
+is much more accurate, because the errors on the two sides largely cancel. For
+$f(x) = x^3$ at $x = 2$, where the true derivative is $12$:
+\begin{center}
+\begin{tabular}{c|cc}
+$h$ & forward difference & central difference\\
+\hline
+$0.1$ & $12.61$ & $12.01$\\
+$0.01$ & $12.0601$ & $12.0001$
+\end{tabular}
+\end{center}
+
+\begin{pitfall}[Do not make $h$ too small]
+It is tempting to take $h$ extremely small, say $10^{-15}$. But computers store
+numbers with limited precision (\cref{sec:kinds-of-numbers}), and subtracting
+two almost equal numbers $f(x + h) - f(x)$ loses most of the significant digits.
+In double precision, values of $h$ around $10^{-5}$ to $10^{-7}$ usually work
+best.
+\end{pitfall}
+
+\begin{mlnote}[Gradient checking and automatic differentiation]
+Deep learning libraries do not differentiate numerically; numerical
+differentiation needs a separate evaluation of the loss for every one of
+millions of weights, and it is inexact. Instead they use \emph{automatic
+differentiation}, which applies the chain rule exactly and efficiently to the
+sequence of operations the program performed (\cref{ch:dl}). Numerical
+derivatives remain a valuable debugging tool: \emph{gradient checking} compares
+the derivatives computed by hand-written code against central differences on a
+few weights. If they disagree, there is a bug.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Estimate the derivative of $e^x$ at $x = 1$ with $h = 0.01$ using the forward
+and the central difference. Compare with the exact value.
+\end{exercise}
+\begin{solution}
+Forward: $\tfrac{e^{1.01} - e}{0.01} \approx 2.7319$. Central:
+$\tfrac{e^{1.01} - e^{0.99}}{0.02} \approx 2.71833$. Exact: $e \approx 2.71828$.
+The central difference is accurate to about four decimal places, the forward
+difference to about one.
+\end{solution}
+
+\begin{exercise}
+Use \cref{ex:tiny-loss-derivative} to explain how you would check the formula
+for $L'(w)$ numerically.
+\end{exercise}
+\begin{solution}
+Evaluate the loss at $w = 0.5 + h$ and $w = 0.5 - h$ for, say, $h = 10^{-5}$,
+and compute $\tfrac{L(0.5 + h) - L(0.5 - h)}{2h}$. It should agree with the
+formula's value $-0.2115$ to many decimal places (it gives $-0.21151$). A
+significant disagreement would reveal a mistake in the formula or in the code.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Chapter summary}\label{sec:ch6-summary}
+%----------------------------------------------------------------------
+
+\begin{keytakeaways}
+\begin{itemize}
+  \item The average rate of change $\frac{f(b) - f(a)}{b - a}$ is the slope of
+    a secant; the derivative $f'(a) = \lim_{h\to0}\frac{f(a+h) - f(a)}{h}$ is the
+    slope of the tangent, an instantaneous rate, and a sensitivity:
+    $f(a + h) \approx f(a) + f'(a)h$.
+  \item Limits describe what a function approaches; continuous functions have
+    no jumps; differentiable functions have no corners either.
+  \item Rules: power, constant, sum, product $(fg)' = f'g + fg'$, quotient, and
+    the chain rule $\bigl(f(g(x))\bigr)' = f'(g(x))g'(x)$: rates multiply.
+  \item $(e^x)' = e^x$, $(\ln x)' = 1/x$, $\sigma' = \sigma(1 - \sigma) \le
+    \frac14$, $\ReLU' \in \{0, 1\}$.
+  \item At interior extrema $f' = 0$; $f'' > 0$ means a minimum (cup), $f'' < 0$
+    a maximum (cap). The mean minimises squared error.
+  \item Taylor: $f(a + h) \approx f(a) + f'(a)h + \frac12f''(a)h^2$; near a
+    minimum every smooth function looks like a parabola.
+  \item $\int_a^b f(x)\,\dd x$ is a signed area, computed as $F(b) - F(a)$ for
+    an antiderivative $F$.
+  \item Central differences estimate derivatives numerically, useful for
+    gradient checking.
+\end{itemize}
+\end{keytakeaways}
+
+Machine learning models have not one parameter but millions. The next chapter
+extends every idea of this chapter to functions of many variables, leading to
+the gradient, the most important vector in machine learning.
