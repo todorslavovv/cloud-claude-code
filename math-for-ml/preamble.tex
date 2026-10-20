@@ -72,7 +72,7 @@
   patterns,shapes.geometric,angles,quotes,backgrounds,fit,matrix}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
-\usepgfplotslibrary{fillbetween}
+\usepgfplotslibrary{fillbetween,groupplots}
 % A common look for all function plots in the notes.
 \pgfplotsset{
   mlplot/.style={
@@ -350,10 +350,12 @@
 
 % A frame around a key formula, for use inside display maths:
 %   \[ \keyeq{a^2+b^2=c^2} \]
-\tcbset{highlight math style={enhanced,sharp corners,colback=white,
+% (The options are passed explicitly because tcolorbox resets the global
+% "highlight math style" at the start of every box.)
+\tcbset{mlkeyeq/.style={enhanced,sharp corners,colback=white,
   colframe=MLchapter!70!white,boxrule=0.8pt,left=5pt,right=5pt,
   top=3pt,bottom=3pt}}
-\newcommand{\keyeq}[1]{\tcbhighmath{#1}}
+\newcommand{\keyeq}[1]{\tcbhighmath[mlkeyeq]{#1}}
 
 %----------------------------------------------------------------------
 % New terms: bold, coloured, and automatically added to the index.

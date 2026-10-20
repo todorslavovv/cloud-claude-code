@@ -1,1 +1,1584 @@
+%======================================================================
+% Chapter 2: Functions and Graphs
+%======================================================================
 \chapter{Functions and Graphs}\label{ch:functions}
+
+\begin{motivation}
+What \emph{is} a machine learning model? Strip away the jargon and the answer
+is short: a model is a \emph{function}. It takes an input (an image, a
+sentence, the features of a house) and produces an output (a label, a
+translation, a price). Learning from data means searching for a function that
+produces the right outputs for the inputs we have seen, and, hopefully, for
+new inputs too.
+
+Functions are therefore the central objects of this whole subject. In this
+chapter we learn what functions are, how to picture them as graphs, and meet
+the handful of function families that appear again and again in machine
+learning: linear functions, polynomials, exponentials and logarithms, and the
+``activation functions'' used inside neural networks. We also learn two ways
+of building new functions from old ones, \emph{composition} and
+\emph{inversion}. Composition is exactly how deep neural networks are built.
+\end{motivation}
+
+\begin{objectives}
+\begin{itemize}
+  \item explain what a function is, using the words domain, codomain and range,
+    and the notation $f(x)$;
+  \item plot and read graphs of functions;
+  \item work with linear functions, slopes and intercepts, and interpret the
+    slope as a rate of change;
+  \item solve quadratic equations and find the minimum of a quadratic function;
+  \item describe exponential growth and decay and the special number $e$;
+  \item use logarithms and their rules, and explain why machine learning
+    prefers log-probabilities;
+  \item compose functions, find inverse functions, and predict how parameters
+    shift and stretch a graph;
+  \item recognise the common activation functions: step, sigmoid, tanh, ReLU
+    and softplus.
+\end{itemize}
+\end{objectives}
+
+%----------------------------------------------------------------------
+\section{What is a function?}\label{sec:what-is-function}
+%----------------------------------------------------------------------
+
+\begin{picturethis}
+A function is a machine. You drop an input into the top, the machine applies a
+fixed rule, and an output comes out of the bottom. Drop in the same input
+twice, and you get the same output twice. A ``squaring machine'' turns $3$
+into $9$ and $-4$ into $16$. A ``cat detector'' turns a photograph into one
+of the words \emph{cat} or \emph{not cat}.
+\end{picturethis}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>={Stealth[length=2.5mm]}]
+  \node[draw,thick,rounded corners,fill=MLdef!10,minimum width=3.4cm,
+    minimum height=1.3cm,align=center] (f) {function $f$\\[-1pt]{\small (a fixed rule)}};
+  \draw[->,thick] (-3.6,0) node[left] {input $x$} -- (f.west);
+  \draw[->,thick] (f.east) -- (3.6,0) node[right] {output $f(x)$};
+  \node[draw,thick,rounded corners,fill=MLexample!10,minimum width=3.4cm,
+    minimum height=1.1cm,align=center] (g) at (0,-1.8) {squaring};
+  \draw[->,thick] (-3.6,-1.8) node[left] {$3$} -- (g.west);
+  \draw[->,thick] (g.east) -- (3.6,-1.8) node[right] {$9$};
+  \node[draw,thick,rounded corners,fill=MLml!10,minimum width=3.4cm,
+    minimum height=1.1cm,align=center] (h) at (0,-3.4) {image classifier};
+  \draw[->,thick] (-3.6,-3.4) node[left] {photo} -- (h.west);
+  \draw[->,thick] (h.east) -- (3.6,-3.4) node[right] {``cat''};
+\end{tikzpicture}
+\caption{A function is a machine that turns each input into exactly one
+  output.}
+\label{fig:function-machine}
+\end{figure}
+
+\begin{definition}[Function]\label{def:function}
+A \term{function} $f$ from a set $A$ to a set $B$ is a rule that assigns to
+\emph{each} element $x$ of $A$ \emph{exactly one} element of $B$, called
+$f(x)$. The set $A$ is the \term{domain} of $f$ (the allowed inputs), and $B$
+is the \term{codomain} (where the outputs live). The set of outputs that
+actually occur, $\{f(x) : x \in A\}$, is the \term{range} of $f$.
+\end{definition}
+
+\begin{notation}
+We write $f\colon A \to B$, read ``$f$ is a function from $A$ to $B$''. The
+output for input $x$ is written $f(x)$ and read ``$f$ of $x$''. A rule is
+often given by a formula, such as $f(x) = x^2$; equivalently
+$x \mapsto x^2$, read ``$x$ maps to $x^2$''. In graphs and applications we
+often write $y = f(x)$ and call $x$ the \term{input} (or independent
+variable) and $y$ the \term{output} (or dependent variable).
+\end{notation}
+
+\begin{pitfall}[$f(x)$ is not $f$ times $x$]
+The brackets in $f(x)$ do \emph{not} mean multiplication. $f(3)$ means ``the
+output of $f$ when the input is $3$''. Likewise $f(a + 1)$ is \emph{not}
+$f(a) + 1$: if $f(x) = x^2$, then $f(a+1) = (a+1)^2 = a^2 + 2a + 1$, which is
+quite different from $f(a) + 1 = a^2 + 1$. To evaluate $f$ at any input,
+replace \emph{every} $x$ in the formula by that input, in brackets.
+\end{pitfall}
+
+Two words in the definition deserve emphasis. \emph{Each} input must get an
+output, so the formula $1/x$ does not define a function on all of $\R$ (there
+is no output for $x = 0$); it defines a function on the domain
+$\{x \in \R : x \neq 0\}$. And \emph{exactly one} output: the rule ``$y$ is a
+number whose square is $x$'' is not a function, because the input $4$ would
+have two outputs, $2$ and $-2$.
+
+\begin{example}[Domains and ranges]\label{ex:domain-range}
+Find a suitable domain and the range of (a) $f(x) = x^2$;
+(b) $g(x) = \sqrt{x}$; (c) $h(x) = \frac{1}{x-2}$.
+
+\sol (a) Any real number can be squared, so the domain is $\R$. Squares are
+never negative, and every non-negative number is a square, so the range is
+$[0, \infty)$.
+
+(b) Square roots of negative numbers are not real, so the domain is
+$[0, \infty)$; the range is also $[0, \infty)$.
+
+(c) We cannot divide by zero, so $x = 2$ must be excluded: the domain is
+$\{x \in \R : x \neq 2\}$. The output can be any non-zero number (to get
+output $y$, take $x = 2 + \tfrac1y$), so the range is
+$\{y \in \R : y \neq 0\}$.
+\end{example}
+
+\subsection{Ways to describe a function}
+
+A function can be described by a formula ($f(x) = 2x + 1$), by a table of
+inputs and outputs, by a graph (\cref{sec:graphs}), in words (``double it and
+add one''), or by a computer program. A trained neural network is a function
+described by a program together with a long list of numbers (its weights).
+Often no simple formula exists at all.
+
+\subsection{Functions of several inputs}
+
+Many functions take more than one input. The area of a rectangle,
+$A(\ell, w) = \ell w$, takes two. A house-price model might take three:
+\[
+  \text{price}(\text{size}, \text{bedrooms}, \text{age})
+  = 3000\cdot\text{size} + 10\,000\cdot\text{bedrooms} - 500\cdot\text{age}
+  + 20\,000 .
+\]
+In \cref{ch:linalg1} we will bundle the inputs into a single object, a
+\emph{vector}, and in \cref{ch:multivariable} we will learn calculus for such
+functions. Until then we mostly study functions of one input.
+
+\begin{mlnote}[Learning is searching for a function]
+Supervised machine learning starts from examples of input--output pairs
+$(x_1, y_1), (x_2, y_2), \dots, (x_n, y_n)$: photos with their labels, houses
+with their prices. We imagine that there is some unknown function that
+produced the outputs from the inputs, and we try to find a function $f$ with
+$f(x_i) \approx y_i$ for all $i$ (``$\approx$'' means ``approximately
+equal''). The set of candidate functions we search through, for example
+``all straight lines'' or ``all neural networks of a certain size'', is
+called the \term{hypothesis space}. Note that a model \emph{must} be a
+function: the same input always gives the same output.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Which of the following define a function from $\R$ to $\R$? Explain.
+(a) $f(x) = 3x - 1$; (b) ``$y$ is a number with $y^2 = x$'';
+(c) $f(x) = \tfrac1x$; (d) $f(x) = \abs{x}$.
+\end{exercise}
+\begin{solution}
+(a) Yes. (b) No: for $x > 0$ there are two such $y$, and for $x < 0$ there is
+none. (c) Not on all of $\R$, because $x = 0$ has no output; it is a function
+on $\{x \in \R : x\neq0\}$. (d) Yes.
+\end{solution}
+
+\begin{exercise}
+Let $f(x) = x^2 - 3x$. Compute $f(0)$, $f(2)$, $f(-1)$, $f(a)$ and $f(a+1)$.
+\end{exercise}
+\begin{solution}
+$f(0) = 0$, $f(2) = 4 - 6 = -2$, $f(-1) = 1 + 3 = 4$, $f(a) = a^2 - 3a$, and
+$f(a+1) = (a+1)^2 - 3(a+1) = a^2 + 2a + 1 - 3a - 3 = a^2 - a - 2$.
+\end{solution}
+
+\begin{exercise}
+Find the largest possible domain of (a) $\sqrt{x - 2}$; (b) $\tfrac{1}{x+3}$;
+(c) $\sqrt{4 - x^2}$.
+\end{exercise}
+\begin{solution}
+(a) Need $x - 2 \ge 0$: $[2, \infty)$. (b) Need $x \neq -3$.
+(c) Need $4 - x^2 \ge 0$, i.e.\ $x^2 \le 4$, i.e.\ $\abs{x} \le 2$: $[-2, 2]$.
+\end{solution}
+
+\begin{exercise}
+Find the range of $f(x) = x^2 + 1$ and of $g(x) = -\abs{x}$, both with domain
+$\R$.
+\end{exercise}
+\begin{solution}
+$x^2 \ge 0$, so $f(x) \ge 1$, and every value $\ge 1$ occurs: the range is
+$[1, \infty)$. Similarly $-\abs x \le 0$ and every value $\le 0$ occurs: the
+range of $g$ is $(-\infty, 0]$.
+\end{solution}
+
+\begin{exercise}
+A spam filter reads an email and outputs either ``spam'' or ``not spam''.
+What are its domain and codomain? Why would it be a problem if the filter
+were not a function?
+\end{exercise}
+\begin{solution}
+The domain is the set of all possible emails; the codomain is the two-element
+set $\{\text{spam}, \text{not spam}\}$. If it were not a function, the same
+email could receive different verdicts, so its behaviour could not be
+predicted, tested or relied upon.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Graphs of functions}\label{sec:graphs}
+%----------------------------------------------------------------------
+
+To draw a function we use two perpendicular number lines: a horizontal
+\emph{$x$-axis} for inputs and a vertical \emph{$y$-axis} for outputs. Every
+pair of numbers $(x, y)$ is a point in this plane: go $x$ units to the right
+(left if $x$ is negative) and $y$ units up (down if $y$ is negative).
+\Cref{ch:geometry} studies this \emph{Cartesian plane} in detail.
+
+\begin{definition}[Graph]\label{def:graph}
+The \term{graph} of a function $f$ is the set of all points $(x, f(x))$ with
+$x$ in the domain of $f$.
+\end{definition}
+
+The simplest way to sketch a graph is to make a table of values, plot the
+points and join them with a smooth curve.
+
+\begin{example}[Plotting a graph]\label{ex:plot-quadratic}
+Sketch the graph of $f(x) = x^2 - 2x - 3$ for $-2 \le x \le 4$.
+
+\sol A table of values:
+\begin{center}
+\begin{tabular}{c|ccccccc}
+$x$ & $-2$ & $-1$ & $0$ & $1$ & $2$ & $3$ & $4$\\
+\hline
+$f(x)$ & $5$ & $0$ & $-3$ & $-4$ & $-3$ & $0$ & $5$
+\end{tabular}
+\end{center}
+For instance $f(-2) = 4 + 4 - 3 = 5$. Plotting the points and joining them
+gives the U-shaped curve in \cref{fig:quadratic-plot}.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=9.5cm,height=7cm,xmin=-3.9,xmax=4.9,ymin=-5.2,ymax=6.5,
+  xlabel=$x$,ylabel=$y$,xtick={-3,...,4},ytick={-4,-2,...,6}]
+  \addplot[PlotBlue,domain=-2.6:4.6,samples=100]{x^2-2*x-3};
+  \addplot[only marks,mark=*,mark size=1.7pt,PlotBlue]
+    coordinates {(-2,5) (-1,0) (0,-3) (1,-4) (2,-3) (3,0) (4,5)};
+  \addplot[only marks,mark=*,mark size=2.4pt,PlotRed]
+    coordinates {(-1,0) (3,0)};
+  \node[font=\small,PlotRed,anchor=south east] at (axis cs:-1.05,0.15) {root};
+  \node[font=\small,PlotRed,anchor=south west] at (axis cs:3.05,0.15) {root};
+  \node[font=\small,anchor=west] at (axis cs:1.2,-4.1) {minimum $(1,-4)$};
+  \node[font=\small,anchor=east] at (axis cs:-0.15,-3.0) {$y$-intercept $(0,-3)$};
+\end{axis}
+\end{tikzpicture}
+\caption{The graph of $f(x) = x^2 - 2x - 3$. It crosses the $x$-axis at the
+  roots $x = -1$ and $x = 3$, crosses the $y$-axis at $-3$, and has its lowest
+  point at $(1, -4)$.}
+\label{fig:quadratic-plot}
+\end{figure}
+
+\subsection{Reading a graph}
+
+A graph shows at a glance much of what we want to know about a function:
+\begin{itemize}
+  \item the value $f(a)$ is the height of the graph above (or below) the point
+    $a$ on the $x$-axis;
+  \item the \term[root of a function]{roots} (or \emph{zeros}) are the inputs
+    where $f(x) = 0$, i.e.\ where the graph meets the $x$-axis;
+  \item the \term{y-intercept} $f(0)$ is where the graph meets the $y$-axis;
+  \item $f$ is \term[increasing function]{increasing} where the graph goes up
+    as we move right, and \term[decreasing function]{decreasing} where it goes
+    down;
+  \item the lowest and highest points show the \emph{minimum} and
+    \emph{maximum} values.
+\end{itemize}
+In \cref{fig:quadratic-plot}, $f$ decreases until $x = 1$, then increases; its
+minimum value is $-4$, reached at $x = 1$; and $f(x) < 0$ exactly when
+$-1 < x < 3$.
+
+\begin{remark}[The vertical line test]
+Because a function gives exactly one output for each input, every vertical
+line meets the graph of a function at most once. A curve that some vertical
+line crosses twice, such as a circle, is not the graph of a function $y=f(x)$.
+\end{remark}
+
+\begin{mlnote}[Reading training curves]
+The most-viewed graph in machine learning practice is the \emph{training
+curve}: the loss (the model's error) plotted against the number of training
+steps (\cref{fig:training-curve}). A healthy curve goes down quickly and then
+flattens out. A curve that goes up, oscillates wildly or flattens out
+immediately tells an experienced practitioner that something is wrong.
+Reading such graphs is a daily skill.
+\end{mlnote}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=9cm,height=5.5cm,xmin=0,xmax=50,
+  ymin=0,ymax=2.6,xlabel={training step (thousands)},ylabel={loss},
+  xlabel style={anchor=north,at={(axis description cs:0.5,-0.08)}},
+  ylabel style={anchor=south,rotate=90,at={(axis description cs:-0.1,0.5)}}]
+  \addplot[PlotBlue,domain=0:50,samples=200]
+    {0.3 + 2*exp(-x/6) + 0.05*sin(deg(3*x))*exp(-x/40)};
+\end{axis}
+\end{tikzpicture}
+\caption{A typical training curve: the loss falls quickly at first and then
+  levels off. The small wiggles come from the randomness of training.}
+\label{fig:training-curve}
+\end{figure}
+
+\sectionexercises
+
+\begin{exercise}
+Make a table of values of $f(x) = 4 - x^2$ for $x = -3, -2, \dots, 3$ and
+sketch the graph. Where are the roots, the $y$-intercept, and the maximum?
+\end{exercise}
+\begin{solution}
+Values: $f(\pm3) = -5$, $f(\pm2) = 0$, $f(\pm1) = 3$, $f(0) = 4$. The graph is
+an upside-down U. Roots at $x = -2$ and $x = 2$; $y$-intercept $4$; maximum
+value $4$ at $x = 0$.
+\end{solution}
+
+\begin{exercise}
+Use \cref{fig:quadratic-plot} to answer: for which $x$ is
+$x^2 - 2x - 3 > 0$? On which interval is the function increasing?
+\end{exercise}
+\begin{solution}
+The graph is above the $x$-axis for $x < -1$ and for $x > 3$. It is
+increasing on $[1, \infty)$ (and decreasing on $(-\infty, 1]$).
+\end{solution}
+
+\begin{exercise}
+Is the circle consisting of all points with $x^2 + y^2 = 1$ the graph of a
+function $y = f(x)$? Can you split it into two pieces that are graphs of
+functions?
+\end{exercise}
+\begin{solution}
+No: the vertical line $x = 0$ meets it twice, at $(0, 1)$ and $(0, -1)$. The
+upper half is the graph of $f(x) = \sqrt{1 - x^2}$ and the lower half is the
+graph of $g(x) = -\sqrt{1 - x^2}$, both with domain $[-1, 1]$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Linear functions}\label{sec:linear-functions}
+%----------------------------------------------------------------------
+
+\begin{definition}[Linear function]\label{def:linear-function}
+A function of the form
+\[
+  f(x) = mx + b ,
+\]
+where $m$ and $b$ are fixed numbers, is called a \term{linear function}. Its
+graph is a straight line. The number $m$ is the \term{slope} and $b$ is the
+\term{intercept} (the $y$-intercept, since $f(0) = b$).
+\end{definition}
+
+\begin{remark}
+Strictly speaking, mathematicians call $mx + b$ an \emph{affine} function and
+reserve ``linear'' for the case $b = 0$; we will meet this distinction in
+\cref{ch:linalg1}. In everyday usage, and in most of machine learning, both
+are called linear.
+\end{remark}
+
+\subsection{Slope}
+
+The slope measures how steep the line is. Pick any two points
+$(x_1, y_1)$ and $(x_2, y_2)$ on the line. The \emph{run} is the horizontal
+change $x_2 - x_1$, the \emph{rise} is the vertical change $y_2 - y_1$, and
+\[
+  m = \frac{\text{rise}}{\text{run}} = \frac{y_2 - y_1}{x_2 - x_1} .
+\]
+For a straight line this ratio is the same whichever two points we pick.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=9cm,height=6.5cm,xmin=-1.2,xmax=6.5,ymin=-0.6,ymax=4.6,
+  xlabel=$x$,ylabel=$y$,xtick={0,...,6},ytick={0,...,4}]
+  \addplot[PlotBlue,domain=-1.2:6.5]{0.5*x+1};
+  \draw[PlotRed,thick] (axis cs:1,1.5) -- (axis cs:5,1.5) -- (axis cs:5,3.5);
+  \node[font=\small,PlotRed,anchor=north] at (axis cs:3.6,1.45) {run $=4$};
+  \node[font=\small,PlotRed,anchor=west] at (axis cs:5.05,2.5) {rise $=2$};
+  \addplot[only marks,mark=*,mark size=2pt,black] coordinates {(1,1.5) (5,3.5) (0,1)};
+  \node[font=\small,anchor=north west] at (axis cs:0.95,1.45) {$(1, 1.5)$};
+  \node[font=\small,anchor=south east] at (axis cs:4.9,3.55) {$(5, 3.5)$};
+  \node[font=\small,anchor=south east] at (axis cs:-0.05,1.05) {$b = 1$};
+  \node[font=\small,PlotBlue,anchor=south] at (axis cs:2.6,3.4) {$y = \tfrac12 x + 1$};
+\end{axis}
+\end{tikzpicture}
+\caption{The slope is rise over run: here $m = \tfrac{2}{4} = \tfrac12$. The
+  line crosses the $y$-axis at the intercept $b = 1$.}
+\label{fig:slope}
+\end{figure}
+
+\begin{intuition}[Slope is a rate of change]
+The slope tells you \emph{how much the output changes when the input increases
+by one unit}. If $y = \tfrac12x + 1$, then every step of $1$ to the right
+raises $y$ by $\tfrac12$. A positive slope means the line goes up from left to
+right, a negative slope means it goes down, a slope of $0$ gives a horizontal
+line, and a larger $\abs{m}$ means a steeper line. Slopes carry units: if $x$
+is a house size in square metres and $y$ a price in euros, then $m$ is in euros
+per square metre. In \cref{ch:calculus}, the idea of slope will be extended
+from straight lines to curves; the result is called the \emph{derivative}.
+\end{intuition}
+
+\begin{example}[The line through two points]\label{ex:line-through-points}
+Find the linear function whose graph passes through $(1, 2)$ and $(4, 11)$.
+
+\sol The slope is $m = \frac{11 - 2}{4 - 1} = \frac93 = 3$. So $f(x) = 3x + b$,
+and since $f(1) = 2$ we need $3 + b = 2$, so $b = -1$. The function is
+$f(x) = 3x - 1$. \emph{Check:} $f(4) = 12 - 1 = 11$. \checkmark
+\end{example}
+
+A convenient alternative is the \emph{point--slope form}: the line with slope
+$m$ through the point $(x_1, y_1)$ is
+\[
+  y - y_1 = m(x - x_1).
+\]
+
+\begin{example}[Celsius and Fahrenheit]
+The formula $F = 1.8C + 32$ is a linear function of $C$. Its slope $1.8$ says
+that each degree Celsius is worth $1.8$ degrees Fahrenheit; its intercept $32$
+is the Fahrenheit temperature at $0\,^\circ$C, the freezing point of water.
+\end{example}
+
+\subsection{Special lines}
+
+A horizontal line $y = c$ has slope $0$: the output does not depend on the
+input at all (a \emph{constant function}). A vertical line $x = c$ is not the
+graph of a function (it fails the vertical line test), and its slope is
+undefined because the run is $0$. Two lines are \emph{parallel} exactly when
+they have the same slope. When $b = 0$, the output is proportional to the
+input: doubling $x$ doubles $y$.
+
+\begin{mlnote}[Linear regression]
+The simplest machine learning model is \term{linear regression} with one input:
+\[
+  \hat y = wx + b .
+\]
+In machine learning the slope is called the \emph{weight} $w$ and the
+intercept the \emph{bias} $b$. The weight measures how sensitive the
+prediction is to the input: $w = 3000$ euros per square metre means that each
+extra square metre adds $3000$ euros to the predicted price. Training finds
+the line that best fits a cloud of data points (\cref{ch:linalg2,ch:optimization}).
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Find the slope and intercept of the line through $(1, 2)$ and $(3, -4)$.
+\end{exercise}
+\begin{solution}
+$m = \tfrac{-4 - 2}{3 - 1} = -3$. Then $2 = -3 \cdot 1 + b$ gives $b = 5$; the
+line is $y = -3x + 5$.
+\end{solution}
+
+\begin{exercise}
+Write the equation of the line with slope $-2$ through the point $(3, 1)$ in
+the form $y = mx + b$.
+\end{exercise}
+\begin{solution}
+$y - 1 = -2(x - 3)$, so $y = -2x + 7$.
+\end{solution}
+
+\begin{exercise}
+Using $F = 1.8C + 32$: (a) by how much does $F$ change when $C$ increases by
+$10$? (b) At what temperature do the Celsius and Fahrenheit scales show the
+same number?
+\end{exercise}
+\begin{solution}
+(a) By $1.8 \times 10 = 18$ degrees Fahrenheit. (b) Solve $C = 1.8C + 32$:
+$-0.8C = 32$, so $C = -40$. Indeed $-40\,^\circ$C $= -40\,^\circ$F.
+\end{solution}
+
+\begin{exercise}
+A model predicts $\text{price} = 2500 \times \text{size} + 40\,000$. Interpret
+the numbers $2500$ and $40\,000$. By how much does the predicted price rise if
+the size increases by $12$ square metres? Is the intercept meaningful?
+\end{exercise}
+\begin{solution}
+Each extra square metre adds $2500$ to the predicted price (the slope); the
+intercept $40\,000$ is the prediction for a house of size $0$. A size increase
+of $12$ raises the prediction by $12 \times 2500 = 30\,000$. The intercept is
+not meaningful on its own (there are no houses of size $0$); it just positions
+the line so that it fits the data in the realistic range.
+\end{solution}
+
+\begin{exercise}
+Are the lines $y = 2x + 1$ and $y = 2x - 5$ parallel? Where do the lines
+$y = 2x + 1$ and $y = -x + 4$ meet?
+\end{exercise}
+\begin{solution}
+Yes, both have slope $2$ (and different intercepts, so they never meet). For
+the second pair, $2x + 1 = -x + 4$ gives $x = 1$ and $y = 3$: they meet at
+$(1, 3)$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Polynomials and quadratic functions}\label{sec:polynomials}
+%----------------------------------------------------------------------
+
+\begin{definition}[Polynomial]\label{def:polynomial}
+A \term{polynomial} is a function of the form
+\[
+  p(x) = a_n x^n + a_{n-1}x^{n-1} + \dots + a_1 x + a_0 ,
+\]
+where $n$ is a whole number $\ge 0$ and the \emph{coefficients}
+$a_0, \dots, a_n$ are real numbers with $a_n \neq 0$. The highest power $n$ is
+the \term[degree of a polynomial]{degree}.
+\end{definition}
+
+Constant functions have degree $0$, linear functions have degree $1$,
+\emph{quadratic} functions have degree $2$ (for example $x^2 - 2x - 3$), and
+\emph{cubic} functions have degree $3$ (for example $x^3 - 3x$).
+
+\subsection{Quadratic functions}
+
+A \term{quadratic function} has the form $f(x) = ax^2 + bx + c$ with
+$a \neq 0$. Its graph is a \term{parabola}: a U shape that opens upwards if
+$a > 0$ and downwards if $a < 0$. An upward parabola has a lowest point, and a
+downward one a highest point; this turning point is called the \term{vertex}.
+The larger $\abs{a}$, the narrower the U.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=10cm,height=7cm,xmin=-4.5,xmax=5.5,ymin=-4.5,ymax=6.5,
+  xlabel=$x$,ylabel=$y$,xtick={-4,...,5},ytick={-4,-2,...,6},
+  legend style={font=\small,at={(0.5,-0.08)},anchor=north,legend columns=3,
+    draw=none,/tikz/every even column/.append style={column sep=4mm}}]
+  \addplot[PlotBlue,domain=-2.55:2.55,samples=100]{x^2};
+  \addlegendentry{$y = x^2$}
+  \addplot[PlotRed,domain=-3.6:3.6,samples=100]{-0.5*x^2+2};
+  \addlegendentry{$y = -\tfrac12x^2 + 2$}
+  \addplot[PlotGreen,domain=0.45:5.5,samples=100]{(x-3)^2+1};
+  \addlegendentry{$y = (x-3)^2 + 1$}
+  \addplot[only marks,mark=*,mark size=2pt,PlotGreen,forget plot] coordinates {(3,1)};
+  \node[font=\small,PlotGreen,anchor=north,fill=white,inner sep=1.5pt]
+    at (axis cs:3.9,0.7) {vertex $(3,1)$};
+\end{axis}
+\end{tikzpicture}
+\caption{Three parabolas. $y = x^2$ opens upwards with vertex at the origin;
+  $y = -\tfrac12 x^2 + 2$ opens downwards and is wider; $y = (x-3)^2 + 1$ is
+  the graph of $x^2$ moved $3$ units right and $1$ unit up.}
+\label{fig:parabolas}
+\end{figure}
+
+\subsection{Solving quadratic equations}
+
+The roots of a quadratic function are the solutions of $ax^2 + bx + c = 0$.
+Sometimes we can find them by factoring (\cref{sec:algebra}): since
+$x^2 - 2x - 3 = (x - 3)(x + 1)$, the equation $x^2 - 2x - 3 = 0$ becomes
+$(x - 3)(x + 1) = 0$. A product is zero only if one of its factors is zero, so
+$x = 3$ or $x = -1$, matching \cref{fig:quadratic-plot}.
+
+When factoring is not obvious, there is a formula that always works.
+
+\begin{theorem}[The quadratic formula]\label{thm:quadratic-formula}
+The solutions of $ax^2 + bx + c = 0$ (with $a \neq 0$) are
+\[
+  \keyeq{x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}}
+\]
+The symbol $\pm$ (``plus or minus'') means that there is one solution with $+$
+and one with $-$. The number $D = b^2 - 4ac$ is the
+\term{discriminant}: if $D > 0$ there are two real solutions, if $D = 0$
+there is exactly one, and if $D < 0$ there are no real solutions (the
+parabola does not reach the $x$-axis).
+\end{theorem}
+
+\begin{example}[Using the quadratic formula]
+Solve $2x^2 - 4x - 1 = 0$.
+
+\sol Here $a = 2$, $b = -4$, $c = -1$, so $D = (-4)^2 - 4\cdot2\cdot(-1) = 16 +
+8 = 24 > 0$: two solutions,
+\[
+  x = \frac{4 \pm \sqrt{24}}{4} = 1 \pm \frac{\sqrt{6}}{2},
+  \qquad\text{i.e. } x \approx 2.225 \text{ or } x \approx -0.225 .
+\]
+\end{example}
+
+\subsection{Completing the square: where is the minimum?}
+
+For machine learning, the most important fact about a quadratic is the
+location of its minimum. A technique called \term{completing the square}
+rewrites $ax^2 + bx + c$ in \emph{vertex form} $a(x - h)^2 + k$, from which the
+vertex $(h, k)$ can be read off directly.
+
+\begin{example}[Finding the minimum of a quadratic]\label{ex:complete-square}
+Find the minimum value of $f(x) = x^2 - 6x + 10$.
+
+\sol The identity $(x - 3)^2 = x^2 - 6x + 9$ contains the first two terms of
+$f$. So
+\[
+  f(x) = (x^2 - 6x + 9) + 1 = (x-3)^2 + 1 .
+\]
+A square is never negative, so $(x - 3)^2 \ge 0$, with equality only at
+$x = 3$. Hence $f(x) \ge 1$ for every $x$, and the minimum value $1$ is
+reached at $x = 3$. The vertex is $(3, 1)$ (the green parabola in
+\cref{fig:parabolas}).
+\end{example}
+
+In general, the halfway point between the two terms $x^2$ and $bx$ gives the
+recipe: $x^2 + bx = \left(x + \tfrac b2\right)^2 - \tfrac{b^2}{4}$. Applying
+this to $ax^2 + bx + c$ shows that
+
+\begin{proposition}[Vertex of a parabola]\label{prop:vertex}
+The vertex of $f(x) = ax^2 + bx + c$ is at $x = -\frac{b}{2a}$. If $a > 0$,
+this is where $f$ attains its minimum; if $a < 0$, its maximum.
+\end{proposition}
+
+\begin{remark}
+Completing the square on $ax^2 + bx + c = 0$ in general is exactly how the
+quadratic formula is derived. You can try it: divide by $a$, complete the
+square, and take square roots of both sides.
+\end{remark}
+
+\subsection{Higher-degree polynomials}
+
+Polynomials of higher degree can wiggle more: a polynomial of degree $n$ has
+at most $n$ roots and at most $n - 1$ turning points
+(\cref{fig:cubic}). For large $\abs{x}$, the highest-power term dominates, so
+the graph eventually shoots off to $+\infty$ or $-\infty$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=9cm,height=6.5cm,xmin=-2.6,xmax=2.6,ymin=-4.2,ymax=4.2,
+  xlabel=$x$,ylabel=$y$,xtick={-2,...,2},ytick={-4,-2,...,4}]
+  \addplot[PlotBlue,domain=-2.3:2.3,samples=150]{x^3-3*x};
+  \addplot[only marks,mark=*,mark size=2pt,PlotRed] coordinates {(-1.732,0) (0,0) (1.732,0)};
+  \addplot[only marks,mark=*,mark size=2pt,PlotGreen] coordinates {(-1,2) (1,-2)};
+  \node[font=\small,PlotGreen,anchor=south] at (axis cs:-1,2.1) {turning point};
+  \node[font=\small,PlotGreen,anchor=north] at (axis cs:1,-2.1) {turning point};
+\end{axis}
+\end{tikzpicture}
+\caption{The cubic $y = x^3 - 3x$ has three roots ($0$ and $\pm\sqrt3$, in red)
+  and two turning points (in green).}
+\label{fig:cubic}
+\end{figure}
+
+\begin{mlnote}[Squared error is a quadratic]
+Suppose we want to summarise the three numbers $y_1 = 2$, $y_2 = 4$, $y_3 = 9$
+by a single number $c$, and we measure the quality of $c$ by the total squared
+error
+\[
+  L(c) = (2 - c)^2 + (4 - c)^2 + (9 - c)^2 .
+\]
+Expanding, $L(c) = 3c^2 - 30c + 101$: a quadratic in $c$ with $a = 3 > 0$. By
+\cref{prop:vertex} its minimum is at $c = \frac{30}{2\cdot3} = 5$, which is
+exactly the mean $\frac{2 + 4 + 9}{3}$. This is no coincidence: the mean is
+always the number that minimises the squared error, a fact we will prove with
+calculus in \cref{ch:calculus}. More generally, the loss of a linear regression
+model is a quadratic function of its parameters, which is why it is so easy to
+minimise.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Give the degree and leading coefficient (the coefficient of the highest
+power) of (a) $4x^3 - x + 7$; (b) $(x + 1)(x - 2)$; (c) $5$.
+\end{exercise}
+\begin{solution}
+(a) Degree $3$, leading coefficient $4$. (b) Expanding gives $x^2 - x - 2$:
+degree $2$, leading coefficient $1$. (c) Degree $0$, leading coefficient $5$.
+\end{solution}
+
+\begin{exercise}
+Solve by factoring: (a) $x^2 - 5x + 6 = 0$; (b) $x^2 - 16 = 0$;
+(c) $x^2 + 3x = 0$.
+\end{exercise}
+\begin{solution}
+(a) $(x-2)(x-3) = 0$: $x = 2$ or $3$. (b) $(x-4)(x+4) = 0$: $x = \pm4$.
+(c) $x(x+3) = 0$: $x = 0$ or $-3$.
+\end{solution}
+
+\begin{exercise}
+Use the discriminant to decide how many real solutions each equation has, and
+find them: (a) $x^2 + x + 1 = 0$; (b) $x^2 - 6x + 9 = 0$;
+(c) $2x^2 - 3x - 2 = 0$; (d) $x^2 + 4x + 1 = 0$.
+\end{exercise}
+\begin{solution}
+(a) $D = 1 - 4 = -3 < 0$: none. (b) $D = 36 - 36 = 0$: one, $x = 3$.
+(c) $D = 9 + 16 = 25$: two, $x = \tfrac{3 \pm 5}{4}$, i.e.\ $x = 2$ or
+$x = -\tfrac12$. (d) $D = 16 - 4 = 12$: two,
+$x = \tfrac{-4 \pm\sqrt{12}}{2} = -2 \pm \sqrt3$, i.e.\ about $-0.268$ and
+$-3.732$.
+\end{solution}
+
+\begin{exercise}
+Complete the square to find the vertex and the minimum or maximum value of
+(a) $f(x) = x^2 + 4x + 7$; (b) $g(x) = -x^2 + 6x - 5$.
+\end{exercise}
+\begin{solution}
+(a) $x^2 + 4x + 7 = (x+2)^2 - 4 + 7 = (x+2)^2 + 3$: vertex $(-2, 3)$, minimum
+value $3$. (b) $-x^2 + 6x - 5 = -(x^2 - 6x) - 5 = -[(x-3)^2 - 9] - 5 =
+-(x-3)^2 + 4$: vertex $(3, 4)$, maximum value $4$.
+\end{solution}
+
+\begin{exercise}
+For the data $y = (1, 3, 8)$, write the total squared error
+$L(c) = \sum_{i=1}^3 (y_i - c)^2$ as a quadratic in $c$, find the value of $c$
+that minimises it, and compare with the mean.
+\end{exercise}
+\begin{solution}
+$L(c) = (1-c)^2 + (3-c)^2 + (8-c)^2 = 3c^2 - 24c + 74$. The vertex is at
+$c = \tfrac{24}{6} = 4$, which is the mean $\tfrac{1 + 3 + 8}{3} = 4$. The
+minimum value is $L(4) = 9 + 1 + 16 = 26$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Exponential functions}\label{sec:exponential}
+%----------------------------------------------------------------------
+
+\begin{motivation}
+Some quantities grow by \emph{adding} a fixed amount each step (a salary that
+rises by $1000$ per year). Others grow by \emph{multiplying} by a fixed factor
+each step (bacteria that double every hour, money earning interest, a rumour
+spreading on social media). Multiplicative growth and decay are described by
+exponential functions. In machine learning, exponentials turn arbitrary scores
+into positive numbers (and so into probabilities), describe how learning rates
+are decayed, and explain why signals can explode or vanish in deep networks.
+\end{motivation}
+
+\begin{definition}[Exponential function]\label{def:exponential}
+For a fixed number $a > 0$ with $a \neq 1$, the function
+\[
+  f(x) = a^x
+\]
+is called an \term{exponential function} with base $a$. Thanks to the rules of
+\cref{sec:exponents}, $a^x$ makes sense for every real number $x$: for
+example $2^{-1} = \tfrac12$ and $2^{1/2} = \sqrt2$.
+\end{definition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=9.5cm,height=7cm,xmin=-3.2,xmax=3.2,ymin=-0.6,ymax=8.5,
+  xlabel=$x$,ylabel=$y$,xtick={-3,...,3},ytick={0,2,...,8}]
+  \addplot[PlotBlue,domain=-3.2:3.1,samples=100]{2^x};
+  \addplot[PlotRed,domain=-3.1:3.2,samples=100]{0.5^x};
+  \addplot[PlotGreen,domain=-3.2:2.13,samples=100]{exp(x)};
+  \addplot[only marks,mark=*,mark size=2pt,black] coordinates {(0,1)};
+  \node[font=\small,PlotBlue,anchor=west] at (axis cs:2.35,4.3) {$2^x$};
+  \node[font=\small,PlotRed,anchor=east] at (axis cs:-2.35,4.3) {$\left(\tfrac12\right)^x$};
+  \node[font=\small,PlotGreen,anchor=east] at (axis cs:1.95,7.7) {$e^x$};
+  \node[font=\small,anchor=north west] at (axis cs:0.05,0.95) {$(0,1)$};
+\end{axis}
+\end{tikzpicture}
+\caption{Exponential functions. Every graph passes through $(0, 1)$ and stays
+  above the $x$-axis. $2^x$ and $e^x$ grow, $(\tfrac12)^x$ decays.}
+\label{fig:exponentials}
+\end{figure}
+
+The graphs in \cref{fig:exponentials} show the key properties:
+\begin{itemize}
+  \item $a^x > 0$ for every $x$: an exponential is never zero or negative;
+  \item $a^0 = 1$, so every graph passes through $(0, 1)$;
+  \item if $a > 1$ the function increases (\emph{exponential growth}); if
+    $0 < a < 1$ it decreases (\emph{exponential decay});
+  \item $a^{x + 1} = a \cdot a^x$: increasing the input by $1$
+    \emph{multiplies} the output by $a$. (For a linear function, increasing the
+    input by $1$ \emph{adds} the slope to the output.)
+\end{itemize}
+
+\begin{intuition}[Exponential growth eventually beats everything]
+Compare $x^2$ with $2^x$:
+\begin{center}
+\begin{tabular}{c|cccccccccc}
+$x$ & $1$ & $2$ & $3$ & $4$ & $5$ & $6$ & $7$ & $8$ & $9$ & $10$\\
+\hline
+$x^2$ & $1$ & $4$ & $9$ & $16$ & $25$ & $36$ & $49$ & $64$ & $81$ & $100$\\
+$2^x$ & $2$ & $4$ & $8$ & $16$ & $32$ & $64$ & $128$ & $256$ & $512$ & $1024$
+\end{tabular}
+\end{center}
+At first they are similar, but after $x = 4$ the exponential races ahead, and
+the gap keeps widening: $2^{30}$ is over a billion while $30^2 = 900$. Any
+exponential with base greater than $1$ eventually overtakes any polynomial.
+\end{intuition}
+
+\subsection{Growth and decay models}
+
+A quantity that starts at $N_0$ and is multiplied by $a$ in every unit of time
+is described by $N(t) = N_0 a^t$.
+
+\begin{example}[Doubling and halving]
+(a) A colony of $100$ bacteria doubles every hour. How many are there after
+$5$ hours? (b) A substance has a \emph{half-life} of $10$ years: every $10$
+years, half of it decays. What fraction remains after $30$ years?
+
+\sol (a) $N(t) = 100 \cdot 2^t$, so $N(5) = 100 \cdot 32 = 3200$.
+(b) $30$ years is three half-lives, so the remaining fraction is
+$\left(\tfrac12\right)^3 = \tfrac18$. As a formula, the amount after $t$ years
+is $A_0 \left(\tfrac12\right)^{t/10}$.
+\end{example}
+
+\subsection{The number \texorpdfstring{$e$}{e}}
+
+One base is so useful that it has its own name. Suppose a bank pays $100\%$
+interest per year on $1$ euro. Paid once at the end of the year, you get
+$2$ euros. Paid in two halves of $50\%$, you get $(1 + \tfrac12)^2 = 2.25$.
+Paid in $n$ instalments of $\tfrac{100}{n}\%$, you get
+$\left(1 + \tfrac1n\right)^n$:
+\begin{center}
+\begin{tabular}{c|ccccccc}
+$n$ & $1$ & $2$ & $4$ & $12$ & $365$ & $10\,000$ & $1\,000\,000$\\
+\hline
+$\left(1 + \frac1n\right)^n$ & $2$ & $2.25$ & $2.4414$ & $2.6130$ & $2.7146$ &
+  $2.71815$ & $2.718280$
+\end{tabular}
+\end{center}
+The more often interest is paid, the more you get, but the amounts approach a
+limit: the number
+\[
+  e = 2.718281828\ldots,
+\]
+called \term[e (Euler's number)]{Euler's number}. Like $\pi$, it is
+irrational. The function $e^x$ is called \emph{the} exponential function,
+also written $\exp(x)$. Its special property, which we will see in
+\cref{ch:calculus}, is that at every point its slope equals its value. This
+makes $e$ the most natural base for calculus, and it is the base used
+throughout machine learning.
+
+\begin{mlnote}[Exponentials in machine learning]
+Exponentials appear in machine learning in at least three ways.
+\begin{itemize}
+  \item \textbf{Making things positive.} A neural network produces arbitrary
+    real-valued scores, but probabilities must be positive. Since $e^x > 0$ for
+    every $x$, applying $e^x$ to the scores makes them positive; this is the
+    first step of the \emph{softmax} function (\cref{ch:dl}).
+  \item \textbf{Learning-rate decay.} A common schedule multiplies the
+    learning rate by a fixed factor after every epoch:
+    $\eta_t = \eta_0 \gamma^t$ with, say, $\eta_0 = 0.1$ and $\gamma = 0.95$.
+    After $20$ epochs the rate is $0.1 \times 0.95^{20} \approx 0.036$.
+  \item \textbf{Exploding and vanishing.} Multiplying many numbers that are
+    slightly larger or smaller than $1$ gives exponential behaviour:
+    $1.1^{100} \approx 13\,781$ but $0.9^{100} \approx 0.000\,027$. In a deep
+    network, signals pass through many layers and get multiplied many times,
+    which is why they can \emph{explode} or \emph{vanish}
+    (\cref{ch:dl}).
+\end{itemize}
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Evaluate $2^5$, $2^{-3}$, $10^0$, $\left(\tfrac13\right)^{-2}$, $8^{1/3}$ and
+$e^0$.
+\end{exercise}
+\begin{solution}
+$32$, $\tfrac18$, $1$, $3^2 = 9$, $2$, $1$.
+\end{solution}
+
+\begin{exercise}
+A colony of $500$ cells triples every hour. Write a formula for the number of
+cells after $t$ hours and compute it for $t = 4$.
+\end{exercise}
+\begin{solution}
+$N(t) = 500 \cdot 3^t$, and $N(4) = 500 \cdot 81 = 40\,500$.
+\end{solution}
+
+\begin{exercise}
+A substance with a half-life of $8$ days starts at $160$ grams. Write a
+formula for the amount after $t$ days, and find the amount after $24$ days.
+\end{exercise}
+\begin{solution}
+$A(t) = 160 \cdot \left(\tfrac12\right)^{t/8}$. After $24$ days (three
+half-lives), $A = 160 \cdot \tfrac18 = 20$ grams.
+\end{solution}
+
+\begin{exercise}
+Compare $x^3$ and $2^x$ at $x = 10$ and $x = 20$.
+\end{exercise}
+\begin{solution}
+At $x = 10$: $x^3 = 1000$ and $2^x = 1024$, nearly equal. At $x = 20$:
+$x^3 = 8000$ but $2^x = 1\,048\,576$, more than a hundred times larger.
+\end{solution}
+
+\begin{exercise}
+A signal is multiplied by $0.5$ in each of $50$ layers of a network. What
+fraction of it is left? What if it is multiplied by $1.5$ in each layer?
+\end{exercise}
+\begin{solution}
+$0.5^{50} \approx 8.9\times10^{-16}$: the signal has vanished. And
+$1.5^{50} \approx 6.4 \times 10^{8}$: the signal has exploded. Factors only
+slightly different from $1$ have enormous effects over many layers.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Logarithms}\label{sec:logarithms}
+%----------------------------------------------------------------------
+
+An exponential answers the question ``what do I get if I multiply $a$ by
+itself $x$ times?''. A logarithm answers the reverse question: ``how many
+times must I multiply $a$ by itself to get $y$?''.
+
+\begin{definition}[Logarithm]\label{def:logarithm}
+Let $a > 0$ with $a \neq 1$, and let $y > 0$. The \term{logarithm} of $y$ to
+base $a$, written $\log_a y$, is the number $x$ such that $a^x = y$:
+\[
+  \log_a y = x \quad\text{means exactly}\quad a^x = y .
+\]
+\end{definition}
+
+So $\log_2 8 = 3$ because $2^3 = 8$; $\log_{10} 1000 = 3$ because
+$10^3 = 1000$; $\log_{10} 0.01 = -2$ because $10^{-2} = 0.01$; and
+$\log_a 1 = 0$ for every base, because $a^0 = 1$.
+
+\begin{notation}
+The logarithm with base $e$ is the \term{natural logarithm}, written $\ln$:
+$\ln y = \log_e y$. Base $10$ is common in science and base $2$ in computer
+science and information theory. \textbf{In machine learning papers and code,
+``$\log$'' with no base almost always means the natural logarithm $\ln$}; for
+example, \texttt{np.log} in Python computes $\ln$.
+\end{notation}
+
+\subsection{The rules of logarithms}
+
+Because logarithms are exponents, the laws of exponents
+(\cref{thm:exponent-laws}) turn into laws of logarithms.
+
+\begin{theorem}[Laws of logarithms]\label{thm:log-laws}
+For $x, y > 0$, any real number $p$, and any valid base:
+\begin{align*}
+  \log(xy) &= \log x + \log y
+    && \text{(products become sums)},\\
+  \log\left(\tfrac{x}{y}\right) &= \log x - \log y
+    && \text{(quotients become differences)},\\
+  \log\left(x^p\right) &= p\log x
+    && \text{(powers become multiples)},\\
+  \log_a x &= \frac{\ln x}{\ln a}
+    && \text{(change of base)}.
+\end{align*}
+\end{theorem}
+
+\begin{proof}[Why the first rule holds]
+Let $u = \log_a x$ and $v = \log_a y$, so $x = a^u$ and $y = a^v$. Then
+$xy = a^u a^v = a^{u+v}$, which says exactly that $\log_a(xy) = u + v$. The
+other rules are proved in the same way from the other exponent laws.
+\end{proof}
+
+The first rule is the reason logarithms were invented (in the 1600s): they
+turn hard multiplications into easy additions.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=9.5cm,height=6.5cm,xmin=-0.4,xmax=8.5,ymin=-3.3,ymax=2.6,
+  xlabel=$x$,ylabel=$y$,xtick={1,...,8},ytick={-3,...,2}]
+  \addplot[PlotBlue,domain=0.04:8.4,samples=200]{ln(x)};
+  \addplot[only marks,mark=*,mark size=2pt,black] coordinates {(1,0) (2.71828,1)};
+  \node[font=\small,anchor=south east] at (axis cs:0.95,0.08) {$(1,0)$};
+  \node[font=\small,anchor=south east] at (axis cs:2.7,1.05) {$(e,1)$};
+  \node[font=\small,PlotBlue,anchor=south] at (axis cs:6.5,2.0) {$y = \ln x$};
+\end{axis}
+\end{tikzpicture}
+\caption{The natural logarithm. It is defined only for $x > 0$, it is negative
+  for $0 < x < 1$, zero at $x = 1$, and it grows very slowly: $\ln x$ reaches
+  $2$ only at $x = e^2 \approx 7.39$. As $x$ approaches $0$, $\ln x$ plunges
+  towards $-\infty$.}
+\label{fig:ln}
+\end{figure}
+
+\begin{pitfall}[What logarithms do not do]
+$\log(x + y)$ is \emph{not} $\log x + \log y$; logarithms turn
+\emph{products} into sums, not sums into sums. For example,
+$\ln(1 + 1) = \ln 2 \approx 0.693$, but $\ln 1 + \ln 1 = 0$. Also, $\log 0$ and
+the logarithm of a negative number are undefined: in code, \texttt{log(0)}
+returns $-\infty$ and \texttt{log(-1)} returns ``not a number''.
+\end{pitfall}
+
+\begin{example}[Solving exponential equations]
+Solve $2^x = 20$ and $e^{2x} = 7$.
+
+\sol Take logarithms of both sides. From $2^x = 20$: $\ln(2^x) = \ln 20$, so
+$x\ln 2 = \ln 20$ and $x = \frac{\ln 20}{\ln 2} \approx \frac{2.996}{0.693}
+\approx 4.32$. (Check: $2^4 = 16$ and $2^5 = 32$, so the answer must lie between
+$4$ and $5$.) From $e^{2x} = 7$: $2x = \ln 7$, so $x = \tfrac12\ln7 \approx
+0.973$.
+\end{example}
+
+\subsection{Logarithmic scales}
+
+Logarithms measure \emph{orders of magnitude}: $\log_{10}$ of a number is
+roughly its number of digits. When values range over many orders of magnitude
+we often plot them on a \term{logarithmic scale}, where equal distances
+represent equal \emph{ratios}: the distance from $10^{-4}$ to $10^{-3}$ equals
+the distance from $10^{-3}$ to $10^{-2}$.
+
+\begin{mlnote}[Why machine learning loves logarithms]
+Logarithms are everywhere in machine learning, for three main reasons.
+\begin{itemize}
+  \item \textbf{Products of probabilities underflow.} The probability that a
+    model assigns to a whole data set is a product of many small numbers. With
+    $1000$ examples, each given probability $0.01$, the product is
+    $10^{-2000}$, far below the smallest number a computer can represent, so
+    it becomes $0$. Its logarithm, however, is a perfectly ordinary number:
+    $\ln\left(0.01^{1000}\right) = 1000 \ln 0.01 \approx -4605$. So we work
+    with sums of log-probabilities (\emph{log-likelihoods}) instead of
+    products of probabilities (\cref{ch:statistics}).
+  \item \textbf{Loss functions.} The most widely used loss for classification,
+    the cross-entropy, is $-\ln p$, where $p$ is the probability the model gave
+    to the correct answer (\cref{ch:dl}). It is $0$ when $p = 1$ and grows
+    without limit as $p \to 0$.
+  \item \textbf{Hyperparameter search.} Learning rates are usually tried on a
+    logarithmic scale, e.g.\ $10^{-5}, 10^{-4}, 10^{-3}, 10^{-2}$, because what
+    matters is their order of magnitude.
+\end{itemize}
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Evaluate: $\log_2 32$, $\log_{10} 0.001$, $\log_3 81$, $\ln e^5$, $\log_5 1$,
+$\log_2 \tfrac18$.
+\end{exercise}
+\begin{solution}
+$5$, $-3$, $4$, $5$, $0$, $-3$.
+\end{solution}
+
+\begin{exercise}
+(a) Write $\ln\left(\tfrac{x^2 y}{z}\right)$ in terms of $\ln x$, $\ln y$ and
+$\ln z$. (b) Simplify $\ln 8 - \ln 2$ and express it as a multiple of $\ln 2$.
+\end{exercise}
+\begin{solution}
+(a) $2\ln x + \ln y - \ln z$. (b) $\ln\tfrac82 = \ln 4 = \ln 2^2 = 2\ln 2$.
+\end{solution}
+
+\begin{exercise}
+Solve $3^x = 50$ and $5e^{x} = 40$. Give answers to three decimal places.
+\end{exercise}
+\begin{solution}
+$x = \tfrac{\ln 50}{\ln 3} \approx \tfrac{3.912}{1.099} \approx 3.561$. And
+$e^x = 8$, so $x = \ln 8 \approx 2.079$.
+\end{solution}
+
+\begin{exercise}
+A learning rate starts at $0.1$ and is multiplied by $0.9$ after every epoch,
+so $\eta_t = 0.1 \times 0.9^t$. After how many epochs does it first drop below
+$0.01$?
+\end{exercise}
+\begin{solution}
+We need $0.9^t < 0.1$. Taking logarithms, $t\ln0.9 < \ln0.1$; since
+$\ln 0.9 < 0$, dividing by it flips the inequality:
+$t > \tfrac{\ln 0.1}{\ln 0.9} \approx 21.85$. So the first such epoch is
+$t = 22$. (Check: $0.1\times0.9^{21} \approx 0.0109$ and
+$0.1\times0.9^{22} \approx 0.0098$.)
+\end{solution}
+
+\begin{exercise}
+A model gives probability $0.05$ to each of $1000$ independent examples. Compute
+the logarithm of the product of these probabilities, and use it to find the
+power of $10$ that the product is roughly equal to.
+\end{exercise}
+\begin{solution}
+$\ln(0.05^{1000}) = 1000\ln0.05 \approx 1000 \times (-2.996) = -2996$.
+Converting to base $10$: $\log_{10}(0.05^{1000}) = \tfrac{-2996}{\ln 10}
+\approx -1301$, so the product is about $10^{-1301}$, which underflows to $0$
+on a computer. The log-probability $-2996$ is harmless.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Composition of functions}\label{sec:composition}
+%----------------------------------------------------------------------
+
+Functions can be chained: the output of one becomes the input of the next.
+
+\begin{definition}[Composition]\label{def:composition}
+The \term{composition} of $f$ and $g$, written $f \circ g$ (read ``$f$ after
+$g$'' or ``$f$ composed with $g$''), is the function
+\[
+  (f \circ g)(x) = f(g(x)) .
+\]
+First apply $g$, then apply $f$ to the result.
+\end{definition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>={Stealth[length=2.5mm]},
+  box/.style={draw,thick,rounded corners,fill=MLdef!10,minimum width=1.6cm,minimum height=1cm}]
+  \node[box] (g) at (0,0) {$g$};
+  \node[box] (f) at (4,0) {$f$};
+  \draw[->,thick] (-2.4,0) node[left] {$x$} -- (g.west);
+  \draw[->,thick] (g.east) -- node[above] {$g(x)$} (f.west);
+  \draw[->,thick] (f.east) -- (6.4,0) node[right] {$f(g(x))$};
+  \draw[decorate,decoration={brace,amplitude=6pt,mirror},thick]
+    (-0.9,-0.75) -- (4.9,-0.75) node[midway,below=8pt] {$f \circ g$};
+\end{tikzpicture}
+\caption{Composition is an assembly line: $x$ goes through $g$ first, and the
+  result goes through $f$.}
+\label{fig:composition}
+\end{figure}
+
+\begin{example}[Order matters]\label{ex:composition}
+Let $g(x) = 2x + 1$ and $f(x) = x^2$. Find $f(g(x))$ and $g(f(x))$, and
+evaluate both at $x = 3$.
+
+\sol $f(g(x)) = (2x+1)^2$, while $g(f(x)) = 2x^2 + 1$. At $x = 3$:
+$f(g(3)) = f(7) = 49$, but $g(f(3)) = g(9) = 19$. In general
+$f \circ g \neq g \circ f$.
+\end{example}
+
+It is just as important to be able to \emph{decompose} a complicated function
+into simple pieces. For example, $h(x) = e^{-x^2}$ is $f(g(x))$ with inner
+function $g(x) = -x^2$ and outer function $f(u) = e^u$. In \cref{ch:calculus}
+the \emph{chain rule} will compute slopes of compositions piece by piece, and
+that rule is the mathematical heart of how neural networks are trained.
+
+\begin{proposition}[Composing linear functions gives a linear function]
+\label{prop:compose-linear}
+If $f(x) = ax + b$ and $g(x) = cx + d$, then
+$f(g(x)) = a(cx + d) + b = (ac)x + (ad + b)$, which is again linear.
+\end{proposition}
+
+\begin{mlnote}[Neural networks are compositions]
+A neural network with three layers computes
+\[
+  \text{output} = f_3\bigl(f_2\bigl(f_1(\text{input})\bigr)\bigr)
+  = (f_3 \circ f_2 \circ f_1)(\text{input}),
+\]
+where each \emph{layer} $f_k$ is a fairly simple function. ``Deep'' learning
+simply means composing many layers. Each layer consists of a linear part
+followed by a simple non-linear function called an \emph{activation function}
+(\cref{sec:activation-gallery}). The non-linear part is essential:
+\cref{prop:compose-linear} shows that a composition of linear functions is
+just one linear function, so without activation functions a deep network
+would be no more powerful than a single straight line. We will see the
+many-input version of this fact in \cref{ch:linalg1}.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Let $f(x) = x + 3$ and $g(x) = x^2$. Compute $f(g(2))$, $g(f(2))$, and
+formulas for $f(g(x))$ and $g(f(x))$.
+\end{exercise}
+\begin{solution}
+$f(g(2)) = f(4) = 7$ and $g(f(2)) = g(5) = 25$. In general
+$f(g(x)) = x^2 + 3$ and $g(f(x)) = (x+3)^2$.
+\end{solution}
+
+\begin{exercise}
+Write each function as a composition of simpler functions:
+(a) $h(x) = \sqrt{3x + 1}$; (b) $k(x) = \dfrac{1}{1 + e^{-x}}$.
+\end{exercise}
+\begin{solution}
+(a) $h = f \circ g$ with $g(x) = 3x + 1$ and $f(u) = \sqrt u$.
+(b) One possible chain: $x \mapsto -x \mapsto e^{-x} \mapsto 1 + e^{-x}
+\mapsto \frac{1}{1 + e^{-x}}$, i.e.\ $k = f_4 \circ f_3 \circ f_2 \circ f_1$ with
+$f_1(x) = -x$, $f_2(u) = e^u$, $f_3(v) = 1 + v$, $f_4(w) = 1/w$. (This is the
+sigmoid function of \cref{sec:activation-gallery}.)
+\end{solution}
+
+\begin{exercise}
+A ``network'' has one hidden value $h = 2x - 1$ and output $y = -3h + 4$.
+(a) Write $y$ as a function of $x$. (b) Now insert a ReLU:
+$h = \ReLU(2x - 1)$, $y = -3h + 4$. Compute $y$ for $x = 0, 1, 2$, and decide
+whether $y$ is still a linear function of $x$.
+\end{exercise}
+\begin{solution}
+(a) $y = -3(2x - 1) + 4 = -6x + 7$, a linear function.
+(b) $x = 0$: $h = \ReLU(-1) = 0$, $y = 4$. $x = 1$: $h = 1$, $y = 1$. $x = 2$:
+$h = 3$, $y = -5$. The output changes by $-3$ from $x=0$ to $x=1$ but by $-6$
+from $x=1$ to $x=2$; a linear function changes by the same amount for equal
+steps, so this is not linear. The ReLU has made the network non-linear.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Inverse functions}\label{sec:inverse-functions}
+%----------------------------------------------------------------------
+
+An inverse function undoes what a function does. If $f(x) = 2x + 3$ (``double,
+then add $3$''), the inverse is ``subtract $3$, then halve'':
+$f^{-1}(y) = \frac{y - 3}{2}$.
+
+\begin{definition}[Inverse function]\label{def:inverse-function}
+A function $f\colon A \to B$ has an \term{inverse function}
+$f^{-1}\colon B \to A$ if
+\[
+  f^{-1}(f(x)) = x \text{ for all } x \in A
+  \qquad\text{and}\qquad
+  f(f^{-1}(y)) = y \text{ for all } y \in B .
+\]
+\end{definition}
+
+\textbf{How to find an inverse.} Write $y = f(x)$ and solve for $x$ in terms of
+$y$. For $y = 2x + 3$: $y - 3 = 2x$, so $x = \frac{y-3}{2}$, which is
+$f^{-1}(y)$.
+
+\begin{pitfall}[$f^{-1}$ is not $1/f$]
+The $-1$ in $f^{-1}$ is \emph{not} an exponent. For $f(x) = 2x + 3$,
+$f^{-1}(y) = \frac{y-3}{2}$, whereas $\frac{1}{f(x)} = \frac{1}{2x+3}$; these
+are completely different functions.
+\end{pitfall}
+
+\subsection{When does an inverse exist?}
+
+To undo $f$ we must be able to tell, from the output, which input produced
+it. So $f$ must never send two different inputs to the same output; such a
+function is called \term{one-to-one}. The function $f(x) = x^2$ on $\R$ is not
+one-to-one, because $f(2) = f(-2) = 4$: from the output $4$ we cannot tell
+whether the input was $2$ or $-2$. But if we \emph{restrict the domain} to
+$[0, \infty)$, the function becomes one-to-one and its inverse is the square
+root, $f^{-1}(y) = \sqrt{y}$. (Graphically: a function is one-to-one when every
+horizontal line meets its graph at most once.)
+
+\subsection{Graphs of inverse functions}
+
+If $(a, b)$ is on the graph of $f$, then $f(a) = b$, so $f^{-1}(b) = a$ and
+$(b, a)$ is on the graph of $f^{-1}$. Swapping the coordinates of every point
+reflects the graph in the diagonal line $y = x$ (\cref{fig:inverse}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=8cm,height=8cm,xmin=-3.2,xmax=4.5,ymin=-3.2,ymax=4.5,
+  xlabel=$x$,ylabel=$y$,xtick={-3,...,4},ytick={-3,...,4}]
+  \addplot[PlotGray,dashed,domain=-3.2:4.5]{x};
+  \addplot[PlotBlue,domain=-3.2:1.46,samples=100]{exp(x)};
+  \addplot[PlotRed,domain=0.04:4.5,samples=200]{ln(x)};
+  \node[font=\small,PlotBlue,anchor=west] at (axis cs:1.6,4.2) {$y = e^x$};
+  \node[font=\small,PlotRed,anchor=north west] at (axis cs:2.6,0.85) {$y = \ln x$};
+  \node[font=\small,PlotGray,anchor=north east] at (axis cs:4.4,3.4) {$y = x$};
+  \addplot[only marks,mark=*,mark size=2pt,PlotBlue] coordinates {(0,1) (1,2.71828)};
+  \addplot[only marks,mark=*,mark size=2pt,PlotRed] coordinates {(1,0) (2.71828,1)};
+\end{axis}
+\end{tikzpicture}
+\caption{$e^x$ and $\ln x$ are inverse functions, so their graphs are mirror
+  images in the line $y = x$. The point $(0, 1)$ on $e^x$ corresponds to
+  $(1, 0)$ on $\ln x$, and $(1, e)$ to $(e, 1)$.}
+\label{fig:inverse}
+\end{figure}
+
+\begin{theorem}[Exponential and logarithm are inverses]
+\label{thm:exp-ln-inverse}
+For every real $x$, $\ln(e^x) = x$, and for every $x > 0$, $e^{\ln x} = x$.
+The same holds for any base: $\log_a(a^x) = x$ and $a^{\log_a x} = x$.
+\end{theorem}
+
+This is just the definition of the logarithm restated, but it is extremely
+useful for solving equations, as we saw in \cref{sec:logarithms}.
+
+\begin{mlnote}[Sigmoid and logit]
+The \term{sigmoid function}
+\[
+  \sigma(z) = \frac{1}{1 + e^{-z}}
+\]
+(the Greek letter $\sigma$ is ``sigma'') squashes any real number $z$ into the
+interval $(0, 1)$, so its output can be read as a probability:
+$\sigma(0) = 0.5$, $\sigma(2) \approx 0.881$, $\sigma(-2) \approx 0.119$. Its
+inverse is the \term{logit} function,
+\[
+  \operatorname{logit}(p) = \ln\frac{p}{1 - p}, \qquad 0 < p < 1 .
+\]
+To check, solve $p = \frac{1}{1+e^{-z}}$ for $z$: $1 + e^{-z} = \frac1p$, so
+$e^{-z} = \frac{1-p}{p}$, so $-z = \ln\frac{1-p}{p}$, i.e.\
+$z = \ln\frac{p}{1-p}$. The quantity $\frac{p}{1-p}$ is the \emph{odds} (a
+probability of $0.8$ means odds of $4$ to $1$), so the logit is the
+``log-odds''. In logistic regression and neural network classifiers, the raw
+scores $z$ before the sigmoid are called \emph{logits} for this reason.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Find the inverse of each function and check your answer:
+(a) $f(x) = 5x - 2$; (b) $g(x) = \frac{x - 3}{4}$; (c) $h(x) = x^3 + 1$.
+\end{exercise}
+\begin{solution}
+(a) $y = 5x - 2 \Rightarrow x = \tfrac{y + 2}{5}$, so
+$f^{-1}(y) = \tfrac{y+2}{5}$. Check: $f^{-1}(f(x)) = \tfrac{5x - 2 + 2}{5} = x$.
+(b) $g^{-1}(y) = 4y + 3$. (c) $y = x^3 + 1 \Rightarrow x = \sqrt[3]{y - 1}$, so
+$h^{-1}(y) = \sqrt[3]{y-1}$.
+\end{solution}
+
+\begin{exercise}
+Is $f(x) = x^2 + 1$ one-to-one on $\R$? On $[0, \infty)$? Find the inverse in
+the second case, including its domain.
+\end{exercise}
+\begin{solution}
+Not on $\R$, since $f(1) = f(-1) = 2$. On $[0, \infty)$ it is one-to-one: from
+$y = x^2 + 1$ with $x \ge 0$ we get $x = \sqrt{y - 1}$. So
+$f^{-1}(y) = \sqrt{y-1}$, defined for $y \ge 1$ (the range of $f$).
+\end{solution}
+
+\begin{exercise}
+Compute $\sigma(0)$, $\operatorname{logit}(0.5)$ and
+$\operatorname{logit}(0.9)$. Then check that the sigmoid undoes the logit, by
+computing $\sigma(\operatorname{logit}(0.9))$.
+\end{exercise}
+\begin{solution}
+$\sigma(0) = \tfrac{1}{1+1} = 0.5$; $\operatorname{logit}(0.5) = \ln 1 = 0$;
+$\operatorname{logit}(0.9) = \ln\tfrac{0.9}{0.1} = \ln 9 \approx 2.197$. Then
+$\sigma(\ln 9) = \tfrac{1}{1 + e^{-\ln 9}} = \tfrac{1}{1 + 1/9} =
+\tfrac{9}{10} = 0.9$.
+\end{solution}
+
+\begin{exercise}
+Data are often standardised with $z = \frac{x - \mu}{s}$, where $\mu = 50$ and
+$s = 10$. Find the inverse transformation. A model trained on standardised
+data predicts $z = 1.3$; what is the prediction on the original scale?
+\end{exercise}
+\begin{solution}
+Solving for $x$: $x = \mu + sz = 50 + 10z$. For $z = 1.3$, $x = 63$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{How parameters move graphs}\label{sec:transformations}
+%----------------------------------------------------------------------
+
+Machine learning models contain parameters, and changing a parameter changes
+the graph of the model. It is very useful to be able to predict how. Starting
+from any function $f$ and numbers $c > 0$:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{New function} & \textbf{Effect on the graph of $f$}\\
+\midrule
+$f(x) + c$ & shift \emph{up} by $c$\\
+$f(x) - c$ & shift \emph{down} by $c$\\
+$f(x - c)$ & shift \emph{right} by $c$\\
+$f(x + c)$ & shift \emph{left} by $c$\\
+$c\,f(x)$ & stretch vertically by the factor $c$\\
+$f(cx)$ & squeeze horizontally by the factor $c$ (if $c > 1$)\\
+$-f(x)$ & reflect in the $x$-axis (upside down)\\
+$f(-x)$ & reflect in the $y$-axis (left--right)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{pitfall}[Horizontal shifts go the ``wrong'' way]
+$f(x - 3)$ moves the graph $3$ units to the \emph{right}, not the left. Reason:
+the new function takes at $x = 3$ the value that $f$ took at $0$, so every
+feature of the graph now happens $3$ units later. We saw this with
+$(x - 3)^2 + 1$, whose vertex is at $x = +3$ (\cref{fig:parabolas}).
+\end{pitfall}
+
+\begin{mlnote}[What the weight and bias of a neuron do]
+A single artificial neuron with one input computes $\sigma(wx + b)$. Writing
+$wx + b = w\left(x + \tfrac bw\right)$ shows that:
+\begin{itemize}
+  \item the weight $w$ squeezes the sigmoid horizontally: larger $\abs{w}$ gives
+    a steeper, more switch-like transition, and a negative $w$ flips it;
+  \item the bias $b$ shifts the graph horizontally: the transition (where the
+    output is $0.5$) happens where $wx + b = 0$, i.e.\ at $x = -\tfrac bw$.
+\end{itemize}
+\Cref{fig:sigmoid-family} shows this. By choosing $w$ and $b$, the neuron can
+place a soft ``switch'' wherever it is needed; combining many such switches
+lets a network build very complicated functions.
+\end{mlnote}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=11cm,height=6.5cm,xmin=-6,xmax=6,ymin=-0.1,ymax=1.15,
+  xlabel=$x$,ylabel=$y$,xtick={-6,-4,...,6},ytick={0,0.5,1},
+  legend style={font=\small,at={(0.5,-0.1)},anchor=north,legend columns=2,
+    draw=none,/tikz/every even column/.append style={column sep=5mm}},
+  legend cell align=left]
+  \addplot[PlotBlue,domain=-6:6,samples=150]{1/(1+exp(-x))};
+  \addlegendentry{$\sigma(x)$: $w=1$, $b=0$}
+  \addplot[PlotRed,domain=-6:6,samples=150]{1/(1+exp(-4*x))};
+  \addlegendentry{$\sigma(4x)$: steeper}
+  \addplot[PlotGreen,domain=-6:6,samples=150]{1/(1+exp(-(x-3)))};
+  \addlegendentry{$\sigma(x - 3)$: shifted right}
+  \addplot[PlotOrange,domain=-6:6,samples=150]{1/(1+exp(x))};
+  \addlegendentry{$\sigma(-x)$: flipped}
+  \addplot[PlotGray,dashed,domain=-6:6]{0.5};
+\end{axis}
+\end{tikzpicture}
+\caption{The sigmoid $\sigma(wx + b)$ for different weights and biases. The
+  weight controls steepness and direction; the bias controls where the
+  transition (output $0.5$, dashed line) happens.}
+\label{fig:sigmoid-family}
+\end{figure}
+
+\sectionexercises
+
+\begin{exercise}
+Describe how to obtain the graph of $g(x) = (x + 1)^2 - 4$ from the graph of
+$x^2$. Where is its vertex? Where are its roots?
+\end{exercise}
+\begin{solution}
+Shift $x^2$ one unit to the left and four units down. The vertex is at
+$(-1, -4)$. Roots: $(x+1)^2 = 4$, so $x + 1 = \pm2$, i.e.\ $x = 1$ or $x = -3$.
+\end{solution}
+
+\begin{exercise}
+Starting from $f(x) = \abs{x}$, write down the function whose graph is shifted
+$3$ units to the right and stretched vertically by a factor of $2$.
+\end{exercise}
+\begin{solution}
+$g(x) = 2\abs{x - 3}$. Its graph is a V with its tip at $(3, 0)$ and slopes
+$\pm2$.
+\end{solution}
+
+\begin{exercise}
+A neuron computes $\sigma(4x - 2)$. At which input is its output $0.5$? Is it
+steeper or less steep than $\sigma(x)$? What changes if the weight becomes
+$-4$ (with the same bias)?
+\end{exercise}
+\begin{solution}
+The output is $0.5$ when $4x - 2 = 0$, i.e.\ $x = 0.5$. It is four times as
+steep as $\sigma(x)$. With weight $-4$, the function $\sigma(-4x - 2)$
+decreases instead of increasing, and its midpoint moves to $x = -0.5$.
+\end{solution}
+
+\begin{exercise}
+Describe the graphs of $e^{x-2}$, $e^{-x}$, $-e^x$ and $e^x - 1$ in terms of
+the graph of $e^x$.
+\end{exercise}
+\begin{solution}
+$e^{x-2}$: shifted $2$ to the right. $e^{-x}$: reflected in the $y$-axis (a
+decaying exponential). $-e^x$: reflected in the $x$-axis (always negative).
+$e^x - 1$: shifted down by $1$, so it passes through the origin and
+approaches $-1$ for very negative $x$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{A gallery of functions used in machine learning}
+\label{sec:activation-gallery}
+%----------------------------------------------------------------------
+
+\subsection{Piecewise functions}
+
+Some functions are defined by different formulas on different parts of the
+domain; these are called \term[piecewise function]{piecewise functions}. We
+have already met two: the absolute value $\abs{x}$ (\cref{def:absolute-value})
+and $\ReLU(x) = \max(0, x)$, which equals $0$ for $x < 0$ and $x$ for
+$x \ge 0$. Another is the \term{step function},
+\[
+  \operatorname{step}(x) = \begin{cases} 1 & \text{if } x \ge 0,\\
+  0 & \text{if } x < 0. \end{cases}
+\]
+
+\subsection{Activation functions}
+
+Neural networks use a small number of non-linear functions, called
+\term[activation function]{activation functions}, after each linear step.
+\Cref{fig:activations} shows the most important ones.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 2,horizontal sep=1.1cm,vertical sep=1.4cm},
+  mlplot,width=5cm,height=4.2cm,xmin=-4,xmax=4,xtick={-4,-2,0,2,4},
+  title style={font=\small,yshift=-4pt}]
+  \nextgroupplot[title={step},ymin=-0.4,ymax=1.4,ytick={0,1}]
+    \addplot[PlotBlue,domain=-4:0] {0};
+    \addplot[PlotBlue,domain=0:4] {1};
+    \addplot[only marks,mark=*,mark size=1.6pt,PlotBlue] coordinates {(0,1)};
+    \addplot[only marks,mark=*,mark size=1.6pt,PlotBlue,mark options={fill=white}] coordinates {(0,0)};
+  \nextgroupplot[title={sigmoid $\sigma(x)$},ymin=-0.4,ymax=1.4,ytick={0,0.5,1}]
+    \addplot[PlotBlue,domain=-4:4,samples=100] {1/(1+exp(-x))};
+  \nextgroupplot[title={$\tanh(x)$},ymin=-1.4,ymax=1.4,ytick={-1,0,1}]
+    \addplot[PlotBlue,domain=-4:4,samples=100] {tanh(x)};
+  \nextgroupplot[title={$\ReLU(x)$},ymin=-1.5,ymax=4.2,ytick={0,2,4}]
+    \addplot[PlotBlue,domain=-4:4,samples=100] {max(0,x)};
+  \nextgroupplot[title={leaky ReLU ($\alpha = 0.1$)},ymin=-1.5,ymax=4.2,ytick={0,2,4}]
+    \addplot[PlotBlue,domain=-4:4,samples=100] {max(0.1*x,x)};
+  \nextgroupplot[title={softplus $\ln(1+e^x)$},ymin=-1.5,ymax=4.2,ytick={0,2,4}]
+    \addplot[PlotBlue,domain=-4:4,samples=100] {ln(1+exp(x))};
+    \addplot[PlotGray,dashed,domain=-4:4,samples=100] {max(0,x)};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Common activation functions. The dashed line in the last panel is
+  the ReLU, which softplus smooths out.}
+\label{fig:activations}
+\end{figure}
+
+\begin{itemize}
+  \item \textbf{Step.} Used in the earliest artificial neuron, the perceptron
+    (1958): the neuron either fires ($1$) or not ($0$). Its graph has a jump,
+    which (as we will see in \cref{ch:calculus}) makes it useless for
+    gradient-based training.
+  \item \textbf{Sigmoid}, $\sigma(x) = \frac{1}{1 + e^{-x}}$. A smooth
+    version of the step, with outputs in $(0, 1)$. Still used to output
+    probabilities for yes/no questions.
+  \item \textbf{Hyperbolic tangent},
+    $\tanh(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}$. Shaped like the sigmoid but
+    with outputs in $(-1, 1)$ and centred at $0$. In fact
+    $\tanh(x) = 2\sigma(2x) - 1$.
+  \item \textbf{ReLU}, $\max(0, x)$. Simple and fast, and the default choice in
+    modern networks since about 2012.
+  \item \textbf{Leaky ReLU}, $\max(\alpha x, x)$ for a small $\alpha$ such as
+    $0.01$ or $0.1$: like ReLU but with a small slope for negative inputs, so
+    that the neuron never becomes completely ``dead''.
+  \item \textbf{Softplus}, $\ln(1 + e^x)$: a smooth version of ReLU. Modern
+    networks also use other smooth variants of ReLU with names like GELU and
+    SiLU, which look similar.
+\end{itemize}
+
+\begin{mlnote}[Why so many activation functions?]
+All activation functions do the same basic job: they bend the otherwise
+straight-line behaviour of a layer, so that compositions of layers can
+represent curved, complicated functions. They differ in their ranges
+(probabilities need $(0,1)$), in whether they are smooth, and above all in how
+easily the network can be trained through them, a question about their
+slopes that we will understand in \cref{ch:calculus,ch:dl}.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Compute $\sigma(0)$, $\tanh(0)$, $\ReLU(0)$ and $\operatorname{softplus}(0)$.
+\end{exercise}
+\begin{solution}
+$\sigma(0) = \tfrac12$; $\tanh(0) = \tfrac{1 - 1}{1 + 1} = 0$; $\ReLU(0) = 0$;
+$\operatorname{softplus}(0) = \ln(1 + 1) = \ln 2 \approx 0.693$.
+\end{solution}
+
+\begin{exercise}
+Show that $\sigma(-x) = 1 - \sigma(x)$ for every $x$. Interpret this for a
+classifier whose output $\sigma(z)$ is the probability of the class ``yes''.
+\end{exercise}
+\begin{solution}
+$1 - \sigma(x) = 1 - \frac{1}{1 + e^{-x}} = \frac{e^{-x}}{1 + e^{-x}}$.
+Multiplying top and bottom by $e^x$ gives $\frac{1}{e^{x} + 1} = \sigma(-x)$.
+Interpretation: if the logit $z$ gives probability $\sigma(z)$ for ``yes'', then
+the probability of ``no'', $1 - \sigma(z)$, is obtained by flipping the sign of
+the logit.
+\end{solution}
+
+\begin{exercise}
+Show that $\tanh(x) = 2\sigma(2x) - 1$.
+\end{exercise}
+\begin{solution}
+$2\sigma(2x) - 1 = \frac{2}{1 + e^{-2x}} - 1 = \frac{1 - e^{-2x}}{1 + e^{-2x}}$.
+Multiplying numerator and denominator by $e^{x}$ gives
+$\frac{e^x - e^{-x}}{e^x + e^{-x}} = \tanh(x)$.
+\end{solution}
+
+\begin{exercise}
+Compute the leaky ReLU with $\alpha = 0.01$ at $x = -5$, $0$ and $3$. Then
+compute $\operatorname{softplus}(5)$ and $\operatorname{softplus}(-5)$ and compare
+with $\ReLU(5)$ and $\ReLU(-5)$.
+\end{exercise}
+\begin{solution}
+Leaky ReLU: $\max(-0.05, -5) = -0.05$, $0$, and $3$.
+$\operatorname{softplus}(5) = \ln(1 + e^5) \approx 5.0067$ and
+$\operatorname{softplus}(-5) = \ln(1 + e^{-5}) \approx 0.0067$, very close to
+$\ReLU(5) = 5$ and $\ReLU(-5) = 0$. Softplus differs noticeably from ReLU only
+near $0$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Chapter summary}\label{sec:ch2-summary}
+%----------------------------------------------------------------------
+
+\begin{keytakeaways}
+\begin{itemize}
+  \item A function assigns to each input exactly one output; it has a domain,
+    a codomain and a range. A machine learning model is a function, and
+    learning is a search for a good function.
+  \item The graph of $f$ is the set of points $(x, f(x))$; roots, intercepts,
+    increasing/decreasing behaviour and extreme values can be read from it.
+  \item Linear functions $mx + b$ have constant slope $m$ (rise over run, a rate
+    of change) and intercept $b$. In ML they are written $wx + b$.
+  \item Quadratics $ax^2 + bx + c$ have parabolic graphs with vertex at
+    $x = -\frac{b}{2a}$; roots come from factoring or the quadratic formula.
+    Squared-error losses are quadratics, minimised by the mean.
+  \item Exponentials $a^x$ model multiplicative growth and decay; the natural
+    base is $e \approx 2.718$. Logarithms undo exponentials and turn products
+    into sums, which is why ML works with log-probabilities.
+  \item Composition $f(g(x))$ chains functions; neural networks are long
+    compositions. Linear functions composed stay linear, so non-linear
+    activations are essential.
+  \item Inverse functions undo functions; $e^x$ and $\ln x$ are inverses, and
+    so are the sigmoid and the logit.
+  \item $f(x - c)$ shifts right, $f(x) + c$ shifts up, $f(cx)$ squeezes. In a
+    neuron $\sigma(wx + b)$, $w$ sets the steepness and $b$ the location.
+  \item Key activation functions: step, sigmoid, tanh, ReLU, leaky ReLU,
+    softplus.
+\end{itemize}
+\end{keytakeaways}
+
+So far all our functions had one input. Real data has many features, and a
+data point is best thought of as a point in a space of many dimensions. The
+next chapter builds the geometric intuition we need for this: coordinates,
+distances, angles and trigonometry.

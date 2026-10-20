@@ -1,1 +1,1229 @@
+%======================================================================
+% Chapter 3: Geometry, Coordinates and Trigonometry
+%======================================================================
 \chapter{Geometry, Coordinates and Trigonometry}\label{ch:geometry}
+
+\begin{motivation}
+Machine learning is surprisingly geometric. A data point with $d$ features is a
+point in a $d$-dimensional space, and a data set is a cloud of such points.
+Two data points are ``similar'' when they are close together, so we need a way
+to measure \emph{distance}. Two word embeddings mean similar things when they
+point in similar directions, so we need \emph{angles}. A simple classifier
+draws a \emph{line} (or a flat ``hyperplane'') through the space with one class
+on each side. And modern language models encode the position of each word with
+\emph{sines and cosines} and with \emph{rotations}.
+
+This chapter builds the geometric toolkit: coordinates, distances, lines and
+circles, angles and trigonometry, and rotations. It is also the bridge to
+linear algebra: almost every idea here reappears in \cref{ch:linalg1} in the
+language of vectors.
+\end{motivation}
+
+\begin{objectives}
+\begin{itemize}
+  \item locate points in the plane, in space and, by analogy, in $n$
+    dimensions;
+  \item compute distances with the Pythagorean theorem in any number of
+    dimensions, and use them for nearest-neighbour classification;
+  \item work with lines in the form $w_1x_1 + w_2x_2 + b = 0$ and decide on
+    which side of a line a point lies;
+  \item work with circles, and recognise data that no line can separate;
+  \item measure angles in degrees and radians;
+  \item define and use sine, cosine and tangent, their key values and graphs,
+    and the law of cosines;
+  \item convert between Cartesian and polar coordinates, and rotate points.
+\end{itemize}
+\end{objectives}
+
+%----------------------------------------------------------------------
+\section{Coordinates}\label{sec:coordinates}
+%----------------------------------------------------------------------
+
+\subsection{The Cartesian plane}
+
+In \cref{sec:graphs} we drew graphs on two perpendicular number lines. This
+setting is called the \term{Cartesian plane}, after the French philosopher and
+mathematician Ren\'e Descartes. The horizontal line is the \term{x-axis}, the
+vertical line the \term{y-axis}, and they cross at the \term{origin} $O$. Each
+point $P$ is described by an ordered pair of \term{coordinates} $(x, y)$: start
+at the origin, move $x$ units horizontally (right if $x > 0$, left if $x < 0$)
+and $y$ units vertically (up if $y > 0$, down if $y < 0$). The axes divide the
+plane into four \term[quadrant]{quadrants}, numbered anticlockwise
+(\cref{fig:cartesian-plane}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.68]
+  \draw[gray!22] (-4.5,-4.5) grid (4.5,4.5);
+  \draw[-{Stealth[length=2.5mm]},thick] (-4.8,0) -- (4.9,0) node[right] {$x$};
+  \draw[-{Stealth[length=2.5mm]},thick] (0,-4.8) -- (0,4.9) node[above] {$y$};
+  \foreach \i in {-4,-3,-2,-1,1,2,3,4}{
+    \draw (\i,0.08) -- (\i,-0.08) node[below,font=\scriptsize] {$\i$};
+    \draw (0.08,\i) -- (-0.08,\i) node[left,font=\scriptsize] {$\i$};}
+  \node[below left,font=\scriptsize] at (0,0) {$O$};
+  \foreach \pos/\name in {{(3.2,4.2)}/I,{(-3.2,4.2)}/II,{(-3.2,-4.2)}/III,{(3.2,-4.2)}/IV}
+    \node[font=\small,text=MLremark,fill=white,inner sep=1.5pt] at \pos {quadrant \name};
+  \draw[dashed,PlotRed] (3,0) -- (3,2) -- (0,2);
+  \fill[PlotRed] (3,2) circle (3.5pt) node[above right] {$A(3,2)$};
+  \fill[PlotBlue] (-2,1) circle (3.5pt) node[above left] {$B(-2,1)$};
+  \fill[PlotGreen] (-3,-2) circle (3.5pt) node[below left] {$C(-3,-2)$};
+  \fill[PlotOrange] (2,-3) circle (3.5pt) node[below right] {$D(2,-3)$};
+\end{tikzpicture}
+\caption{The Cartesian plane. The point $A(3,2)$ is reached by moving $3$
+  units right and $2$ units up from the origin (dashed lines).}
+\label{fig:cartesian-plane}
+\end{figure}
+
+\begin{pitfall}[Order matters]
+The pair $(x, y)$ is \emph{ordered}: $(3, 2)$ and $(2, 3)$ are different points.
+By convention the horizontal coordinate always comes first.
+\end{pitfall}
+
+\subsection{Three dimensions}
+
+To describe a position in space we need a third axis, the \emph{$z$-axis},
+perpendicular to the other two. A point is then a triple $(x, y, z)$
+(\cref{fig:3d-axes}). You can think of a room: $x$ is the distance along one
+wall, $y$ along another wall and $z$ the height above the floor.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x={(-0.6cm,-0.45cm)},y={(1cm,0cm)},z={(0cm,1cm)},scale=1.05]
+  \draw[-{Stealth[length=2.5mm]},thick] (0,0,0) -- (4,0,0) node[below left] {$x$};
+  \draw[-{Stealth[length=2.5mm]},thick] (0,0,0) -- (0,4.5,0) node[right] {$y$};
+  \draw[-{Stealth[length=2.5mm]},thick] (0,0,0) -- (0,0,3.4) node[above] {$z$};
+  \draw[dashed,gray] (2,0,0) -- (2,3,0) -- (0,3,0);
+  \draw[dashed,gray] (2,3,0) -- (2,3,2.5);
+  \fill[gray] (2,3,0) circle (1.5pt);
+  \fill[PlotRed] (2,3,2.5) circle (2.8pt) node[above right] {$P(2,3,2.5)$};
+  \node[left,font=\small] at (0,0,0) {$O$};
+\end{tikzpicture}
+\caption{A point in three-dimensional space: go $2$ units along the $x$-axis,
+  $3$ along the $y$-axis, then $2.5$ up.}
+\label{fig:3d-axes}
+\end{figure}
+
+\subsection{Many dimensions}
+
+Nothing stops us from writing down lists of four, ten or a million numbers.
+Although we cannot \emph{draw} a four-dimensional space, we can work with it
+exactly as with two or three dimensions, using the same formulas. A point in
+\term[n-dimensional space]{$n$-dimensional space} is an ordered list of $n$
+real numbers, $(x_1, x_2, \dots, x_n)$.
+
+\begin{notation}
+The set of all ordered pairs of real numbers is written $\R^2$ (read
+``R two''), the set of all triples $\R^3$, and the set of all ordered lists of
+$n$ real numbers $\R^n$. So $(3, 2) \in \R^2$ and
+$(1, -4, 0.5, 7) \in \R^4$. When there are many coordinates we number them
+with subscripts, $x_1, x_2, \dots, x_n$, rather than using different letters.
+\end{notation}
+
+\begin{intuition}[How to think about high dimensions]
+Nobody can picture $784$ dimensions. Mathematicians and machine learning
+researchers think in two or three dimensions, and then check that the
+\emph{formulas} carry over. Almost all of the geometry in this chapter does
+carry over, which is exactly why it is so useful. (A few things do behave
+strangely in high dimensions; for example, in a very high-dimensional space
+almost all pairs of random points are roughly the same distance apart. Such
+surprises are called the \emph{curse of dimensionality}.)
+\end{intuition}
+
+\begin{mlnote}[Feature space]
+If each data point is described by $d$ numbers (its \emph{features}), then each
+data point is a point in $\R^d$, called the \term{feature space}, and a data
+set is a cloud of points in it. A house described by (size, bedrooms, age,
+distance to centre) is a point in $\R^4$. A $28 \times 28$ grayscale image of a
+handwritten digit, read pixel by pixel, is a list of $784$ numbers and hence a
+point in $\R^{784}$. When there are only two features we can draw the data as
+a \emph{scatter plot} (\cref{fig:two-classes} below), and much of our
+intuition comes from such pictures.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+In which quadrant, or on which axis, does each point lie? $(4, -1)$,
+$(-3, -5)$, $(0, 2)$, $(-1, 6)$.
+\end{exercise}
+\begin{solution}
+$(4,-1)$: quadrant IV. $(-3,-5)$: quadrant III. $(0,2)$: on the $y$-axis.
+$(-1,6)$: quadrant II.
+\end{solution}
+
+\begin{exercise}
+A data set contains $1000$ grayscale images of $32\times32$ pixels. Viewed as
+points, in which space $\R^n$ do they live? What if the images are in colour,
+with three numbers (red, green, blue) per pixel?
+\end{exercise}
+\begin{solution}
+Each grayscale image has $32 \times 32 = 1024$ numbers, so it is a point in
+$\R^{1024}$. A colour image has $32 \times 32 \times 3 = 3072$ numbers, so it
+lives in $\R^{3072}$. (The number of images, $1000$, is the number of points,
+not the dimension.)
+\end{solution}
+
+\begin{exercise}
+Describe in words: (a) the set of points $(x,y)$ in the plane with $x = 2$;
+(b) the set with $y > 0$; (c) the set of points $(x, y, z)$ in space with
+$z = 0$.
+\end{exercise}
+\begin{solution}
+(a) A vertical line crossing the $x$-axis at $2$. (b) The upper half of the
+plane, not including the $x$-axis. (c) The horizontal plane containing the
+$x$- and $y$-axes (the ``floor'').
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Distance and the Pythagorean theorem}\label{sec:distance}
+%----------------------------------------------------------------------
+
+\subsection{The Pythagorean theorem}
+
+A triangle with a right angle ($90^\circ$) is called a
+\term{right triangle}. The side opposite the right angle is the longest side,
+called the \term{hypotenuse}; the other two sides are the \emph{legs}.
+
+\begin{theorem}[Pythagorean theorem]\label{thm:pythagoras}
+In a right triangle with legs of lengths $a$ and $b$ and hypotenuse of length
+$c$,
+\[
+  \keyeq{a^2 + b^2 = c^2}
+\]
+\end{theorem}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.85]
+  \def\a{3} \def\b{1.6}
+  \fill[MLdef!12] (0,0) rectangle (\a+\b,\a+\b);
+  \fill[MLintuition!30] (\a,0) -- (\a+\b,\a) -- (\b,\a+\b) -- (0,\b) -- cycle;
+  \draw[thick] (0,0) rectangle (\a+\b,\a+\b);
+  \draw[thick] (\a,0) -- (\a+\b,\a) -- (\b,\a+\b) -- (0,\b) -- cycle;
+  \node at ({(\a+\b)/2},{(\a+\b)/2}) {$c^2$};
+  \node[font=\small] at (\a/2,-0.3) {$a$};
+  \node[font=\small] at (\a+\b/2,-0.3) {$b$};
+  \node[font=\small] at (\a+\b+0.3,\a/2) {$a$};
+  \node[font=\small] at (\a+\b+0.3,\a+\b/2) {$b$};
+  \node[font=\small] at (\b+\a/2,\a+\b+0.3) {$a$};
+  \node[font=\small] at (\b/2,\a+\b+0.3) {$b$};
+  \node[font=\small] at (-0.3,\b/2) {$b$};
+  \node[font=\small] at (-0.3,\b+\a/2) {$a$};
+  \node[font=\small] at ({\a/2+0.3},{\b/2+0.25}) {$c$};
+\end{tikzpicture}
+\caption{Why the Pythagorean theorem is true. The big square has side
+  $a + b$ and contains four copies of the right triangle (blue) around a tilted
+  square of side $c$ (orange).}
+\label{fig:pythagoras-proof}
+\end{figure}
+
+\begin{proof}
+Arrange four copies of the triangle inside a square of side $a + b$ as in
+\cref{fig:pythagoras-proof}. The area of the big square can be computed in two
+ways. Directly, it is $(a + b)^2 = a^2 + 2ab + b^2$. As a sum of pieces, it is
+four triangles of area $\tfrac12ab$ each, plus the tilted square of area
+$c^2$: in total $2ab + c^2$. Setting the two expressions equal gives
+$a^2 + 2ab + b^2 = 2ab + c^2$, so $a^2 + b^2 = c^2$.
+\end{proof}
+
+The theorem also works backwards: if three lengths satisfy $a^2 + b^2 = c^2$,
+the triangle has a right angle. The classic example is the $3$--$4$--$5$
+triangle: $9 + 16 = 25$.
+
+\subsection{Distance between two points}
+
+To find the distance between $P(x_1, y_1)$ and $Q(x_2, y_2)$, draw the right
+triangle whose legs run horizontally and vertically
+(\cref{fig:distance}). The legs have lengths $\abs{x_2 - x_1}$ and
+$\abs{y_2 - y_1}$, so by Pythagoras:
+
+\begin{definition}[Distance in the plane]\label{def:distance-2d}
+The \term{distance} between the points $(x_1, y_1)$ and $(x_2, y_2)$ is
+\[
+  d = \sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2} .
+\]
+\end{definition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.72]
+  \draw[gray!22] (0,0) grid (6,7);
+  \draw[-{Stealth[length=2.5mm]},thick] (0,0) -- (6.4,0) node[right] {$x$};
+  \draw[-{Stealth[length=2.5mm]},thick] (0,0) -- (0,7.4) node[above] {$y$};
+  \foreach \i in {1,...,6} \draw (\i,0.08) -- (\i,-0.08) node[below,font=\scriptsize] {$\i$};
+  \foreach \i in {1,...,7} \draw (0.08,\i) -- (-0.08,\i) node[left,font=\scriptsize] {$\i$};
+  \draw[very thick,PlotRed] (1,2) -- (4,2) -- (4,6);
+  \draw[very thick,PlotBlue] (1,2) -- (4,6);
+  \node[font=\small,PlotRed,below] at (2.5,2) {$\abs{x_2-x_1} = 3$};
+  \node[font=\small,PlotRed,right] at (4,4) {$\abs{y_2-y_1} = 4$};
+  \node[font=\small,PlotBlue,above left] at (2.4,4.1) {$d = 5$};
+  \fill (1,2) circle (3pt) node[left] {$P(1,2)$};
+  \fill (4,6) circle (3pt) node[above] {$Q(4,6)$};
+\end{tikzpicture}
+\caption{The distance between $P(1,2)$ and $Q(4,6)$ is the hypotenuse of a
+  right triangle with legs $3$ and $4$, so $d = \sqrt{9 + 16} = 5$. The red
+  path along the grid has length $3 + 4 = 7$: this is the Manhattan distance.}
+\label{fig:distance}
+\end{figure}
+
+\begin{example}[Distances in two and three dimensions]
+Find the distance (a) between $(1, 2)$ and $(4, 6)$; (b) between $(1, 2, 3)$
+and $(4, 6, 15)$.
+
+\sol (a) $\sqrt{(4-1)^2 + (6-2)^2} = \sqrt{9 + 16} = 5$.
+(b) In three dimensions we apply Pythagoras twice: first within the floor to
+get the horizontal distance $\sqrt{3^2 + 4^2} = 5$, then with the height
+difference $12$: $\sqrt{5^2 + 12^2} = 13$. Equivalently,
+$\sqrt{3^2 + 4^2 + 12^2} = \sqrt{169} = 13$.
+\end{example}
+
+The pattern continues to any number of dimensions: square the differences in
+each coordinate, add them up and take the square root.
+
+\begin{definition}[Euclidean distance in $\R^n$]\label{def:euclidean-distance}
+The \term{Euclidean distance} between $\vx = (x_1, \dots, x_n)$ and
+$\vy = (y_1, \dots, y_n)$ is
+\[
+  \keyeq{d(\vx, \vy) = \sqrt{\sum_{i=1}^{n} (x_i - y_i)^2}}
+\]
+\end{definition}
+
+(Bold letters such as $\vx$ denote whole lists of numbers; this notation is
+explained properly in \cref{ch:linalg1}.) The \emph{midpoint} of the segment
+from $\vx$ to $\vy$ is found by averaging each coordinate: in the plane, the
+midpoint of $(x_1, y_1)$ and $(x_2, y_2)$ is
+$\left(\frac{x_1 + x_2}{2}, \frac{y_1 + y_2}{2}\right)$.
+
+\begin{remark}[Other ways to measure distance]
+In a city laid out on a grid you cannot walk diagonally through buildings. The
+walking distance between two street corners is the
+\term{Manhattan distance} $\sum_i \abs{x_i - y_i}$, the length of the red path
+in \cref{fig:distance}. Different notions of distance lead to different
+algorithms; we will study them systematically as \emph{norms} in
+\cref{ch:linalg2}.
+\end{remark}
+
+\begin{mlnote}[Nearest neighbours]
+The \term{k-nearest neighbours} (k-NN) classifier is perhaps the simplest
+learning algorithm of all: to classify a new point, find the $k$ training
+points closest to it and take a majority vote of their labels. Everything
+rests on the distance formula.
+
+Suppose the training data are
+\begin{center}
+\begin{tabular}{cccccc}
+\toprule
+point & $P_1$ & $P_2$ & $P_3$ & $P_4$ & $P_5$\\
+\midrule
+coordinates & $(1,1)$ & $(2,1)$ & $(4,3)$ & $(5,4)$ & $(3,4.5)$\\
+label & A & A & B & B & B\\
+\bottomrule
+\end{tabular}
+\end{center}
+and we want to classify the new point $\vq = (2, 2)$. The distances from
+$\vq$ are $d(\vq, P_1) = \sqrt{1 + 1} \approx 1.41$, $d(\vq, P_2) = 1$,
+$d(\vq, P_3) = \sqrt{4 + 1} \approx 2.24$, $d(\vq, P_4) = \sqrt{9 + 4}
+\approx 3.61$ and $d(\vq, P_5) = \sqrt{1 + 6.25} \approx 2.69$. The three
+nearest neighbours are $P_2$ (A), $P_1$ (A) and $P_3$ (B), so with $k = 3$ the
+vote is $2$ to $1$ and $\vq$ is classified as A.
+\end{mlnote}
+
+\begin{pitfall}[Features on different scales]
+Suppose houses are described by (size in m$^2$, number of bedrooms). For
+$A = (100, 4)$, $B = (110, 1)$ and $C = (130, 4)$, the distance formula gives
+$d(A, B) = \sqrt{100 + 9} \approx 10.4$ and $d(A, C) = \sqrt{900 + 0} = 30$, so
+$B$ counts as much more similar to $A$ than $C$ is, even though $B$ has three
+fewer bedrooms. The size feature dominates simply because its numbers are
+bigger. Before using distances, features are usually \emph{standardised} to
+comparable scales (\cref{ch:probability}).
+\end{pitfall}
+
+\sectionexercises
+
+\begin{exercise}
+Find the distance between $(-2, 3)$ and $(4, -5)$, and the midpoint of the
+segment joining them.
+\end{exercise}
+\begin{solution}
+$d = \sqrt{(4 + 2)^2 + (-5 - 3)^2} = \sqrt{36 + 64} = 10$. Midpoint:
+$\left(\tfrac{-2 + 4}{2}, \tfrac{3 - 5}{2}\right) = (1, -1)$.
+\end{solution}
+
+\begin{exercise}
+Find the distance between $(1, 0, 2)$ and $(3, 4, -2)$.
+\end{exercise}
+\begin{solution}
+$\sqrt{2^2 + 4^2 + (-4)^2} = \sqrt{4 + 16 + 16} = \sqrt{36} = 6$.
+\end{solution}
+
+\begin{exercise}
+Compute the Euclidean and the Manhattan distance between
+$\vu = (1, 2, 3, 4)$ and $\vv = (2, 0, 3, 7)$.
+\end{exercise}
+\begin{solution}
+The differences are $(-1, 2, 0, -3)$. Euclidean:
+$\sqrt{1 + 4 + 0 + 9} = \sqrt{14} \approx 3.74$. Manhattan:
+$1 + 2 + 0 + 3 = 6$.
+\end{solution}
+
+\begin{exercise}
+Is the triangle with vertices $(1, 1)$, $(4, 2)$ and $(3, 5)$ a right
+triangle? Use the converse of the Pythagorean theorem.
+\end{exercise}
+\begin{solution}
+Squared side lengths: between $(1,1)$ and $(4,2)$: $9 + 1 = 10$; between
+$(4,2)$ and $(3,5)$: $1 + 9 = 10$; between $(1,1)$ and $(3,5)$:
+$4 + 16 = 20$. Since $10 + 10 = 20$, it is a right triangle, with the right
+angle at $(4, 2)$ (opposite the longest side). It is also isosceles.
+\end{solution}
+
+\begin{exercise}
+Using the training data in the nearest-neighbour example above, classify the
+point $(3.5, 3)$ with $k = 1$ and with $k = 3$.
+\end{exercise}
+\begin{solution}
+Distances from $(3.5, 3)$: to $P_1$: $\sqrt{6.25 + 4} \approx 3.20$; to $P_2$:
+$\sqrt{2.25 + 4} = 2.5$; to $P_3$: $\sqrt{0.25 + 0} = 0.5$; to $P_4$:
+$\sqrt{2.25 + 1} \approx 1.80$; to $P_5$: $\sqrt{0.25 + 2.25} \approx 1.58$.
+With $k = 1$ the nearest point is $P_3$, so the answer is B. With $k = 3$ the
+nearest are $P_3$, $P_5$, $P_4$, all labelled B, so again B.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Lines and circles}\label{sec:lines-circles}
+%----------------------------------------------------------------------
+
+\subsection{The general equation of a line}
+
+In \cref{sec:linear-functions} we wrote lines as $y = mx + b$. That form cannot
+describe vertical lines, and it treats $x$ and $y$ unequally. A more symmetric
+form, which works for every line in the plane, is
+\[
+  w_1 x_1 + w_2 x_2 + b = 0,
+\]
+where we have renamed the coordinates $x_1$ and $x_2$ (as is common in machine
+learning) and where $w_1$ and $w_2$ are not both zero. For instance, the line
+$x_2 = 2x_1 + 1$ can be rewritten as $2x_1 - x_2 + 1 = 0$, and the vertical
+line $x_1 = 3$ is $x_1 - 3 = 0$ (with $w_2 = 0$). If $w_2 \neq 0$ we can always
+solve for $x_2$ to get back the slope--intercept form:
+$x_2 = -\frac{w_1}{w_2}x_1 - \frac{b}{w_2}$.
+
+\subsection{Which side of a line?}
+
+The general form has a wonderful extra feature. Every point $(x_1, x_2)$ of the
+plane gives a number $w_1x_1 + w_2x_2 + b$. On the line this number is zero,
+on one side of the line it is positive, and on the other side it is negative.
+
+\begin{example}[Testing the side of a line]\label{ex:side-of-line}
+For the line $x_1 + x_2 - 7 = 0$, on which side do the points $(2, 3)$ and
+$(5, 4)$ lie?
+
+\sol For $(2, 3)$: $2 + 3 - 7 = -2 < 0$. For $(5, 4)$: $5 + 4 - 7 = 2 > 0$.
+They lie on opposite sides. The negative side is the one containing the
+origin (since $0 + 0 - 7 < 0$), i.e.\ the side ``below'' the line.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis lines=left,width=8.5cm,height=8cm,xmin=0,xmax=7.5,ymin=0,ymax=7.5,
+  xlabel={feature $x_1$},ylabel={feature $x_2$},
+  xlabel style={anchor=north,at={(axis description cs:0.5,-0.07)}},
+  ylabel style={anchor=south,rotate=90,at={(axis description cs:-0.09,0.5)}},
+  xtick={0,...,7},ytick={0,...,7}]
+  \fill[PlotBlue!7] (axis cs:0,0) -- (axis cs:7,0) -- (axis cs:0,7) -- cycle;
+  \fill[PlotRed!7] (axis cs:7,0) -- (axis cs:7.5,0) -- (axis cs:7.5,7.5)
+    -- (axis cs:0,7.5) -- (axis cs:0,7) -- cycle;
+  \addplot[black,very thick,domain=0:7] {7-x};
+  \addplot[only marks,mark=*,mark size=2.4pt,PlotBlue] coordinates
+    {(1.0,2.0) (2.0,1.2) (1.5,3.0) (2.5,2.4) (3.0,1.5) (0.8,0.9) (2.2,3.6) (3.4,2.8)};
+  \addplot[only marks,mark=triangle*,mark size=3.2pt,PlotRed] coordinates
+    {(4.5,5.0) (5.5,4.2) (4.0,6.0) (6.0,5.5) (5.2,3.4) (4.6,4.0) (6.5,3.8) (3.8,4.8)};
+  \node[font=\small,PlotBlue,align=center] at (axis cs:4.6,0.7)
+    {$x_1 + x_2 - 7 < 0$\\ class A};
+  \node[font=\small,PlotRed,align=center] at (axis cs:6.0,6.8)
+    {$x_1 + x_2 - 7 > 0$\\ class B};
+  \node[font=\small,rotate=-45,anchor=south] at (axis cs:5.6,1.4) {$x_1 + x_2 - 7 = 0$};
+\end{axis}
+\end{tikzpicture}
+\caption{A data set with two features and two classes (blue circles and red
+  triangles). The line $x_1 + x_2 - 7 = 0$ separates them: the sign of
+  $x_1 + x_2 - 7$ tells us the class.}
+\label{fig:two-classes}
+\end{figure}
+
+\begin{mlnote}[Linear classifiers]
+\Cref{fig:two-classes} shows the idea behind a \term{linear classifier}: choose
+numbers $w_1, w_2, b$ and predict
+\[
+  \text{class } \begin{cases} \text{B} & \text{if } w_1x_1 + w_2x_2 + b > 0,\\
+  \text{A} & \text{if } w_1x_1 + w_2x_2 + b < 0. \end{cases}
+\]
+The line $w_1x_1 + w_2x_2 + b = 0$ is the \term{decision boundary}. This is
+exactly the \emph{perceptron}, the ancestor of all neural networks, and it is
+also how logistic regression and support vector machines make decisions. With
+$d$ features the boundary $w_1x_1 + \dots + w_dx_d + b = 0$ is a flat
+$(d-1)$-dimensional surface called a \term{hyperplane}. Learning means finding
+weights $w_i$ and a bias $b$ that put the boundary in a good place. In
+\cref{ch:linalg1} we will see that $(w_1, w_2)$ is a vector perpendicular to
+the boundary.
+\end{mlnote}
+
+\subsection{Circles}
+
+A \term{circle} is the set of all points at a fixed distance $r$, the
+\emph{radius}, from a fixed point $(a, b)$, the \emph{centre}. By the distance
+formula, a point $(x, y)$ is on the circle exactly when
+$\sqrt{(x - a)^2 + (y - b)^2} = r$, or, squaring both sides:
+\[
+  (x - a)^2 + (y - b)^2 = r^2 .
+\]
+The circle of radius $1$ centred at the origin, $x^2 + y^2 = 1$, is the
+\term{unit circle}; it will be the stage for trigonometry in
+\cref{sec:trigonometry}. Points \emph{inside} the circle satisfy
+$(x - a)^2 + (y - b)^2 < r^2$ and points outside satisfy $> r^2$.
+
+\begin{example}[Centre and radius]\label{ex:circle}
+Find the centre and radius of the circle $x^2 + y^2 - 4x + 6y - 12 = 0$.
+
+\sol Complete the square in $x$ and in $y$ (\cref{ex:complete-square}):
+$x^2 - 4x = (x - 2)^2 - 4$ and $y^2 + 6y = (y + 3)^2 - 9$. So the equation
+becomes $(x-2)^2 - 4 + (y+3)^2 - 9 - 12 = 0$, i.e.
+\[
+  (x - 2)^2 + (y + 3)^2 = 25 .
+\]
+The centre is $(2, -3)$ and the radius is $\sqrt{25} = 5$.
+\end{example}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,width=7.5cm,height=7.5cm,xmin=-3.5,xmax=3.5,ymin=-3.5,ymax=3.5,
+  xlabel=$x_1$,ylabel=$x_2$,xtick={-3,-2,2,3},ytick={-3,-2,2,3}]
+  \draw[dashed,thick,black] (axis cs:0,0) circle[radius=1.9];
+  \addplot[only marks,mark=*,mark size=2.4pt,PlotBlue] coordinates
+    {(0.3,0.5) (-0.6,0.2) (0.8,-0.4) (-0.2,-0.9) (0.9,0.8) (-1.0,-0.5) (0.1,1.2) (-0.9,0.9) (1.1,0.1)};
+  \addplot[only marks,mark=triangle*,mark size=3.2pt,PlotRed] coordinates
+    {(2.6,0.4) (-2.4,1.2) (0.5,2.7) (-0.8,-2.6) (1.9,-1.8) (-2.2,-1.4) (1.7,2.0) (2.8,-0.9) (-1.5,2.3) (0.2,-2.9)};
+\end{axis}
+\end{tikzpicture}
+\caption{Two classes that no straight line can separate: one class inside a
+  circle, the other outside. The dashed circle $x_1^2 + x_2^2 = 1.9^2$ separates
+  them perfectly.}
+\label{fig:circle-classes}
+\end{figure}
+
+\begin{mlnote}[When a line is not enough]
+In \cref{fig:circle-classes} one class sits inside a circle and the other
+outside. Any straight line leaves points of both classes on at least one of its
+sides, so no linear classifier can succeed: the data are not
+\term{linearly separable}. Two remedies exist. We can invent a new feature,
+such as $r^2 = x_1^2 + x_2^2$ (the squared distance from the origin), after
+which a single threshold $r^2 < 1.9^2$ separates the classes; this is the idea
+behind \emph{feature engineering} and \emph{kernel methods}. Or we can use a
+model, such as a neural network, that learns curved boundaries by itself.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Write the line $2x + 3y = 6$ in slope--intercept form and find where it
+crosses the axes.
+\end{exercise}
+\begin{solution}
+$3y = -2x + 6$, so $y = -\tfrac23 x + 2$. It crosses the $y$-axis at $(0, 2)$
+and the $x$-axis where $y = 0$, i.e.\ at $(3, 0)$.
+\end{solution}
+
+\begin{exercise}
+For the line $2x_1 - x_2 + 1 = 0$, decide on which side (positive, negative,
+or on the line) each point lies: $(1, 1)$, $(0, 3)$, $(1, 3)$.
+\end{exercise}
+\begin{solution}
+$(1,1)$: $2 - 1 + 1 = 2 > 0$, positive side. $(0,3)$: $0 - 3 + 1 = -2 < 0$,
+negative side. $(1,3)$: $2 - 3 + 1 = 0$, on the line.
+\end{solution}
+
+\begin{exercise}
+A perceptron with weights $w_1 = 2$, $w_2 = -1$ and bias $b = -1$ predicts
+class 1 when $w_1 x_1 + w_2 x_2 + b > 0$ and class 0 when it is negative.
+Classify $(1, 0)$, $(0, 1)$ and $(2, 3)$, and write the decision boundary in
+the form $x_2 = mx_1 + c$.
+\end{exercise}
+\begin{solution}
+$(1,0)$: $2 - 0 - 1 = 1 > 0$, class 1. $(0,1)$: $0 - 1 - 1 = -2 < 0$, class 0.
+$(2,3)$: $4 - 3 - 1 = 0$: exactly on the boundary (undecided). The boundary
+$2x_1 - x_2 - 1 = 0$ is $x_2 = 2x_1 - 1$.
+\end{solution}
+
+\begin{exercise}
+Find the centre and radius of the circle $x^2 + y^2 + 2x - 8y + 8 = 0$. Is the
+point $(1, 2)$ inside, on, or outside the circle?
+\end{exercise}
+\begin{solution}
+$(x + 1)^2 - 1 + (y - 4)^2 - 16 + 8 = 0$, so $(x+1)^2 + (y-4)^2 = 9$: centre
+$(-1, 4)$, radius $3$. For $(1,2)$: $(2)^2 + (-2)^2 = 8 < 9$, so it is inside.
+\end{solution}
+
+\begin{exercise}
+In \cref{fig:circle-classes}, replace each point $(x_1, x_2)$ by the single
+number $s = x_1^2 + x_2^2$. Explain why, after this transformation, the two
+classes can be separated by a single threshold. What threshold works?
+\end{exercise}
+\begin{solution}
+$s$ is the squared distance from the origin. All blue points lie within
+distance $1.9$ of the origin, so they have $s < 1.9^2 = 3.61$, while all red
+points lie further out, so they have $s > 3.61$. Hence the rule ``A if
+$s < 3.61$, B otherwise'' classifies every point correctly. The non-linear
+feature $s$ has made the problem linearly separable.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Angles: degrees and radians}\label{sec:angles}
+%----------------------------------------------------------------------
+
+An \term{angle} measures an amount of turning. Picture a ray (a half-line)
+starting at the origin and pointing along the positive $x$-axis, and rotate it
+about the origin. By convention, \emph{anticlockwise} rotation counts as
+positive and clockwise rotation as negative.
+
+\subsection{Degrees}
+
+The familiar unit divides a full turn into $360$ \term[degree (angle)]{degrees}:
+a quarter turn (a right angle) is $90^\circ$, a half turn (a straight line) is
+$180^\circ$. Angles larger than $360^\circ$ are allowed (more than one full
+turn), and so are negative angles.
+
+\subsection{Radians}
+
+Mathematicians prefer a different unit, which turns out to make calculus much
+simpler. Put the angle at the centre of the unit circle. The
+\term[radian]{radian} measure of the angle is the \emph{length of the arc} of
+the unit circle that it cuts out (\cref{fig:radian}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.9]
+  \draw[gray!60] (0,0) circle (1);
+  \draw[-{Stealth[length=2mm]}] (-1.25,0) -- (1.35,0);
+  \draw[-{Stealth[length=2mm]}] (0,-1.25) -- (0,1.3);
+  \draw[very thick,PlotBlue] (0,0) -- (1,0);
+  \draw[very thick,PlotBlue] (0,0) -- (57.2958:1);
+  \draw[line width=2.2pt,PlotRed] (1,0) arc (0:57.2958:1);
+  \draw (0.28,0) arc (0:57.2958:0.28);
+  \node[font=\small] at (28.6:0.45) {$1$ rad};
+  \node[font=\small,PlotBlue,below] at (0.5,0) {radius $1$};
+  \node[font=\small,PlotRed,right] at (28.6:1.04) {arc length $1$};
+  \node[font=\small,PlotBlue,above left] at (57.3:0.62) {$1$};
+\end{tikzpicture}
+\caption{One radian is the angle that cuts off an arc of length $1$ on the
+  unit circle. It is about $57.3^\circ$.}
+\label{fig:radian}
+\end{figure}
+
+The whole unit circle has circumference $2\pi$, so a full turn is $2\pi$
+radians. Hence
+\[
+  360^\circ = 2\pi \text{ rad}, \qquad 180^\circ = \pi \text{ rad},
+\]
+and to convert:
+\[
+  \text{radians} = \text{degrees} \times \frac{\pi}{180}, \qquad
+  \text{degrees} = \text{radians} \times \frac{180}{\pi}.
+\]
+One radian is $\tfrac{180^\circ}{\pi} \approx 57.3^\circ$. The angles that
+appear most often are worth memorising:
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{c|ccccccccc}
+degrees & $0^\circ$ & $30^\circ$ & $45^\circ$ & $60^\circ$ & $90^\circ$ &
+  $120^\circ$ & $180^\circ$ & $270^\circ$ & $360^\circ$\\
+\hline
+radians & $0$ & $\frac{\pi}{6}$ & $\frac{\pi}{4}$ & $\frac{\pi}{3}$ &
+  $\frac{\pi}{2}$ & $\frac{2\pi}{3}$ & $\pi$ & $\frac{3\pi}{2}$ & $2\pi$
+\end{tabular}
+\end{center}
+
+On a circle of radius $r$, an angle of $\theta$ radians cuts off an arc of
+length $s = r\theta$ (the unit-circle arc, scaled by $r$). This simple formula
+is one reason radians are natural. (The Greek letter $\theta$, ``theta'', is
+the traditional name for an angle.)
+
+\begin{remark}[Radians in practice]
+In calculus, formulas such as ``the slope of $\sin x$ is $\cos x$''
+(\cref{ch:calculus}) are true only when $x$ is measured in radians. For the
+same reason, the functions \texttt{sin}, \texttt{cos} and so on in every
+programming language expect radians: \texttt{math.sin(30)} computes the sine of
+$30$ radians, not of $30^\circ$. From now on, angles are in radians unless a
+degree sign is shown.
+\end{remark}
+
+\sectionexercises
+
+\begin{exercise}
+Convert to radians: $45^\circ$, $120^\circ$, $270^\circ$, $1^\circ$.
+\end{exercise}
+\begin{solution}
+$\tfrac{\pi}{4}$; $\tfrac{2\pi}{3}$; $\tfrac{3\pi}{2}$;
+$\tfrac{\pi}{180} \approx 0.01745$.
+\end{solution}
+
+\begin{exercise}
+Convert to degrees: $\tfrac{\pi}{6}$, $\tfrac{5\pi}{4}$, $2$ radians.
+\end{exercise}
+\begin{solution}
+$30^\circ$; $225^\circ$; $2 \times \tfrac{180^\circ}{\pi} \approx 114.6^\circ$.
+\end{solution}
+
+\begin{exercise}
+Through what angle, in radians, does the minute hand of a clock turn in $20$
+minutes? Should the angle be counted as positive or negative?
+\end{exercise}
+\begin{solution}
+Twenty minutes is a third of a full turn: $\tfrac{2\pi}{3}$ radians. Clock
+hands turn clockwise, so with the mathematical convention the angle is
+$-\tfrac{2\pi}{3}$.
+\end{solution}
+
+\begin{exercise}
+How long is the arc cut off by an angle of $0.8$ radians on a circle of radius
+$5$? What angle cuts off an arc of length $\pi$ on a circle of radius $2$?
+\end{exercise}
+\begin{solution}
+$s = r\theta = 5 \times 0.8 = 4$. And $\theta = \tfrac{s}{r} = \tfrac{\pi}{2}$
+(a right angle).
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Trigonometry}\label{sec:trigonometry}
+%----------------------------------------------------------------------
+
+\begin{motivation}
+Trigonometry relates angles to lengths. In machine learning its most important
+consequence is a way to measure the angle between two directions (the
+\emph{cosine similarity} of \cref{ch:linalg1}), but sines and cosines also
+describe anything periodic, such as waves, seasons and positions in a
+sequence, and they describe rotations.
+\end{motivation}
+
+\subsection{Sine, cosine and tangent in a right triangle}
+
+In a right triangle, fix one of the two acute angles and call it $\theta$. Name
+the sides relative to it: the \emph{hypotenuse} (opposite the right angle),
+the \emph{opposite} side (across from $\theta$) and the \emph{adjacent} side
+(next to $\theta$, not the hypotenuse) (\cref{fig:right-triangle}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.1]
+  \coordinate (A) at (0,0);
+  \coordinate (B) at (4,0);
+  \coordinate (C) at (4,2.6);
+  \draw[very thick] (A) -- (B) -- (C) -- cycle;
+  \draw (4,0) ++(-0.28,0) -- ++(0,0.28) -- ++(0.28,0);
+  \pic[draw,thick,angle radius=0.85cm,"$\theta$",angle eccentricity=1.35] {angle=B--A--C};
+  \node[below,font=\small] at (2,0) {adjacent};
+  \node[right,font=\small] at (4,1.3) {opposite};
+  \node[above left,font=\small,rotate=33] at (2.1,1.4) {hypotenuse};
+\end{tikzpicture}
+\caption{The sides of a right triangle, named relative to the angle $\theta$.}
+\label{fig:right-triangle}
+\end{figure}
+
+\begin{definition}[Sine, cosine, tangent]\label{def:trig-triangle}
+For an acute angle $\theta$ in a right triangle,
+\[
+  \sin\theta = \frac{\text{opposite}}{\text{hypotenuse}}, \qquad
+  \cos\theta = \frac{\text{adjacent}}{\text{hypotenuse}}, \qquad
+  \tan\theta = \frac{\text{opposite}}{\text{adjacent}} .
+\]
+\end{definition}
+\index{sine}\index{cosine}\index{tangent}
+
+These ratios depend only on the angle, not on the size of the triangle: a
+bigger triangle with the same angles is just a scaled copy, and scaling does
+not change ratios. Many people remember the definitions with the mnemonic
+\emph{SOH--CAH--TOA}: Sine is Opposite over Hypotenuse, Cosine is Adjacent
+over Hypotenuse, Tangent is Opposite over Adjacent. Note that
+$\tan\theta = \frac{\sin\theta}{\cos\theta}$.
+
+\begin{example}[Using trigonometry to find lengths]\label{ex:ladder}
+A $5$\,m ladder leans against a wall, making an angle of $70^\circ$ with the
+ground. How high up the wall does it reach, and how far is its foot from the
+wall?
+
+\sol The ladder is the hypotenuse. The height is the side opposite the
+$70^\circ$ angle: $5\sin 70^\circ \approx 5 \times 0.940 = 4.70$\,m. The
+distance from the wall is the adjacent side: $5\cos70^\circ \approx 5 \times
+0.342 = 1.71$\,m. (Check with Pythagoras: $4.70^2 + 1.71^2 \approx 25.0 =
+5^2$.)
+\end{example}
+
+\subsection{Special angles}
+
+Two triangles give exact values for the most common angles. Cutting a square
+of side $1$ along its diagonal gives a right triangle with two $45^\circ$
+angles and hypotenuse $\sqrt2$, so $\sin45^\circ = \cos45^\circ =
+\frac{1}{\sqrt2} = \frac{\sqrt2}{2}$. Cutting an equilateral triangle of side
+$2$ in half gives a right triangle with angles $30^\circ$ and $60^\circ$, sides
+$1$ and $\sqrt3$ and hypotenuse $2$. From these:
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{c|ccccc}
+$\theta$ & $0$ & $\frac{\pi}{6}$ ($30^\circ$) & $\frac{\pi}{4}$ ($45^\circ$)
+  & $\frac{\pi}{3}$ ($60^\circ$) & $\frac{\pi}{2}$ ($90^\circ$)\\
+\hline
+$\sin\theta$ & $0$ & $\frac12$ & $\frac{\sqrt2}{2}$ & $\frac{\sqrt3}{2}$ & $1$\\
+$\cos\theta$ & $1$ & $\frac{\sqrt3}{2}$ & $\frac{\sqrt2}{2}$ & $\frac12$ & $0$\\
+$\tan\theta$ & $0$ & $\frac{1}{\sqrt3}$ & $1$ & $\sqrt3$ & undefined
+\end{tabular}
+\end{center}
+
+\subsection{The unit circle: trigonometry for every angle}
+
+Right triangles only give us angles between $0$ and $90^\circ$. To define sine
+and cosine for \emph{every} angle, we use the unit circle. Rotate a radius of
+the unit circle anticlockwise from the positive $x$-axis by the angle $\theta$.
+It ends at a point $P$ on the circle (\cref{fig:unit-circle}).
+
+\begin{definition}[Sine and cosine on the unit circle]\label{def:trig-circle}
+If the point $P$ on the unit circle is reached by rotating through the angle
+$\theta$, then
+\[
+  P = (\cos\theta, \sin\theta).
+\]
+In words: $\cos\theta$ is the $x$-coordinate and $\sin\theta$ the
+$y$-coordinate of $P$.
+\end{definition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=2.3]
+  \coordinate (O) at (0,0);
+  \coordinate (P) at (40:1);
+  \draw[gray!60] (O) circle (1);
+  \draw[-{Stealth[length=2mm]}] (-1.25,0) -- (1.4,0) node[right] {$x$};
+  \draw[-{Stealth[length=2mm]}] (0,-1.25) -- (0,1.35) node[above] {$y$};
+  \draw[very thick,MLdef] (O) -- (P) node[midway,above left,font=\small] {$1$};
+  \draw[very thick,PlotRed] (P) -- (P |- O);
+  \draw[very thick,PlotGreen] (O) -- (P |- O);
+  \draw (0.3,0) arc (0:40:0.3);
+  \node[font=\small] at (20:0.42) {$\theta$};
+  \node[font=\small,PlotGreen,below] at ($(O)!0.5!(P |- O)$) {$\cos\theta$};
+  \node[font=\small,PlotRed,right] at ($(P)!0.5!(P |- O)$) {$\sin\theta$};
+  \fill (P) circle (0.9pt) node[above right,font=\small] {$P = (\cos\theta,\sin\theta)$};
+  \node[font=\scriptsize] at (1.08,-0.1) {$1$};
+  \node[font=\scriptsize] at (-0.1,1.08) {$1$};
+\end{tikzpicture}
+\caption{The unit-circle definition of sine and cosine. For an acute angle
+  this agrees with the triangle definition, because the hypotenuse has length
+  $1$.}
+\label{fig:unit-circle}
+\end{figure}
+
+For an angle between $0$ and $\frac{\pi}{2}$, the green and red segments in
+\cref{fig:unit-circle} form a right triangle with hypotenuse $1$, so this new
+definition agrees with the old one. But it works for every angle. For example,
+$\theta = \pi$ (half a turn) lands on $(-1, 0)$, so $\cos\pi = -1$ and
+$\sin\pi = 0$. In the second quadrant cosine is negative and sine positive; in
+the third both are negative; in the fourth cosine is positive and sine
+negative. By symmetry, for instance, $\sin 150^\circ = \sin 30^\circ = \frac12$
+while $\cos150^\circ = -\cos 30^\circ = -\frac{\sqrt3}{2}$.
+
+Because $P$ lies on the unit circle, $x^2 + y^2 = 1$, which gives the most
+important trigonometric identity.
+
+\begin{theorem}[Pythagorean identity]\label{thm:pythagorean-identity}
+For every angle $\theta$,
+\[
+  \sin^2\theta + \cos^2\theta = 1 .
+\]
+(Here $\sin^2\theta$ means $(\sin\theta)^2$.)
+\end{theorem}
+
+\subsection{Graphs of sine and cosine}
+
+As $\theta$ increases, the point $P$ goes round and round the circle, so the
+values of $\sin\theta$ and $\cos\theta$ repeat every $2\pi$: the functions are
+\term[periodic function]{periodic} with \emph{period} $2\pi$. Their graphs are
+waves that oscillate between $-1$ and $1$ (\cref{fig:sin-cos}). The cosine
+wave is the sine wave shifted left by $\frac{\pi}{2}$:
+$\cos\theta = \sin\left(\theta + \frac{\pi}{2}\right)$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[mlplot,axis x line=bottom,axis y line=middle,
+  width=13cm,height=5cm,xmin=-6.9,xmax=7.2,ymin=-1.45,ymax=1.45,
+  xtick={-6.2832,-4.7124,-3.1416,-1.5708,0,1.5708,3.1416,4.7124,6.2832},
+  xticklabels={$-2\pi$,$-\frac{3\pi}{2}$,$-\pi$,$-\frac{\pi}{2}$,$0$,$\frac{\pi}{2}$,$\pi$,$\frac{3\pi}{2}$,$2\pi$},
+  ytick={-1,1},xlabel=$\theta$,
+  legend style={font=\small,at={(0.5,-0.18)},anchor=north,legend columns=2,draw=none,
+    /tikz/every even column/.append style={column sep=5mm}}]
+  \draw[gray!70] (axis cs:-6.9,0) -- (axis cs:7.2,0);
+  \addplot[PlotBlue,domain=-6.9:7.2,samples=200]{sin(deg(x))};
+  \addlegendentry{$\sin\theta$}
+  \addplot[PlotRed,domain=-6.9:7.2,samples=200]{cos(deg(x))};
+  \addlegendentry{$\cos\theta$}
+\end{axis}
+\end{tikzpicture}
+\caption{The sine and cosine functions. Both repeat every $2\pi$ and take
+  values between $-1$ and $1$.}
+\label{fig:sin-cos}
+\end{figure}
+
+More general waves have the form $y = A\sin(\omega x + \varphi)$. The
+\emph{amplitude} $A$ stretches the wave vertically, the \emph{angular frequency}
+$\omega$ (``omega'') squeezes it horizontally, so that the period becomes
+$\frac{2\pi}{\omega}$, and the \emph{phase} $\varphi$ (``phi'') shifts it, just
+as in \cref{sec:transformations}.
+
+\subsection{Inverse trigonometric functions}
+
+Given $\cos\theta$, can we recover $\theta$? Cosine is not one-to-one (many
+angles share the same cosine), so as in \cref{sec:inverse-functions} we
+restrict the domain. The \term{arccosine} $\arccos y$ (written
+\texttt{acos} in code, or $\cos^{-1} y$) is the angle in $[0, \pi]$ whose
+cosine is $y$; for example $\arccos\left(\tfrac12\right) = \tfrac{\pi}{3}$ and
+$\arccos(0) = \tfrac{\pi}{2}$. Similarly $\arcsin$ returns angles in
+$\left[-\frac{\pi}{2}, \frac{\pi}{2}\right]$ and $\arctan$ angles in
+$\left(-\frac{\pi}{2}, \frac{\pi}{2}\right)$. We will use $\arccos$ to compute
+angles between vectors in \cref{ch:linalg1}.
+
+\subsection{The law of cosines}
+
+The Pythagorean theorem only applies to right triangles. Its generalisation to
+\emph{any} triangle is the following.
+
+\begin{theorem}[Law of cosines]\label{thm:law-of-cosines}
+In a triangle with sides $a$, $b$, $c$, where $\gamma$ (``gamma'') is the
+angle between the sides $a$ and $b$ (that is, opposite to $c$),
+\[
+  c^2 = a^2 + b^2 - 2ab\cos\gamma .
+\]
+\end{theorem}
+
+\begin{proof}
+Put the vertex with angle $\gamma$ at the origin and the side $b$ along the
+positive $x$-axis, so that its other end is $(b, 0)$. By the unit-circle
+definition (scaled by $a$), the end of side $a$ is $(a\cos\gamma,
+a\sin\gamma)$. The side $c$ joins these two points, so by the distance
+formula
+\begin{align*}
+  c^2 &= (a\cos\gamma - b)^2 + (a\sin\gamma)^2\\
+      &= a^2\cos^2\gamma - 2ab\cos\gamma + b^2 + a^2\sin^2\gamma\\
+      &= a^2(\cos^2\gamma + \sin^2\gamma) + b^2 - 2ab\cos\gamma
+       = a^2 + b^2 - 2ab\cos\gamma ,
+\end{align*}
+using the Pythagorean identity in the last step.
+\end{proof}
+
+When $\gamma = 90^\circ$, $\cos\gamma = 0$ and we recover Pythagoras. When
+$\gamma$ is larger than $90^\circ$, $\cos\gamma < 0$ and $c$ is longer than
+Pythagoras would predict; when $\gamma$ is smaller, $c$ is shorter.
+
+\begin{example}[Finding an angle from three sides]
+A triangle has sides $4$, $5$ and $6$. Find its largest angle.
+
+\sol The largest angle is opposite the longest side, $c = 6$. Solving the law
+of cosines for $\cos\gamma$:
+\[
+  \cos\gamma = \frac{a^2 + b^2 - c^2}{2ab} = \frac{16 + 25 - 36}{2\cdot4\cdot5}
+  = \frac{5}{40} = 0.125,
+\]
+so $\gamma = \arccos(0.125) \approx 82.8^\circ$.
+\end{example}
+
+\subsection{Sums of angles}
+
+We will need two more formulas, which tell us the sine and cosine of a sum of
+angles. We state them without proof (a short proof using matrices appears in
+the exercises of \cref{ch:linalg1}).
+
+\begin{theorem}[Angle addition formulas]\label{thm:angle-addition}
+For all angles $\alpha$ and $\beta$,
+\begin{align*}
+  \cos(\alpha + \beta) &= \cos\alpha\cos\beta - \sin\alpha\sin\beta,\\
+  \sin(\alpha + \beta) &= \sin\alpha\cos\beta + \cos\alpha\sin\beta .
+\end{align*}
+\end{theorem}
+
+\begin{mlnote}[Sines and cosines in modern models]
+Here are two places where trigonometry turns up in machine learning.
+\begin{itemize}
+  \item \textbf{Similarity as an angle.} Two lists of numbers can be viewed as
+    arrows from the origin, and the cosine of the angle between them measures
+    how much they point the same way: $1$ for the same direction, $0$ for
+    perpendicular, $-1$ for opposite. This \emph{cosine similarity}, computed
+    with the dot product of \cref{ch:linalg1}, is the standard way to compare
+    word and sentence embeddings, and it is used by search engines and
+    recommendation systems.
+  \item \textbf{Encoding positions.} A transformer (the architecture behind
+    large language models) reads all the words of a sentence at once, so it
+    must be told where each word is. The original transformer added to the
+    word at position $p$ a list of numbers of the form $\sin(p\,\omega_k)$ and
+    $\cos(p\,\omega_k)$ for many different frequencies $\omega_k$: fast waves
+    distinguish neighbouring positions, slow waves distinguish distant ones.
+\end{itemize}
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+A right triangle has hypotenuse $10$ and an angle of $30^\circ$. Find the
+lengths of the side opposite and the side adjacent to this angle.
+\end{exercise}
+\begin{solution}
+Opposite: $10\sin30^\circ = 10 \times \tfrac12 = 5$. Adjacent:
+$10\cos30^\circ = 10\times\tfrac{\sqrt3}{2} = 5\sqrt3 \approx 8.66$.
+\end{solution}
+
+\begin{exercise}
+The sun is $35^\circ$ above the horizon and a tree casts a shadow $12$\,m long.
+How tall is the tree?
+\end{exercise}
+\begin{solution}
+The tree (opposite) and the shadow (adjacent) form a right triangle with angle
+$35^\circ$ at the tip of the shadow, so $\text{height} = 12\tan35^\circ \approx
+12 \times 0.700 = 8.4$\,m.
+\end{solution}
+
+\begin{exercise}
+Using the unit circle, give exact values of $\sin150^\circ$, $\cos150^\circ$,
+$\sin225^\circ$, $\cos300^\circ$, $\tan45^\circ$ and $\sin(-30^\circ)$.
+\end{exercise}
+\begin{solution}
+$\sin150^\circ = \tfrac12$; $\cos150^\circ = -\tfrac{\sqrt3}{2}$;
+$\sin225^\circ = -\tfrac{\sqrt2}{2}$; $\cos300^\circ = \tfrac12$;
+$\tan45^\circ = 1$; $\sin(-30^\circ) = -\tfrac12$.
+\end{solution}
+
+\begin{exercise}
+If $\sin\theta = 0.6$ and $\theta$ is between $0$ and $\tfrac{\pi}{2}$, find
+$\cos\theta$ and $\tan\theta$ without a calculator.
+\end{exercise}
+\begin{solution}
+By the Pythagorean identity, $\cos^2\theta = 1 - 0.36 = 0.64$, and cosine is
+positive in the first quadrant, so $\cos\theta = 0.8$. Then
+$\tan\theta = \tfrac{0.6}{0.8} = 0.75$. (This is the $3$--$4$--$5$ triangle
+scaled down.)
+\end{solution}
+
+\begin{exercise}
+A triangle has two sides of lengths $5$ and $7$ with an angle of $60^\circ$
+between them. How long is the third side?
+\end{exercise}
+\begin{solution}
+$c^2 = 25 + 49 - 2\cdot5\cdot7\cos60^\circ = 74 - 70\times\tfrac12 = 39$, so
+$c = \sqrt{39} \approx 6.24$.
+\end{solution}
+
+\begin{exercise}
+Give the amplitude and the period of $y = 3\sin(2x)$ and of
+$y = \cos\left(\tfrac{x}{2}\right)$.
+\end{exercise}
+\begin{solution}
+$y = 3\sin(2x)$: amplitude $3$, period $\tfrac{2\pi}{2} = \pi$.
+$y = \cos(x/2)$: amplitude $1$, period $\tfrac{2\pi}{1/2} = 4\pi$.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Polar coordinates and rotations}\label{sec:polar-rotation}
+%----------------------------------------------------------------------
+
+\subsection{Polar coordinates}
+
+A point in the plane can also be described by \emph{how far} it is from the
+origin and \emph{in which direction}. These are its
+\term{polar coordinates} $(r, \theta)$: $r \ge 0$ is the distance from the
+origin and $\theta$ is the angle measured anticlockwise from the positive
+$x$-axis. Scaling \cref{def:trig-circle} by $r$ gives the conversion:
+\[
+  x = r\cos\theta, \qquad y = r\sin\theta ,
+\]
+and in the other direction
+\[
+  r = \sqrt{x^2 + y^2}, \qquad \tan\theta = \frac{y}{x} .
+\]
+Care is needed when finding $\theta$: the equation $\tan\theta = \frac yx$
+does not distinguish between opposite directions, such as $(1, 1)$ and
+$(-1, -1)$, so you must check the quadrant. Programming languages provide a
+function \texttt{atan2(y, x)} that does this automatically.
+
+\begin{example}[Converting coordinates]\label{ex:polar}
+(a) Find the polar coordinates of $(-1, \sqrt3)$.
+(b) Find the Cartesian coordinates of the point with $r = 2$,
+$\theta = \frac{\pi}{6}$.
+
+\sol (a) $r = \sqrt{1 + 3} = 2$. The point is in the second quadrant, with
+$\cos\theta = \frac{x}{r} = -\frac12$ and $\sin\theta = \frac{y}{r} =
+\frac{\sqrt3}{2}$, so $\theta = 120^\circ = \frac{2\pi}{3}$.
+(b) $x = 2\cos\frac{\pi}{6} = \sqrt3$ and $y = 2\sin\frac{\pi}{6} = 1$.
+\end{example}
+
+\subsection{Rotating a point}
+
+How do we rotate a point $(x, y)$ about the origin by an angle $\alpha$? In
+polar coordinates this is trivial: the distance $r$ stays the same and the
+angle $\theta$ becomes $\theta + \alpha$. So the rotated point is
+$(r\cos(\theta + \alpha), r\sin(\theta + \alpha))$. Expanding with the angle
+addition formulas (\cref{thm:angle-addition}),
+\begin{align*}
+  r\cos(\theta + \alpha) &= r\cos\theta\cos\alpha - r\sin\theta\sin\alpha
+    = x\cos\alpha - y\sin\alpha,\\
+  r\sin(\theta + \alpha) &= r\sin\theta\cos\alpha + r\cos\theta\sin\alpha
+    = x\sin\alpha + y\cos\alpha .
+\end{align*}
+
+\begin{theorem}[Rotation formula]\label{thm:rotation}
+Rotating the point $(x, y)$ anticlockwise about the origin by the angle
+$\alpha$ gives the point $(x', y')$ with
+\[
+  \keyeq{x' = x\cos\alpha - y\sin\alpha, \qquad y' = x\sin\alpha + y\cos\alpha}
+\]
+\end{theorem}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.15]
+  \coordinate (O) at (0,0);
+  \draw[-{Stealth[length=2mm]}] (-1.2,0) -- (3.9,0) node[right] {$x$};
+  \draw[-{Stealth[length=2mm]}] (0,-0.5) -- (0,3.8) node[above] {$y$};
+  \draw[gray!50,dashed] (-8:3.1623) arc (-8:100:3.1623);
+  \draw[very thick,PlotBlue,-{Stealth[length=2.5mm]}] (O) -- (3,1);
+  \draw[very thick,PlotRed,-{Stealth[length=2.5mm]}] (O) -- (0.634,3.098);
+  \fill[PlotBlue] (3,1) circle (1.8pt) node[right] {$P(3,1)$};
+  \fill[PlotRed] (0.634,3.098) circle (1.8pt) node[above right] {$P'(0.63,\,3.10)$};
+  \draw[thick,-{Stealth[length=2mm]}] (18.43:1.2) arc (18.43:78.43:1.2);
+  \node[font=\small] at (48.4:1.78) {$\alpha = 60^\circ$};
+  \draw (0.55,0) arc (0:18.43:0.55);
+  \node[font=\scriptsize] at (9:0.78) {$\theta$};
+\end{tikzpicture}
+\caption{Rotating $P(3,1)$ anticlockwise by $60^\circ$ about the origin gives
+  $P'$. The distance from the origin, $\sqrt{10}$, does not change (dashed
+  circle).}
+\label{fig:rotation}
+\end{figure}
+
+\begin{example}[Rotations]
+(a) Rotate $(2, 1)$ by $90^\circ$. (b) Rotate $(3, 1)$ by $60^\circ$
+(\cref{fig:rotation}).
+
+\sol (a) $\cos90^\circ = 0$ and $\sin90^\circ = 1$, so $x' = 2\cdot0 - 1\cdot1
+= -1$ and $y' = 2\cdot1 + 1\cdot0 = 2$: the result is $(-1, 2)$.
+(b) $\cos60^\circ = 0.5$ and $\sin60^\circ \approx 0.866$, so
+$x' \approx 3(0.5) - 1(0.866) = 0.634$ and $y' \approx 3(0.866) + 1(0.5) =
+3.098$. Check: $0.634^2 + 3.098^2 \approx 10.0 = 3^2 + 1^2$, so the distance
+from the origin has not changed.
+\end{example}
+
+Notice that the new coordinates are obtained from the old ones by multiplying
+by fixed numbers and adding. Transformations of this kind are called
+\emph{linear transformations}, and in \cref{ch:linalg1} we will write the
+rotation compactly as a \emph{matrix}.
+
+\begin{mlnote}[Rotations in machine learning]
+Rotations appear in \emph{data augmentation}, where training images are
+randomly rotated so that a model learns that a rotated cat is still a cat.
+More surprisingly, many current large language models use \emph{rotary position
+embeddings}: the numbers that represent the word at position $p$ are grouped
+in pairs, and each pair is rotated by an angle proportional to $p$. Because
+rotating by $p\alpha$ and by $q\alpha$ leaves an angle of $(p-q)\alpha$
+between the results, comparisons between two words then depend only on how far
+apart they are, which is exactly the information the model needs.
+\end{mlnote}
+
+\sectionexercises
+
+\begin{exercise}
+Convert to polar coordinates (give $\theta$ in radians): $(1, 1)$,
+$(0, -3)$, $(-2, 0)$.
+\end{exercise}
+\begin{solution}
+$(1,1)$: $r = \sqrt2$, $\theta = \tfrac{\pi}{4}$. $(0,-3)$: $r = 3$,
+$\theta = \tfrac{3\pi}{2}$ (equivalently $-\tfrac{\pi}{2}$). $(-2, 0)$: $r = 2$,
+$\theta = \pi$.
+\end{solution}
+
+\begin{exercise}
+Convert to Cartesian coordinates: $r = 4$, $\theta = \frac{3\pi}{4}$; and
+$r = 1$, $\theta = \pi$.
+\end{exercise}
+\begin{solution}
+$x = 4\cos\tfrac{3\pi}{4} = -2\sqrt2 \approx -2.83$, $y = 4\sin\tfrac{3\pi}{4}
+= 2\sqrt2 \approx 2.83$. And $(\cos\pi, \sin\pi) = (-1, 0)$.
+\end{solution}
+
+\begin{exercise}
+Rotate the point $(3, 4)$ anticlockwise by $30^\circ$, and check that its
+distance from the origin is unchanged.
+\end{exercise}
+\begin{solution}
+$x' = 3\cos30^\circ - 4\sin30^\circ \approx 2.598 - 2 = 0.598$;
+$y' = 3\sin30^\circ + 4\cos30^\circ \approx 1.5 + 3.464 = 4.964$. Then
+$\sqrt{0.598^2 + 4.964^2} \approx \sqrt{25.0} = 5 = \sqrt{3^2 + 4^2}$.
+\end{solution}
+
+\begin{exercise}
+Explain, using polar coordinates, why rotating by $\alpha$ and then by $\beta$
+is the same as rotating once by $\alpha + \beta$. What does rotating by
+$\alpha$ and then by $-\alpha$ do?
+\end{exercise}
+\begin{solution}
+In polar coordinates a rotation by $\alpha$ adds $\alpha$ to the angle and
+leaves $r$ unchanged. Doing it twice adds $\alpha$ and then $\beta$, i.e.\
+$\alpha + \beta$ in total. Rotating by $\alpha$ and then $-\alpha$ adds $0$:
+every point returns to where it started, so the second rotation is the inverse
+of the first.
+\end{solution}
+
+\begin{exercise}
+A model represents position $p$ by rotating the point $(1, 0)$ by the angle
+$p \times 10^\circ$. Find the points for positions $p = 1$ and $p = 3$, and the
+angle between them. Would the angle change for positions $p = 11$ and
+$p = 13$?
+\end{exercise}
+\begin{solution}
+The two points are
+\[
+  (\cos10^\circ, \sin10^\circ) \approx (0.985, 0.174)
+  \quad\text{and}\quad
+  (\cos30^\circ, \sin30^\circ) \approx (0.866, 0.5).
+\]
+The angle between them is $30^\circ - 10^\circ = 20^\circ$. For positions $11$ and $13$ the
+angles are $110^\circ$ and $130^\circ$, and the angle between them is again
+$20^\circ$: it depends only on the difference of the positions.
+\end{solution}
+
+%----------------------------------------------------------------------
+\section{Chapter summary}\label{sec:ch3-summary}
+%----------------------------------------------------------------------
+
+\begin{keytakeaways}
+\begin{itemize}
+  \item Points in the plane are pairs $(x, y)$; in space, triples; in general,
+    lists of $n$ numbers in $\R^n$. A data point with $d$ features is a point
+    in the feature space $\R^d$.
+  \item Pythagoras: $a^2 + b^2 = c^2$. The Euclidean distance between
+    $\vx$ and $\vy$ is $\sqrt{\sum_i (x_i - y_i)^2}$ in any dimension; it is
+    the basis of nearest-neighbour methods, and features should be on
+    comparable scales before it is used.
+  \item A line can be written $w_1x_1 + w_2x_2 + b = 0$; the sign of
+    $w_1x_1 + w_2x_2 + b$ tells which side a point is on. This is how linear
+    classifiers decide. Circles are $(x-a)^2 + (y-b)^2 = r^2$; some data sets
+    need curved boundaries.
+  \item Angles are measured in degrees or radians; $180^\circ = \pi$. Code and
+    calculus use radians.
+  \item $\sin\theta$ and $\cos\theta$ are the coordinates of the point at angle
+    $\theta$ on the unit circle; $\sin^2\theta + \cos^2\theta = 1$; both are
+    periodic with period $2\pi$.
+  \item Law of cosines: $c^2 = a^2 + b^2 - 2ab\cos\gamma$.
+  \item Polar coordinates $(r, \theta)$ with $x = r\cos\theta$,
+    $y = r\sin\theta$. Rotation by $\alpha$:
+    $(x\cos\alpha - y\sin\alpha,\ x\sin\alpha + y\cos\alpha)$.
+\end{itemize}
+\end{keytakeaways}
+
+We now have numbers, functions and geometry. The next chapter combines them
+into the single most important mathematical tool in machine learning: linear
+algebra, the mathematics of vectors and matrices.
